@@ -30,7 +30,7 @@ services:
       # Page de maintenance
       - "./nginx/maintenance:/var/www/maintenance:ro"
       # Assets statiques (images, logos, etc.)
-      - "./src/www/myamana/client/myamana-angular/src/assets:/var/www/assets:ro"
+      - "./src/www/acdlp/client/acdlp-angular/src/assets:/var/www/assets:ro"
       # Certbot pour la gestion des certificats SSL
       - "./certbot/conf:/etc/letsencrypt"
       - "./certbot/www:/var/www/certbot"
@@ -63,10 +63,10 @@ services:
     container_name: node
     working_dir: /usr/src/app
     volumes:
-      - "./src/www/myamana/server/node:/usr/src/app"
+      - "./src/www/acdlp/server/node:/usr/src/app"
       - "./.env:/usr/src/app/.env:ro"
-      - "./src/www/myamana/server/node/pdf/recuFiscal:/usr/src/app/pdf/recuFiscal"
-      - "./src/www/myamana/client/myamana-angular/src/assets:/usr/src/app/assets"
+      - "./src/www/acdlp/server/node/pdf/recuFiscal:/usr/src/app/pdf/recuFiscal"
+      - "./src/www/acdlp/client/acdlp-angular/src/assets:/usr/src/app/assets"
       - "logs-data:/var/log/myamana"
     ports:
       - "4242:4242"
@@ -84,12 +84,12 @@ services:
   angular:
     image: node:20
     container_name: angular
-    working_dir: /usr/src/app/src/www/myamana/client/myamana-angular
+    working_dir: /usr/src/app/src/www/acdlp/client/acdlp-angular
     environment:
       NG_CLI_ANALYTICS: "false"
     volumes:
-      - ./src/www/myamana/client/myamana-angular:/usr/src/app/src/www/myamana/client/myamana-angular
-      - angular-dist:/usr/src/app/src/www/myamana/client/myamana-angular/dist/angular-tailwind/browser
+      - ./src/www/acdlp/client/acdlp-angular:/usr/src/app/src/www/acdlp/client/acdlp-angular
+      - angular-dist:/usr/src/app/src/www/acdlp/client/acdlp-angular/dist/angular-tailwind/browser
     command: >
       bash -c "
       echo 'Starting npm install...' &&

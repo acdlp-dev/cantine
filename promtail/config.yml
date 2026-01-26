@@ -14,8 +14,8 @@ scrape_configs:
       - targets:
           - localhost
         labels:
-          job: myamana-api
-          __path__: /var/log/myamana/*.log
+          job: acdlp-api
+          __path__: /var/log/acdlp/*.log
     
     pipeline_stages:
       - json:
