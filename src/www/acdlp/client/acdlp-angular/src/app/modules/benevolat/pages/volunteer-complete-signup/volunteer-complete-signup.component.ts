@@ -10,8 +10,8 @@ import {
   Validators,
 } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
-import { Association } from 'src/app/modules/donation/models/association.model';
-import { AssociationService } from 'src/app/modules/donation/services/association.service';
+import { Association } from 'src/app/shared/models/association.model';
+import { AssociationService } from 'src/app/shared/services/association.service';
 import { VolunteerFormData } from '../../models/volunteer.model';
 import { VolunteerService } from '../../services/volunteer.service';
 import { finalize } from 'rxjs/operators';

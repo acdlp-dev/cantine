@@ -6,8 +6,7 @@
   "scripts": {
     "start": "node server.js",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "update-npm": "npm install -g npm@latest",
-    "cron:mailjet-sync": "node crons/syncDonateursMailjet.js"
+    "update-npm": "npm install -g npm@latest"
   },
   "author": "ACDLP Team",
   "license": "ISC",

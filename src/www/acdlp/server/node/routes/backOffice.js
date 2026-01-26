@@ -4,7 +4,6 @@ const { authMiddleware } = require('./auth');
 const db = require('../services/bdd');
 const pdfService = require('../services/pdfService');
 const { sendTemplateEmail } = require('../services/mailService');
-const stripeService = require('../services/stripeService');
 const logger = require('../config/logger');
 
 // Service pour l'API INSEE
@@ -137,12 +136,6 @@ router.post('/updateInfosAsso', authMiddleware, async (req, res) => {
     // Determine update source: 'infos' (identity/contact) vs 'configuration' (full settings)
     const source = formData.source || formData._source || (formData.cantineOk ? 'infos' : 'configuration');
 
-    // Variables pour le seeding Stripe
-    let shouldSeedStripe = false;
-    let oldStripeSecretKey = null;
-    let newStripeSecretKey = null;
-    let assoUri = null;
-
     // Build payload based on source
     let updatePayload;
     if (source === 'infos') {
@@ -159,31 +152,8 @@ router.post('/updateInfosAsso', authMiddleware, async (req, res) => {
       };
     } else {
       // Full configuration update from the Configuration page
-      
-      // Récupérer les anciennes clés Stripe avant la mise à jour
-      const existingKeys = await stripeService.getExistingStripeKeys(siren);
-      oldStripeSecretKey = existingKeys.secretKey;
-      newStripeSecretKey = formData.stripeSecretKey;
-      assoUri = await stripeService.getAssoUri(siren);
-      
-      // Déterminer si on doit créer les prices Stripe
-      // Cas 1: Première saisie (anciennes clés vides, nouvelles remplies)
-      // Cas 2: Changement de clés (anciennes != nouvelles)
-      if (newStripeSecretKey && newStripeSecretKey.trim() !== '') {
-        if (!oldStripeSecretKey || oldStripeSecretKey.trim() === '') {
-          // Première saisie des clés
-          shouldSeedStripe = true;
-          logger.info(`[updateInfosAsso] Première saisie des clés Stripe pour ${siren}`);
-        } else if (oldStripeSecretKey !== newStripeSecretKey) {
-          // Changement de clés
-          shouldSeedStripe = true;
-          logger.info(`[updateInfosAsso] Changement de clés Stripe détecté pour ${siren}`);
-        }
-      }
-      
+
       updatePayload = {
-        stripe_publishable_key: formData.stripePublicKey,
-        stripe_secret_key: formData.stripeSecretKey,
         nom: formData.association_name,
         surnom: formData.nickname,
         type: formData.type,
@@ -197,19 +167,10 @@ router.post('/updateInfosAsso', authMiddleware, async (req, res) => {
         code_postal: formData.postal_code,
         tel: formData.phone,
         email: formData.email,
-        adresseCheque: formData.same_address === 'yes' ? formData.address : formData.check_address,
-        villeCheque: formData.same_address === 'yes' ? formData.city : formData.check_city,
-        code_postalCheque: formData.same_address === 'yes' ? formData.postal_code : formData.check_postal_code,
-        expediteur: formData.email_sender,
         signataire_prenom: formData.fiscal_receipt_first_name,
         signataire_nom: formData.fiscal_receipt_last_name,
         signataire_role: formData.fiscal_receipt_status,
-        iban_general: formData.iban,
-        bic_general: formData.bic,
-        paypal_email: formData.has_paypal === 'yes' ? formData.paypal_email : (formData.has_paypal === 'no' ? null : undefined),
-        iban_zakat: formData.has_zakat === 'yes' ? formData.zakat_iban : (formData.has_zakat === 'no' ? null : undefined),
-        bic_zakat: formData.has_zakat === 'yes' ? formData.zakat_bic : (formData.has_zakat === 'no' ? null : undefined),
-        paypal_email_zakat: formData.hasPaypalZakat === 'yes' ? formData.paypal_email_zakat : (formData.hasPaypalZakat === 'no' ? null : undefined)
+        benevoles_resp_email: formData.benevoles_resp_email
       };
     }
 
@@ -220,10 +181,6 @@ router.post('/updateInfosAsso', authMiddleware, async (req, res) => {
       return acc;
     }, {});
 
-    // Mask sensitive values in logs
-    const logSafeData = { ...sanitizedPayload };
-    if (logSafeData.stripe_secret_key) logSafeData.stripe_secret_key = '********';
-
     // Perform update
     await db.update(
       'Assos',
@@ -233,29 +190,9 @@ router.post('/updateInfosAsso', authMiddleware, async (req, res) => {
       'remote'
     );
 
-    // Seeding Stripe: créer Product + 1000 Prices si nécessaire
-    let stripeSeedResult = null;
-    if (shouldSeedStripe && assoUri && newStripeSecretKey) {
-      logger.info(`[updateInfosAsso] Lancement du seeding Stripe pour ${assoUri}`);
-      stripeSeedResult = await stripeService.seedPricesForAsso(assoUri, newStripeSecretKey);
-      
-      if (stripeSeedResult.success) {
-        logger.info(`[updateInfosAsso] Seeding terminé: ${stripeSeedResult.pricesCreated} prices créés`);
-      } else {
-        logger.error(`[updateInfosAsso] Erreur seeding: ${stripeSeedResult.error}`);
-      }
-    }
-
     return res.status(200).json({
       message: `Informations de l'association mises à jour avec succès (${source}).`,
-      success: true,
-      stripeSeed: stripeSeedResult ? {
-        triggered: true,
-        success: stripeSeedResult.success,
-        productName: stripeSeedResult.productName,
-        pricesCreated: stripeSeedResult.pricesCreated,
-        error: stripeSeedResult.error
-      } : { triggered: false }
+      success: true
     });
 
   }

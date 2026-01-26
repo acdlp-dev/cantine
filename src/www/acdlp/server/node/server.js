@@ -1,21 +1,40 @@
+console.log('🚀 Starting ACDLP Backend Server...');
+
 require('dotenv').config({ path: '/usr/src/app/.env' });
+
+console.log('✅ Environment variables loaded');
 
 const express = require("express");
 const app = express();
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
+
+console.log('⏳ Loading logger...');
 const logger = require('./config/logger');
+console.log('✅ Logger loaded');
+
 const httpLogger = require('./middleware/httpLogger');
+console.log('✅ HTTP Logger loaded');
 
 // Importer les routes
+console.log('⏳ Loading routes...');
+console.log('  - Loading auth...');
 const { router: authRoutes } = require('./routes/auth'); // Import seulement le router
+console.log('  - Loading database...');
 const databaseRoute = require('./routes/database');
+console.log('  - Loading assos...');
 const assosRoute = require('./routes/assos');
+console.log('  - Loading backOffice...');
 const donsBackoffice = require('./routes/backOffice');
+console.log('  - Loading cantine...');
 const cantineRoute = require('./routes/cantine');
+console.log('  - Loading benevoles...');
 const benevolesRoute = require('./routes/benevoles');
+console.log('  - Loading test-dashboard...');
 const testDashboardRoute = require('./routes/test-dashboard');
+console.log('  - Loading support...');
 const supportRoute = require('./routes/support');
+console.log('✅ Routes loaded');
 
 
 // Servir des fichiers statiques (si besoin)
@@ -48,6 +67,11 @@ app.use('/api', benevolesRoute);
 app.use('/api/test-dashboard', testDashboardRoute);
 app.use('/api', supportRoute);
 
+
+// Health check endpoint (pour Docker healthcheck)
+app.get('/health', (req, res) => {
+    res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
+});
 
 // Exemple de route de test
 app.get('/api/test', (req, res) => {

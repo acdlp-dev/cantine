@@ -1,11 +1,10 @@
 import { Component, OnInit } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { RouterLink, Router } from '@angular/router';
 import { CommonModule, NgClass, NgIf } from '@angular/common';
 import { ClickOutsideDirective } from '../../../../../shared/directives/click-outside.directive';
 import { AngularSvgIconModule } from 'angular-svg-icon';
 import { ThemeService } from '../../../../../core/services/theme.service';
 import { trigger, state, style, animate, transition } from '@angular/animations';
-import { AuthService } from 'src/app/modules/auth/services/auth.service';
 
 @Component({
   selector: 'app-profile-menu',
@@ -95,10 +94,10 @@ export class ProfileMenuComponent implements OnInit {
     email: '',
   };
 
-  constructor(public themeService: ThemeService, private authService: AuthService) {}
+  constructor(public themeService: ThemeService, private router: Router) {}
 
   ngOnInit(): void {
-    this.fetchUserData();
+    // User data would be fetched from session/storage if needed
   }
 
   public toggleMenu(): void {
@@ -106,23 +105,15 @@ export class ProfileMenuComponent implements OnInit {
   }
 
   public onLogout(): void {
-    this.authService.logout();
+    // Clear any session data and redirect to login
+    localStorage.clear();
+    sessionStorage.clear();
+    this.router.navigate(['/backoffice-auth/signin']);
   }
 
   toggleThemeMode(): void {
   }
 
   toggleThemeColor(color: string): void {
-  }
-
-  private fetchUserData(): void {
-    this.authService.getUserData().subscribe({
-      next: (data) => {
-        this.userData = data;
-      },
-      error: (err) => {
-        console.error('Error fetching user data:', err);
-      },
-    });
   }
 }

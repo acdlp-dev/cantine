@@ -1,10 +1,25 @@
-const mailjet = require('node-mailjet').connect(
-  process.env.MAILJET_KEY_MYAMANA,
-  process.env.MAILJET_SECRET_MYAMANA
-);
+const nodeMailjet = require('node-mailjet');
+
+// Lazy loading : la connexion Mailjet n'est créée que lors de la première utilisation
+let mailjet = null;
+
+function getMailjetClient() {
+  if (!mailjet) {
+    const apiKey = process.env.MAILJET_KEY_MYAMANA;
+    const apiSecret = process.env.MAILJET_SECRET_MYAMANA;
+    
+    if (!apiKey || !apiSecret) {
+      throw new Error('MAILJET_KEY_MYAMANA and MAILJET_SECRET_MYAMANA must be defined in environment variables');
+    }
+    
+    mailjet = nodeMailjet.connect(apiKey, apiSecret);
+  }
+  return mailjet;
+}
 
 const sendTemplateEmail = async (to, templateId, variables, subject, replyTo, from, attachments) => {
   try {
+    const client = getMailjetClient();
     console.log("Sujet de l'email : " + subject + " à " + to);
     console.log(variables);
 
@@ -60,7 +75,7 @@ const sendTemplateEmail = async (to, templateId, variables, subject, replyTo, fr
 
     console.log("[Mailjet Body]:", JSON.stringify(mailjetBody, null, 2));
 
-    const request = mailjet.post('send', { version: 'v3.1' }).request(mailjetBody);
+    const request = client.post('send', { version: 'v3.1' }).request(mailjetBody);
 
     const response = await request;
     return response.body;
