@@ -1,4 +1,4 @@
-# 📊 Système de Logging et Monitoring - MyAmana
+# 📊 Système de Logging et Monitoring - ACDLP
 
 Ce document décrit le système de logging et monitoring mis en place avec **Winston + Loki + Grafana**.
 
@@ -9,7 +9,7 @@ Ce document décrit le système de logging et monitoring mis en place avec **Win
 │  Node.js App    │
 │   (Express)     │
 │  Winston Logger │──► Logs JSON structurés
-└────────┬────────┘    dans /var/log/myamana/
+└────────┬────────┘    dans /var/log/acdlp/
          │
          ▼
 ┌─────────────────┐
@@ -30,7 +30,7 @@ Ce document décrit le système de logging et monitoring mis en place avec **Win
 
 ## 📁 Fichiers de logs
 
-Les logs sont écrits dans `/var/log/myamana/` :
+Les logs sont écrits dans `/var/log/acdlp/` :
 
 - **application-YYYY-MM-DD.log** : Logs généraux (info, warn, error)
 - **error-YYYY-MM-DD.log** : Erreurs uniquement
@@ -106,7 +106,7 @@ Le middleware `httpLogger` log automatiquement **toutes les requêtes** :
 ### 1. Installer les dépendances
 
 ```bash
-cd src/www/myamana/server/node
+cd src/www/acdlp/server/node
 npm install
 ```
 
@@ -155,27 +155,27 @@ GRAFANA_ADMIN_PASSWORD=votre_mot_de_passe_securise
 
 ### Tous les logs des dernières 15 minutes
 ```
-{service="myamana-api"}
+{service="acdlp-api"}
 ```
 
 ### Erreurs uniquement
 ```
-{service="myamana-api"} |= "error"
+{service="acdlp-api"} |= "error"
 ```
 
 ### Logs d'un utilisateur spécifique
 ```
-{service="myamana-api"} |= "user@example.com"
+{service="acdlp-api"} |= "user@example.com"
 ```
 
 ### Logs HTTP avec erreur 500
 ```
-{service="myamana-api"} | json | statusCode >= 500
+{service="acdlp-api"} | json | statusCode >= 500
 ```
 
 ### Compter les erreurs par minute
 ```
-sum(rate({service="myamana-api"} |= "error" [1m]))
+sum(rate({service="acdlp-api"} |= "error" [1m]))
 ```
 
 ## 🎨 Dashboards Grafana recommandés
@@ -223,7 +223,7 @@ sum(rate({service="myamana-api"} |= "error" [1m]))
 
 ```bash
 # Logs Winston
-docker exec node du -sh /var/log/myamana
+docker exec node du -sh /var/log/acdlp
 
 # Données Loki
 docker exec loki du -sh /loki
@@ -233,14 +233,14 @@ docker exec loki du -sh /loki
 
 ```bash
 # Supprimer les logs > 30 jours
-docker exec node find /var/log/myamana -name "*.log" -mtime +30 -delete
+docker exec node find /var/log/acdlp -name "*.log" -mtime +30 -delete
 ```
 
 ### Réinitialiser Loki (ATTENTION : supprime tous les logs)
 
 ```bash
 docker-compose stop loki
-docker volume rm myamana_loki-data
+docker volume rm acdlp_loki-data
 docker-compose up -d loki
 ```
 
@@ -292,7 +292,7 @@ GRAFANA_ADMIN_USER=admin_prod
 GRAFANA_ADMIN_PASSWORD=mot_de_passe_securise
 
 # URL de votre serveur (pour les logs)
-URL_ORIGIN=https://v2.myamana.fr
+URL_ORIGIN=https://v2.acdlp.fr
 ```
 
 ### Recommandations production
@@ -310,7 +310,7 @@ En cas de problème :
 
 1. Vérifier les logs Docker : `docker-compose logs loki promtail grafana`
 2. Vérifier que les volumes sont montés correctement
-3. Vérifier les permissions sur `/var/log/myamana/`
+3. Vérifier les permissions sur `/var/log/acdlp/`
 4. Redémarrer les services : `docker-compose restart loki promtail grafana`
 
 ## 📚 Ressources

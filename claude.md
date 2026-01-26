@@ -1,8 +1,8 @@
-# MyAmana - Context for Claude AI
+# ACDLP - Context for Claude AI
 
 ## 🎯 Vue d'ensemble du projet
 
-**MyAmana** est une plateforme web complète de gestion associative conçue pour les organisations à but non lucratif. Elle permet de gérer les dons, le bénévolat, la distribution de repas ("cantine solidaire") et les opérations administratives.
+**ACDLP** (Au Cœur de la Précarité) est une plateforme web de gestion associative dédiée à l'aide aux personnes en situation de précarité. Elle permet de gérer le bénévolat, la distribution de repas (cantine solidaire) et le suivi de véhicules.
 
 ---
 
@@ -13,7 +13,7 @@
 - **Langage**: TypeScript 5.4.5
 - **Style**: Tailwind CSS 3.1.6
 - **UI**: Lucide Icons, FontAwesome, ApexCharts, Quill
-- **Paiements**: Stripe (@stripe/stripe-js 2.4.0), PayPal (@paypal/paypal-js 8.2.0)
+- **Charts**: ng-apexcharts 1.7.1
 
 ### Backend
 - **Runtime**: Node.js 20
@@ -22,8 +22,6 @@
 - **ORM**: mysql2 3.3.2 (connection pooling)
 - **Auth**: JWT (jsonwebtoken 8.5.1) avec cookies HttpOnly
 - **Email**: node-mailjet 3.3.6
-- **PDF**: PDFKit 0.13.0
-- **Paiements**: Stripe 12.0.0
 
 ### Infrastructure
 - **Conteneurisation**: Docker + Docker Compose
@@ -37,20 +35,17 @@
 ## 🏗️ Architecture du Projet
 
 ```
-myamana/
-├── src/www/myamana/
-│   ├── client/myamana-angular/          # Frontend Angular 18
+acdlp/
+├── src/www/acdlp/
+│   ├── client/acdlp-angular/            # Frontend Angular 18
 │   │   ├── src/app/
 │   │   │   ├── core/                    # Services core, guards, interceptors
 │   │   │   ├── modules/                 # Modules métier (lazy-loaded)
-│   │   │   │   ├── auth/                # Authentification donateurs
 │   │   │   │   ├── backoffice/          # Panel admin
 │   │   │   │   ├── backoffice-auth/     # Auth admin
 │   │   │   │   ├── benevolat/           # Gestion bénévoles
-│   │   │   │   ├── cantine/             # Distribution repas
-│   │   │   │   ├── cantineAdmin/        # Admin repas
-│   │   │   │   ├── dashboard/           # Tableau de bord donateur
-│   │   │   │   ├── donation/            # Formulaire don public
+│   │   │   │   ├── cantine/             # Distribution repas (public)
+│   │   │   │   ├── cantineAdmin/        # Admin repas (backoffice)
 │   │   │   │   ├── error/               # Pages erreur
 │   │   │   │   ├── layout/              # Layout app
 │   │   │   │   └── uikit/               # Librairie composants UI
@@ -60,12 +55,9 @@ myamana/
 │       ├── server.js                    # Point d'entrée
 │       ├── config/                      # Configuration logger
 │       ├── middleware/                  # Middleware HTTP logging
-│       ├── routes/                      # Routes API (14 modules)
-│       ├── services/                    # Services métier (9 services)
+│       ├── routes/                      # Routes API (7 modules)
+│       ├── services/                    # Services métier (6 services)
 │       ├── credentials/                 # Credentials API (gitignored)
-│       ├── pdf/                         # PDFs générés
-│       │   ├── recuFiscal/              # Reçus fiscaux
-│       │   └── backoffice/              # Documents admin
 │       ├── assets/                      # Assets statiques
 │       └── crons/                       # Tâches planifiées
 ├── nginx/                               # Config Nginx
@@ -73,7 +65,7 @@ myamana/
 ├── grafana/                             # Dashboards Grafana
 ├── loki/                                # Config Loki
 ├── promtail/                            # Config Promtail
-├── docs/                                # Documentation (12 fichiers MD)
+├── docs/                                # Documentation
 ├── docker-compose.yml                   # Setup production
 ├── docker-compose.dev.yml               # Setup dev
 ├── docker-compose.staging.yml           # Setup staging
@@ -84,24 +76,17 @@ myamana/
 
 ## 🔐 Système d'Authentification Multi-Rôles
 
-L'application gère **3 types d'utilisateurs distincts** avec des flux d'authentification séparés:
+L'application gère **2 types d'utilisateurs distincts** avec des flux d'authentification séparés:
 
-### 1. Donateurs (Donators)
-- **Table DB**: `users`
-- **Rôle**: `'donator'`
-- **Flux**: Email signup → Vérification email → Définition password → Login
-- **Routes**: `/auth/*`, `/dashboard/*`
-- **Features**: Historique dons, gestion abonnements, téléchargement reçus fiscaux
-
-### 2. Associations (Admin)
+### 1. Associations (Admin)
 - **Table DB**: `users` (role='association') + `Assos`
 - **Rôle**: `'association'`
-- **Flux**: Signup avec validation SIREN → Upload documents → Vérification email → Approbation manuelle → Login
+- **Flux**: Signup avec validation SIREN → Upload documents → Vérification email → Login
 - **Routes**: `/backoffice-auth/*`, `/backoffice/*`
 - **Validation**: API INSEE pour SIREN/SIRET
-- **Features**: Backoffice complet, gestion dons, bénévoles, distribution repas
+- **Features**: Backoffice complet, gestion bénévoles, gestion cantine, suivi véhicule
 
-### 3. Bénévoles (Volunteers)
+### 2. Bénévoles (Volunteers)
 - **Table DB**: `benevoles`
 - **Rôle**: `'volunteer'`
 - **Flux OTP**: Demande code OTP → Vérification email (6 chiffres) → Inscription complète → Login
@@ -120,22 +105,15 @@ L'application gère **3 types d'utilisateurs distincts** avec des flux d'authent
 
 ## 📡 Architecture API
 
-### Routes Backend (14 Modules)
+### Routes Backend (7 Modules)
 
 | Fichier Route | Endpoints | Fonction |
 |--------------|-----------|----------|
-| `auth.js` | 25+ | Authentification multi-rôles |
-| `dons.js` | 6 | Création et gestion dons |
-| `subscriptions.js` | 8 | Gestion abonnements mensuels (Stripe) |
-| `donateurs.js` | 4 | Gestion profils donateurs |
+| `auth.js` | 8+ | Authentification admin et bénévoles (OTP) |
 | `assos.js` | 5 | CRUD associations |
-| `recus.js` | 6 | Génération reçus fiscaux |
-| `payment.js` | 5 | Paiements Stripe |
-| `payment-paypal.js` | 4 | Paiements PayPal |
-| `backOffice.js` | 20+ | Dashboard admin, stats, exports |
+| `backOffice.js` | 8+ | Dashboard admin, infos asso, onboarding |
 | `benevoles.js` | 30+ | Gestion bénévoles, actions, QR codes |
 | `cantine.js` | 15+ | Distribution repas, commandes, quotas |
-| `emailDonateurs.js` | 3 | Campagnes email donateurs |
 | `database.js` | 2 | Utilitaires DB |
 | `support.js` | 6 | Système tickets support (Trello) |
 
@@ -144,31 +122,35 @@ L'application gère **3 types d'utilisateurs distincts** avec des flux d'authent
 ### Endpoints Clés
 
 **Authentification:**
-- `POST /api/signup` - Inscription donateur
-- `POST /api/signin` - Login donateur
 - `POST /api/backoffice/signin` - Login admin
+- `POST /api/backoffice/signup` - Inscription admin
+- `POST /api/benevolat/request-otp` - Demande code OTP bénévole
+- `POST /api/benevolat/verify-otp` - Vérification code OTP
 - `POST /api/benevolat/signin` - Login bénévole
-- `GET /api/me` - Info utilisateur courant
+- `GET /api/backoffice/me` - Info admin courant
 - `POST /api/logout` - Déconnexion
-
-**Dons:**
-- `POST /api/dons` - Créer don
-- `GET /api/dons` - Liste dons
-- `POST /api/create-payment-intent` - Paiement Stripe
-- `POST /api/create-subscription` - Abonnement Stripe
-- `POST /api/cancel-subscription/:id` - Annuler abonnement
 
 **Bénévoles:**
 - `GET /api/benevolat/actions/:associationName` - Liste actions
 - `POST /api/benevolat/actions/:actionId/register` - Inscription action
 - `POST /api/benevolat/qrcode/generate` - Générer carte repas
 - `POST /api/benevolat/qrcode/scan` - Scanner carte repas
+- `GET /api/backoffice/benevoles` - Liste bénévoles (admin)
+- `POST /api/backoffice/actions` - Créer action (admin)
+
+**Cantine:**
+- `GET /api/cantine/menu/:asso` - Menu du jour
+- `POST /api/cantine/order` - Commander repas
+- `GET /api/backoffice/cantine/commandes` - Liste commandes (admin)
+- `POST /api/backoffice/cantine/quotas` - Définir quotas (admin)
+- `GET /api/backoffice/qrcode/list` - Liste cartes repas
+- `GET /api/backoffice/qrcode/pickups` - Historique distributions
 
 **Backoffice:**
-- `GET /api/backoffice/dashboard/stats` - Statistiques dashboard
-- `GET /api/backoffice/dons` - Liste tous dons
-- `POST /api/backoffice/generate-recu` - Générer reçu fiscal
-- `GET /api/backoffice/export/excel` - Export Excel
+- `GET /api/backoffice/canteInfosCompleted` - Vérif infos cantine
+- `GET /api/backoffice/getInfosAsso` - Infos association
+- `POST /api/backoffice/updateInfosAsso` - MAJ infos association
+- `GET /api/backoffice/onboarding/completed` - Statut onboarding
 
 ---
 
@@ -177,20 +159,12 @@ L'application gère **3 types d'utilisateurs distincts** avec des flux d'authent
 ### Tables Principales
 
 #### Users & Authentification
-- **`users`**: Comptes donateurs et admin
-  - Champs: id, email, password, firstName, lastName, role, siren, is_verified, verification_token, reset_token, created_at
+- **`users`**: Comptes admin
+  - Champs: id, email, password, firstName, lastName, role, siren, is_verified, verification_token, created_at
 - **`Assos`**: Détails associations
-  - Champs: id, email, siren, nom, uri, stripe_secret_key, stripe_publishable_key, logoUrl, signataire_nom, signataire_prenom, benevoles_resp_email
+  - Champs: id, email, siren, nom, uri, logoUrl, signataire_nom, signataire_prenom, benevoles_resp_email, adresse, code_postal, ville, tel
 - **`benevoles`**: Comptes bénévoles
   - Champs: id, email, password, nom, prenom, telephone, adresse, ville, code_postal, pays, age, date_naissance, genre, vehicule, statut, association_nom, is_verified, verification_code, completion_token, metiers_competences, source_connaissance, tracking_uuid
-
-#### Dons
-- **`dons`**: Dons ponctuels
-  - Champs: id, user_id, asso_id, amount, currency, payment_method, stripe_payment_intent_id, status, date, fiscal_receipt_generated
-- **`abonnements`**: Abonnements mensuels
-  - Champs: id, user_id, asso_id, amount, stripe_subscription_id, stripe_customer_id, status, start_date, next_billing_date, canceled_at
-- **`Prices`**: Catalogue tarifs Stripe
-  - Champs: id, montant, price_id, product_id, nickname, asso
 
 #### Bénévoles & Actions
 - **`actions`**: Activités bénévoles
@@ -205,6 +179,8 @@ L'application gère **3 types d'utilisateurs distincts** avec des flux d'authent
   - Champs: id, email, ajout, livraison, repas_quantite, colis_quantite, asso, statut, zone
 - **`Quotas2`**: Quotas journaliers repas
   - Champs: id, date_jour, repas_quantite, asso
+- **`Menus`**: Menus hebdomadaires
+  - Champs: id, asso, lundi, mardi, mercredi, jeudi, vendredi
 - **`qrcode_cards`**: Cartes repas
   - Champs: id, qrcode_id, nom, prenom, nb_beneficiaires, created_at, created_by, association_nom
 - **`meal_pickups`**: Distributions repas
@@ -212,11 +188,11 @@ L'application gère **3 types d'utilisateurs distincts** avec des flux d'authent
 
 #### Administratif
 - **`onboarding_backoffice`**: Statut onboarding admin
-  - Champs: id, user_id, asso_id, donations, cantine, suiviVehicule, doubleChecked, isOnboarded, tutorielDone, document_justificatif, statut, amende
+  - Champs: id, user_id, asso_id, cantine, suiviVehicule, benevolat, isOnboarded, tutorielDone, document_justificatif
 
 ---
 
-## 🔧 Services Backend (9 Services Core)
+## 🔧 Services Backend (6 Services Core)
 
 ### 1. Database Service (`bdd.js`)
 - **Fonction**: Abstraction MySQL avec connection pooling
@@ -225,36 +201,22 @@ L'application gère **3 types d'utilisateurs distincts** avec des flux d'authent
 ### 2. Mail Service (`mailService.js`)
 - **Provider**: Mailjet
 - **Features**: Templates emails, variables, pièces jointes (ICS)
-- **Templates**: Vérification email, reset password, welcome bénévole, code OTP
+- **Templates**: Code OTP bénévole, welcome bénévole, rappels actions, confirmations inscriptions
 
-### 3. Stripe Service (`stripeService.js`)
-- **Fonction**: Intégration Stripe dynamique par association
-- **Features**: Multi-tenant, gestion abonnements, payment intents, seeding prix
-
-### 4. PayPal Service (`paypalService.js`)
-- **Fonction**: Intégration PayPal pour dons
-- **Features**: Création orders, capture paiements, webhooks
-
-### 5. PDF Service (`pdfService.js`)
-- **Fonction**: Génération reçus fiscaux et documents admin
-- **Technology**: PDFKit
-- **Outputs**: Reçus fiscaux, documents association
-- **Features**: QR codes, watermarks, layouts personnalisés
-
-### 6. Google Sheets Service (`googleSheetsService.js`)
+### 3. Google Sheets Service (`googleSheetsService.js`)
 - **Fonction**: Sync données bénévoles avec Google Sheets
-- **Features**: MAJ automatique roster, sync statuts
+- **Features**: MAJ automatique roster, sync statuts, export pour comptabilité
 
-### 7. ICS Service (`icsService.js`)
+### 4. ICS Service (`icsService.js`)
 - **Fonction**: Génération fichiers iCalendar pour actions bénévoles
-- **Features**: Création événements avec rappels
+- **Features**: Création événements avec rappels, support actions récurrentes
 
-### 8. INSEE Service (`inseeService.js`)
+### 5. INSEE Service (`inseeService.js`)
 - **Fonction**: Validation numéros SIREN/SIRET
 - **API**: INSEE Sirene V3.11
-- **Features**: Lookup infos entreprise, validation adresse
+- **Features**: Lookup infos entreprise, validation adresse association
 
-### 9. Trello Service (`trelloService.js`)
+### 6. Trello Service (`trelloService.js`)
 - **Fonction**: Intégration système tickets support
 - **Features**: Création cards, assignation départements, tracking statuts
 
@@ -262,59 +224,52 @@ L'application gère **3 types d'utilisateurs distincts** avec des flux d'authent
 
 ## 🎨 Architecture Frontend
 
-### Modules Angular (11 Modules)
+### Modules Angular (7 Modules)
 
-#### 1. Auth Module (`/auth`)
-- **Fonction**: Authentification donateurs
-- **Pages**: sign-in, sign-up, forgot-password, verify-email, set-password
-- **Service**: `AuthService` (JWT avec cookies)
+#### 1. Backoffice Module (`/backoffice`)
+- **Fonction**: Panel administration ACDLP
+- **Composants**: BenevolatList, BenevolatActions, BenevolatCalendrier, CantineCommandes, CantineQuotas, BeneficiairesCartes, Vehicule, Infos
+- **Services**: `OnboardingService`, `AutoTourService`, `BenevolatAdminService`
 
-#### 2. Backoffice Module (`/backoffice`)
-- **Fonction**: Panel administration association
-- **Composants** (15+): Dashboard, Dons, Abonnements, Reçus, Bénévoles, Actions, Campagnes, Configuration, Cantine, Onboarding
-- **Services**: `OnboardingService`, `AutoTourService`, `BenevolatAdminService`, `DonsService`
+#### 2. Backoffice Auth Module (`/backoffice-auth`)
+- **Fonction**: Authentification admin
+- **Pages**: sign-in, sign-up
+- **Service**: `BackofficeAuthService` (JWT avec cookies)
 
 #### 3. Benevolat Module (`/benevolat`)
 - **Fonction**: Interface bénévole
 - **Pages**: signin, form, dashboard, actions, profile, otp-verification, qrcode-generate/scan/list
 - **Service**: `ActionService`
 
-#### 4. Donation Module (`/donation`)
-- **Fonction**: Formulaire don public
-- **Features**: Form multi-étapes, dons ponctuels/récurrents, Stripe/PayPal, validation adresse INSEE
-- **Composants**: DonationForm, PersonalInfoForm, PaymentForm
-
-#### 5. Dashboard Module (`/dashboard`)
-- **Fonction**: Tableau de bord donateur
-- **Features**: Historique dons, gestion abonnements, téléchargement reçus
-- **Composants**: Charts (ApexCharts), tables, filtres
-
-#### 6. Cantine Module (`/cantine`)
+#### 4. Cantine Module (`/cantine`)
 - **Fonction**: Interface commande repas publique
 - **Features**: Affichage menu, commande, planification livraison
 
-#### 7. CantineAdmin Module (`/cantineAdmin`)
+#### 5. CantineAdmin Module (`/cantineAdmin`)
 - **Fonction**: Gestion distribution repas (backoffice)
 - **Features**: Gestion commandes, quotas, tracking pickups
 
-#### 8. Layout Module (`/layout`)
-- **Fonction**: Shell app et navigation
-- **Composants**: Navbar, Sidebar, Footer, Breadcrumb
+#### 6. Layout Module (`/layout`)
+- **Fonction**: Structure commune des pages (navbar, sidebar, footer)
+- **Composants**: Navbar, Sidebar avec navigation, Footer, Breadcrumb
 
-#### 9-11. Error, UIKit, Backoffice-Auth Modules
-- **Error**: Pages 404, 500, 403
-- **UIKit**: Librairie composants et style guide
-- **Backoffice-Auth**: Authentification admin
+#### 7. Error Module (`/error`)
+- **Fonction**: Pages d'erreur personnalisées
+- **Pages**: 404, 500, 403
 
 ### Ressources Partagées
 
 **Composants Shared:**
-- ButtonComponent, ConfirmationDialogComponent, PauseDialogComponent, ModifySubscriptionDialogComponent, AddressUpdateDialogComponent, SupportWidgetComponent, StepIndicatorComponent
+- ButtonComponent
+- ConfirmationDialogComponent
+- SupportWidgetComponent
+- StepIndicatorComponent
 
 **Services Shared:**
-- ThemeService, FailedDonationsService, SupportService
+- ThemeService
+- SupportService
 
-**Pipes:** Formatage dates, devises, troncature texte
+**Pipes:** Formatage dates, troncature texte
 
 **Validators:** Email, SIREN, code postal
 
@@ -322,7 +277,7 @@ L'application gère **3 types d'utilisateurs distincts** avec des flux d'authent
 
 ## 🚀 Déploiement & Infrastructure
 
-### Docker Compose (7 Services)
+### Docker Compose (9 Services)
 
 1. **MySQL**: Port 3306, volumes `dbdata` + `init-db.sql`
 2. **Nginx**: Ports 80/443, reverse proxy, SSL, static files
@@ -359,81 +314,58 @@ L'application gère **3 types d'utilisateurs distincts** avec des flux d'authent
 - Niveaux: debug, info, warn, error
 - Rotation journalière, max 30 jours, 20MB/fichier
 - Format: JSON avec timestamp
+- Logs: `/var/log/acdlp/`
 
 ---
 
 ## 🎯 Features Business Clés
 
-### 1. Gestion Dons
-- Dons ponctuels (Stripe/PayPal)
-- Abonnements mensuels (Stripe)
-- Reçus fiscaux auto-générés (PDF + QR codes)
-- Multi-tenant (chaque asso a son compte Stripe)
+### 1. Gestion Bénévoles
+- Inscription OTP (6 chiffres envoyés par email)
+- Calendrier actions avec inscriptions
+- Tracking présence (QR codes pour responsables)
+- Statuts progressifs: Restreint → Confirmé → Responsable
+- Sync Google Sheets automatique
+- Génération attestations de bénévolat
 
-### 2. Gestion Bénévoles
-- Inscription OTP (6 chiffres)
-- Calendrier actions
-- Tracking présence (QR codes)
-- Statuts: Restreint → Confirmé → Responsable
-- Sync Google Sheets
-
-### 3. Distribution Repas (Cantine Solidaire)
-- Commande publique
+### 2. Distribution Repas (Cantine Solidaire)
+- Commande publique avec validation adresse
 - Panel admin (gestion commandes, quotas)
-- Cartes repas QR Code
-- Système scan (tracking pickups)
-- Statistiques
+- Cartes repas QR Code avec tracking
+- Système scan pour responsables
+- Statistiques et exports
+- Gestion menus hebdomadaires
 
-### 4. Backoffice
+### 3. Backoffice
 - Dashboard temps réel (ApexCharts)
-- Gestion dons (liste, filtres, exports Excel/CSV)
-- Admin bénévoles
-- Reçus fiscaux (bulk generation)
-- Campagnes email
-- Configuration (Stripe, logo, SIREN)
-- Onboarding (Driver.js tours)
+- Admin bénévoles (liste, filtres, modification statuts)
+- Admin cantine (commandes, quotas, cartes repas)
+- Configuration association (SIREN, logo, infos contact)
+- Onboarding avec tours guidés (Driver.js)
+- Support tickets (Trello)
 
-### 5. Système Support
+### 4. Système Support
 - Widget support flottant
 - Intégration Trello
 - Catégories: Technique, Admin, Compta, Juridique, Formation
 - Statuts: Nouveau → En attente → Résolu
-
-### 6. Architecture Multi-tenant
-- Isolation données par `uri`
-- Branding personnalisé (logo, couleurs)
-- Comptes Stripe séparés
 
 ---
 
 ## 📝 Modèles de Données TypeScript
 
 ```typescript
-// User
+// User (Admin)
 interface User {
   id: number;
   email: string;
   password: string; // bcrypt hashed
   firstName: string;
   lastName: string;
-  role: 'donator' | 'association';
-  siren?: string;
+  role: 'association';
+  siren: string;
   is_verified: boolean;
   created_at: Date;
-}
-
-// Donation
-interface Donation {
-  id: number;
-  user_id: number;
-  asso_id: number;
-  amount: number;
-  currency: string;
-  payment_method: 'stripe' | 'paypal' | 'bank';
-  stripe_payment_intent_id?: string;
-  status: 'success' | 'pending' | 'failed';
-  date: Date;
-  fiscal_receipt_generated: boolean;
 }
 
 // Volunteer
@@ -464,6 +396,28 @@ interface Action {
   responsable_email: string;
   nb_participants: number;
 }
+
+// QR Code Card
+interface QRCodeCard {
+  id: number;
+  qrcode_id: string; // UUID
+  nom: string;
+  prenom: string;
+  nb_beneficiaires: number;
+  created_at: Date;
+  created_by: number; // benevole_id
+  association_nom: string;
+}
+
+// Meal Pickup
+interface MealPickup {
+  id: number;
+  qrcode_id: string;
+  pickup_date: Date;
+  pickup_time: Time;
+  benevole_id: number;
+  nb_beneficiaires: number;
+}
 ```
 
 ---
@@ -476,12 +430,11 @@ interface Action {
 - CORS avec credentials
 - Protection SQL injection (requêtes paramétrées)
 - Validation inputs (email, SIREN, passwords)
-- Expiration tokens (1h JWT)
+- Expiration tokens (1h JWT, 10min OTP)
 - HTTPS (Let's Encrypt)
 - Protection .env (gitignored)
 - Masquage données sensibles dans logs
 - Protection CSRF (sameSite cookies)
-- Whitelisting IP (mode maintenance)
 
 ### Améliorations Potentielles ⚠️
 - Rate limiting endpoints auth
@@ -489,23 +442,18 @@ interface Action {
 - 2FA comptes admin
 - Audit logging
 - Rotation API keys
-- Validation signature webhooks Stripe
 
 ---
 
 ## 📚 Documentation
 
 Documentation complète dans `/docs/`:
-1. README.md - Vue d'ensemble projet
-2. ANGULAR.md - Architecture frontend (49KB)
-3. NODE-BACKEND.md - Architecture backend (50KB)
-4. BACKOFFICE.md - Documentation panel admin (18KB)
-5. ESPACE-BENEVOLE.md - Documentation espace bénévole (18KB)
-6. ESPACE-DONATEUR.md - Documentation dashboard donateur (17KB)
-7. FORMULAIRE-DON.md - Documentation formulaire don (15KB)
-8. SYSTEME-CARTE-REPAS.md - Système cartes repas (6KB)
-9. SYSTEME-SUPPORT-TICKETS.md - Système tickets support (15KB)
-10. LOGGING-MONITORING.md - Setup logging & monitoring (7KB)
+1. NODE-BACKEND.md - Architecture backend
+2. ANGULAR.md - Architecture frontend
+3. BACKOFFICE.md - Documentation panel admin
+4. ESPACE-BENEVOLE.md - Documentation espace bénévole
+5. LOGGING-MONITORING.md - Setup logging & monitoring
+6. SYSTEME-SUPPORT-TICKETS.md - Système tickets support
 
 ---
 
@@ -537,12 +485,12 @@ Documentation complète dans `/docs/`:
 ### Développement
 ```bash
 # Backend
-cd src/www/myamana/server/node
+cd src/www/acdlp/server/node
 npm install
 npm start  # Port 4242
 
 # Frontend
-cd src/www/myamana/client/myamana-angular
+cd src/www/acdlp/client/acdlp-angular
 npm install
 npm start  # Port 4200
 ```
@@ -553,14 +501,14 @@ npm start  # Port 4200
 docker-compose -f docker-compose.yml up --build
 
 # Build Angular manuel
-cd src/www/myamana/client/myamana-angular
+cd src/www/acdlp/client/acdlp-angular
 npm run prod  # Output: dist/angular-tailwind/
 ```
 
 ### Environnements
 - **Development**: `environment.ts` - API locale (localhost:4242)
 - **Staging**: `environment.staging.ts` - API staging
-- **Production**: `environment.prod.ts` - API prod (v2.myamana.fr)
+- **Production**: `environment.prod.ts` - API prod
 
 ---
 
@@ -568,13 +516,13 @@ npm run prod  # Output: dist/angular-tailwind/
 
 ```bash
 # URLs
-URL_ORIGIN=https://v2.myamana.fr
+URL_ORIGIN=https://acdlp.fr
 
 # Database
-LOCAL_DB_HOST=mysql
+LOCAL_DB_HOST=acdlp-mysql
 LOCAL_DB_USER=rachid
 LOCAL_DB_PASSWORD=rachid
-LOCAL_DB_NAME=myamana
+LOCAL_DB_NAME=acdlp
 
 # JWT
 JWT_SECRET=Sourate76Verset9
@@ -604,35 +552,30 @@ SIRENE_API_KEY=***
 
 ## 📊 Statistiques Projet
 
-- **Modules Frontend**: 11 modules
-- **Routes Backend**: 14 fichiers routes
-- **Services Backend**: 9 services core
-- **Tables DB**: 20+ tables
-- **Endpoints API**: 100+ endpoints
-- **Fichiers Documentation**: 12 fichiers MD
+- **Modules Frontend**: 7 modules
+- **Routes Backend**: 7 fichiers routes
+- **Services Backend**: 6 services core
+- **Tables DB**: 15+ tables
+- **Endpoints API**: 80+ endpoints
 - **Services Docker**: 9 containers
-- **Lignes de Code**: ~50,000+ (frontend + backend)
 
 ---
 
 ## 🎯 Cas d'Usage Business
 
-MyAmana est conçu pour les **organisations à but non lucratif** qui ont besoin de:
-1. Accepter et gérer des dons en ligne
-2. Recruter et coordonner des bénévoles
-3. Distribuer des repas aux bénéficiaires
-4. Générer des reçus fiscaux pour les donateurs
-5. Suivre les statistiques et générer des rapports
-6. Gérer plusieurs associations depuis une plateforme
+ACDLP est une application conçue pour l'association **Au Cœur de la Précarité** qui a besoin de:
+1. Recruter et coordonner des bénévoles
+2. Distribuer des repas aux bénéficiaires
+3. Suivre les distributions avec cartes QR Code
+4. Gérer le planning des actions de solidarité
+5. Suivre l'utilisation des véhicules
+6. Générer des statistiques et rapports
 
 **Utilisateurs Cibles**:
 - Banques alimentaires
 - Refuges pour sans-abri
+- Associations caritatives
 - Organisations communautaires
-- Associations caritatives religieuses
-- Associations humanitaires
-
-**Exemple**: **Au Cœur de la Précarité** (client principal)
 
 ---
 
@@ -654,17 +597,10 @@ MyAmana est conçu pour les **organisations à but non lucratif** qui ont besoin
 ### Fichiers Sensibles (gitignored)
 - `.env` (variables environnement)
 - `/credentials/*` (credentials API)
-- `/pdf/recuFiscal/*` (reçus fiscaux)
-- `/pdf/backoffice/documentassociation/*` (documents associations)
 
 ### Branches Git
-- **Main branch**: `develop`
-- **Branche courante**: `develop`
-
-### Commits Récents
-1. `fbe9f2d3` - Cantine (#44)
-2. `7de79c27` - Merge pull request #43 (suppression_log)
-3. `62fb7c70` - Ajout filigrane cartes repas
+- **Main branch**: `main`
+- **Branche feature**: `feature/transform-to-acdlp`
 
 ---
 
@@ -678,18 +614,17 @@ MyAmana est conçu pour les **organisations à but non lucratif** qui ont besoin
 5. **Pas de breaking changes** sans confirmation utilisateur
 
 ### Lors de debug:
-1. **Vérifier les logs** (`/var/log/myamana/` ou Grafana)
+1. **Vérifier les logs** (`/var/log/acdlp/` ou Grafana)
 2. **Tester l'auth** (vérifier JWT, cookies, rôles)
 3. **Vérifier la DB** (tables, relations, données)
 4. **Tester les routes API** (endpoints, paramètres, réponses)
 
 ### Lors d'ajout features:
 1. **Analyser l'impact** (tables DB, routes API, composants Angular)
-2. **Respecter l'architecture multi-tenant** (isolation par `uri`)
-3. **Ajouter validation** (frontend + backend)
-4. **Documenter** (mettre à jour docs/ si feature majeure)
-5. **Tester avec les 3 rôles** (donateur, admin, bénévole)
+2. **Ajouter validation** (frontend + backend)
+3. **Documenter** (mettre à jour docs/ si feature majeure)
+4. **Tester avec les 2 rôles** (admin, bénévole)
 
 ---
 
-**Ce fichier doit être chargé au début de chaque conversation pour contextualiser Claude AI sur le projet MyAmana.**
+**Ce fichier doit être chargé au début de chaque conversation pour contextualiser Claude AI sur le projet ACDLP.**

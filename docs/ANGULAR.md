@@ -1,4 +1,4 @@
-# Documentation Angular - MyAmana
+# Documentation Angular - ACDLP
 
 ## 📋 Table des matières
 
@@ -22,7 +22,7 @@
 
 ## 🎯 Vue d'ensemble
 
-MyAmana est une application Angular moderne construite avec **Angular 18** en utilisant l'approche **standalone components**. L'application est dédiée à la gestion de dons et de bénévolat pour des associations.
+ACDLP est une application Angular moderne construite avec **Angular 18** en utilisant l'approche **standalone components**. L'application est dédiée à la gestion de bénévoles, de la cantine solidaire et du suivi de véhicules pour l'association "Au Cœur de la Précarité".
 
 ### Caractéristiques principales
 
@@ -65,13 +65,11 @@ src/app/
 │   └── utils/              # Utilitaires
 ├── guards/                  # Guards de routes
 ├── modules/                 # Modules fonctionnels
-│   ├── auth/               # Authentification donateurs
-│   ├── backoffice/         # Administration
+│   ├── backoffice/         # Administration ACDLP
 │   ├── backoffice-auth/    # Authentification admin
 │   ├── benevolat/          # Gestion bénévolat
-│   ├── cantine/            # Module cantine
-│   ├── dashboard/          # Tableaux de bord
-│   ├── donation/           # Formulaire de dons
+│   ├── cantine/            # Module cantine publique
+│   ├── cantineAdmin/       # Admin distribution repas
 │   ├── error/              # Pages d'erreur
 │   ├── layout/             # Structure des pages
 │   └── uikit/              # Bibliothèque de composants
@@ -130,7 +128,7 @@ export const environment = {
 ```typescript
 export const environment = {
   production: true,
-  apiUrl: 'https://api.myamana.fr/api'  // URL de production
+  apiUrl: 'https://api.acdlp.fr/api'
 };
 ```
 
@@ -143,7 +141,7 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        myamana: {
+        acdlp: {
           primary: '#...',
           secondary: '#...'
         }
@@ -168,83 +166,54 @@ module.exports = {
 Chaque module fonctionnel suit cette structure:
 
 ```
-modules/auth/
-├── auth-routing.module.ts      # Routes du module
-├── auth.component.ts           # Composant principal
-├── auth.module.ts              # Déclaration du module
-├── pages/                      # Pages du module
-│   ├── sign-in/
-│   ├── sign-up/
-│   ├── forgot-password/
-│   └── verify-email/
-└── services/                   # Services du module
-    └── auth.service.ts
+modules/benevolat/
+├── benevolat-routing.module.ts      # Routes du module
+├── benevolat.component.ts           # Composant principal
+├── benevolat.module.ts              # Déclaration du module
+├── pages/                           # Pages du module
+│   ├── volunteer-signin/
+│   ├── volunteer-form/
+│   ├── volunteer-dashboard/
+│   └── volunteer-actions/
+└── services/                        # Services du module
+    └── action.service.ts
 ```
 
 ---
 
 ## 🧩 Modules principaux
 
-### 1. Auth Module
+### 1. Backoffice Module
 
-**Responsabilité**: Gestion de l'authentification des donateurs
-
-**Routes**:
-- `/auth/sign-in` - Connexion
-- `/auth/sign-up` - Inscription
-- `/auth/forgot-password` - Mot de passe oublié
-- `/auth/new-password` - Nouveau mot de passe
-- `/auth/verify-email` - Vérification email
-- `/auth/two-steps` - Authentification à deux facteurs
-
-**Services**:
-- `AuthService` - Gestion de l'authentification
-
-**Fichier**: `src/app/modules/auth/auth.module.ts`
-```typescript
-@NgModule({
-  imports: [
-    AuthRoutingModule, 
-    AngularSvgIconModule.forRoot()
-  ], 
-  providers: [
-    provideHttpClient(withInterceptorsFromDi())
-  ] 
-})
-export class AuthModule { }
-```
-
-### 2. Backoffice Module
-
-**Responsabilité**: Interface d'administration pour gérer l'association
+**Responsabilité**: Interface d'administration pour gérer l'association ACDLP
 
 **Fonctionnalités**:
-- Gestion des dons et abonnements
 - Gestion des bénévoles et actions
-- Génération de reçus fiscaux
-- Gestion des campagnes
+- Gestion de la cantine solidaire
+- Gestion des commandes et quotas
+- Suivi véhicules
 - Paramètres de l'association
 - Onboarding des nouveaux admins
 - Tours guidés (Driver.js)
 
 **Composants principaux**:
-- `AccueilComponent` - Dashboard principal
-- `DonsComponent` - Liste des dons
-- `AbonnementsComponent` - Gestion des abonnements
 - `BenevolatListComponent` - Liste des bénévoles
 - `BenevolatActionsComponent` - Gestion des actions
-- `RecuComponent` - Génération de reçus fiscaux
-- `CampagnesComponent` - Gestion des campagnes
-- `ParametresComponent` - Configuration
+- `BenevolatCalendrierComponent` - Calendrier des actions
+- `CantineCommandesComponent` - Gestion commandes repas
+- `CantineQuotasComponent` - Gestion quotas journaliers
+- `BeneficiairesCartesComponent` - Gestion cartes repas
+- `VehiculeComponent` - Suivi véhicules
+- `InfosComponent` - Paramètres association
 
 **Services**:
 - `OnboardingService` - Gestion de l'onboarding
 - `AutoTourService` - Tours guidés automatiques
 - `BenevolatAdminService` - Gestion admin bénévolat
 
-### 3. Backoffice Auth Module
+### 2. Backoffice Auth Module
 
-**Responsabilité**: Authentification séparée pour les administrateurs
+**Responsabilité**: Authentification pour les administrateurs ACDLP
 
 **Routes**:
 - `/backoffice-auth/sign-in` - Connexion admin
@@ -253,54 +222,32 @@ export class AuthModule { }
 **Service**:
 - `BackofficeAuthService` - Authentification admin
 
-### 4. Donation Module
+**Sécurité**:
+- JWT stocké dans cookies HttpOnly
+- Validation email obligatoire
+- Vérification SIREN via API INSEE
 
-**Responsabilité**: Formulaire de dons public avec intégration de paiement
-
-**Caractéristiques**:
-- Dons ponctuels et mensuels
-- Intégration Stripe et PayPal
-- Formulaire multi-étapes
-- Validation de formulaires réactifs
-- Génération de reçus fiscaux
-
-**Dépendances**:
-- `@stripe/stripe-js` - Intégration Stripe
-- `@paypal/paypal-js` - Intégration PayPal
-
-**Fichier**: `src/app/modules/donation/donation.module.ts`
-```typescript
-@NgModule({
-  imports: [
-    CommonModule, 
-    DonationRoutingModule, 
-    DonationComponent,
-    FormsModule,
-    ReactiveFormsModule,
-    FontAwesomeModule
-  ]
-})
-export class DonationModule {}
-```
-
-### 5. Benevolat Module
+### 3. Benevolat Module
 
 **Responsabilité**: Espace bénévole pour gérer les inscriptions et actions
 
 **Fonctionnalités**:
-- Inscription des bénévoles
+- Inscription des bénévoles avec OTP
 - Authentification bénévole
 - Tableau de bord bénévole
 - Inscription aux actions
 - Historique des participations
+- Génération et scan cartes repas QR Code
 
 **Pages**:
 - `volunteer-signin` - Connexion
 - `volunteer-form` - Formulaire d'inscription
 - `volunteer-dashboard` - Tableau de bord
 - `volunteer-actions` - Liste des actions disponibles
-- `volunteer-otp-verification` - Vérification OTP
-- `volunteer-forgot-password` - Réinitialisation mot de passe
+- `volunteer-otp-verification` - Vérification OTP (6 chiffres)
+- `volunteer-qrcode-generate` - Génération cartes repas
+- `volunteer-qrcode-scan` - Scan cartes repas
+- `volunteer-qrcode-list` - Liste des distributions
 
 **Services**:
 - `ActionService` - Gestion des actions bénévoles
@@ -316,6 +263,8 @@ export interface Action {
   lieu: string;
   placesDisponibles: number;
   placesTotal: number;
+  responsable_email: string;
+  recurrence: 'Aucune' | 'Quotidienne' | 'Hebdomadaire';
 }
 
 // volunteer.model.ts
@@ -325,21 +274,34 @@ export interface Volunteer {
   nom: string;
   email: string;
   telephone: string;
+  statut: 'restreint' | 'confirmé' | 'responsable';
   actionsParticipees: number[];
 }
 ```
 
-### 6. Dashboard Module
+### 4. Cantine Module
 
-**Responsabilité**: Tableaux de bord avec visualisation de données
+**Responsabilité**: Interface publique pour commander des repas
 
 **Caractéristiques**:
-- Graphiques ApexCharts
-- Métriques en temps réel
-- Filtres et exports
-- Visualisations personnalisées
+- Affichage du menu du jour
+- Formulaire de commande
+- Planification de livraison
+- Gestion des zones
 
-### 7. Layout Module
+### 5. CantineAdmin Module
+
+**Responsabilité**: Gestion de la distribution des repas (backoffice)
+
+**Fonctionnalités**:
+- Gestion des commandes (validation, annulation)
+- Gestion des quotas journaliers
+- Tracking des distributions
+- Génération de rapports
+- Gestion des menus
+- Gestion des zones de livraison
+
+### 6. Layout Module
 
 **Responsabilité**: Structure commune des pages (navbar, sidebar, footer)
 
@@ -349,7 +311,7 @@ export interface Volunteer {
 - Footer
 - Breadcrumb
 
-### 8. Error Module
+### 7. Error Module
 
 **Responsabilité**: Pages d'erreur personnalisées
 
@@ -373,16 +335,6 @@ const routes: Routes = [
       .then((m) => m.LayoutModule),
   },
   {
-    path: 'auth',
-    loadChildren: () => import('./modules/auth/auth.module')
-      .then((m) => m.AuthModule),
-  },
-  {
-    path: 'donation',
-    loadChildren: () => import('./modules/donation/donation.module')
-      .then(m => m.DonationModule)
-  },
-  {
     path: 'benevolat',
     loadChildren: () => import('./modules/benevolat/benevolat.module')
       .then(m => m.BenevolatModule)
@@ -397,10 +349,59 @@ const routes: Routes = [
     loadChildren: () => import('./modules/error/error.module')
       .then((m) => m.ErrorModule),
   },
-  { 
-    path: '**', 
-    redirectTo: 'errors/404' 
+  {
+    path: '**',
+    redirectTo: 'errors/404'
   },
+];
+```
+
+### Layout Routing
+
+**layout-routing.module.ts**:
+```typescript
+const routes: Routes = [
+  {
+    path: '',
+    component: LayoutComponent,
+    children: [
+      { path: '', redirectTo: 'backoffice', pathMatch: 'full' },
+      {
+        path: 'backoffice',
+        loadChildren: () => import('../backoffice/backoffice.module')
+          .then(m => m.BackofficeModule)
+      }
+    ]
+  }
+];
+```
+
+### Backoffice Routing
+
+**backoffice-routing.module.ts**:
+```typescript
+const routes: Routes = [
+  {
+    path: '',
+    component: BackofficeComponent,
+    canActivate: [BackofficeAuthGuard],
+    children: [
+      { path: '', redirectTo: 'benevolat/benevoles', pathMatch: 'full' },
+      // Bénévoles
+      { path: 'benevolat/benevoles', component: BenevolatListComponent },
+      { path: 'benevolat/actions', component: BenevolatActionsComponent },
+      { path: 'benevolat/calendrier', component: BenevolatCalendrierComponent },
+      // Cantine
+      { path: 'cantine/commandes', component: CantineCommandesComponent },
+      { path: 'cantine/quotas', component: CantineQuotasComponent },
+      // Bénéficiaires
+      { path: 'beneficiaires/cartes', component: BeneficiairesCartesComponent },
+      // Véhicule
+      { path: 'vehicule', component: VehiculeComponent },
+      // Paramètres
+      { path: 'infos', component: InfosComponent }
+    ]
+  }
 ];
 ```
 
@@ -410,11 +411,11 @@ Tous les modules sont chargés à la demande (lazy loaded) pour optimiser les pe
 
 ```typescript
 // Au lieu de :
-import { AuthModule } from './modules/auth/auth.module';
+import { BenevolatModule } from './modules/benevolat/benevolat.module';
 
 // On utilise :
-loadChildren: () => import('./modules/auth/auth.module')
-  .then((m) => m.AuthModule)
+loadChildren: () => import('./modules/benevolat/benevolat.module')
+  .then((m) => m.BenevolatModule)
 ```
 
 **Avantages**:
@@ -426,37 +427,35 @@ loadChildren: () => import('./modules/auth/auth.module')
 
 ## 🔧 Services et gestion d'état
 
-### AuthService
+### BackofficeAuthService
 
-**Localisation**: `src/app/modules/auth/services/auth.service.ts`
+**Localisation**: `src/app/modules/backoffice-auth/services/backoffice-auth.service.ts`
 
-**Responsabilité**: Gestion de l'authentification avec cookies HttpOnly
+**Responsabilité**: Gestion de l'authentification admin avec cookies HttpOnly
 
 ```typescript
 @Injectable({
   providedIn: 'root',
 })
-export class AuthService {
+export class BackofficeAuthService {
   private apiUrl = environment.apiUrl;
-  private _isLoggedIn = false;
 
   constructor(
     private http: HttpClient,
     private router: Router
   ) {}
 
-  // Connexion avec cookies HttpOnly
+  // Connexion admin
   signIn(email: string, password: string): Observable<any> {
     const body = { email, password };
     const headers = new HttpHeaders({ 'Content-Type': 'application/json' });
 
-    return this.http.post<any>(`${this.apiUrl}/signin`, body, { 
+    return this.http.post<any>(`${this.apiUrl}/backoffice/signin`, body, {
       headers,
       withCredentials: true  // Important pour les cookies
     }).pipe(
       tap(() => {
-        this._isLoggedIn = true;
-        this.router.navigate(['/dashboard']);
+        this.router.navigate(['/backoffice']);
       }),
       catchError((error) => {
         console.error('Error during sign in:', error);
@@ -465,43 +464,13 @@ export class AuthService {
     );
   }
 
-  // Inscription
-  signUp(email: string, password: string, firstName: string, lastName: string)
-    : Observable<{ message: string }> {
-    const body = { email, password, firstName, lastName };
+  // Inscription admin
+  signUp(userData: any): Observable<any> {
     const headers = new HttpHeaders({ 'Content-Type': 'application/json' });
 
-    return this.http.post<{ message: string }>(
-      `${this.apiUrl}/signup`,
-      body,
-      { headers, withCredentials: true }
-    );
-  }
-
-  // Demande de réinitialisation de mot de passe
-  requestPasswordReset(email: string): Observable<{ message: string }> {
-    const body = { email };
-    const headers = new HttpHeaders({ 'Content-Type': 'application/json' });
-
-    return this.http.post<{ message: string }>(
-      `${this.apiUrl}/request-password-reset`,
-      body,
-      { headers, withCredentials: true }
-    );
-  }
-
-  // Réinitialisation avec token
-  resetPasswordWithToken(
-    token: string, 
-    newPassword: string, 
-    confirmPassword: string
-  ): Observable<{ message: string }> {
-    const body = { token, newPassword, confirmPassword };
-    const headers = new HttpHeaders({ 'Content-Type': 'application/json' });
-
-    return this.http.post<{ message: string }>(
-      `${this.apiUrl}/reset-password`,
-      body,
+    return this.http.post<any>(
+      `${this.apiUrl}/backoffice/signup`,
+      userData,
       { headers, withCredentials: true }
     );
   }
@@ -511,51 +480,65 @@ export class AuthService {
     this.http.post(`${this.apiUrl}/logout`, {}, { withCredentials: true })
       .subscribe({
         next: () => {
-          this._isLoggedIn = false;
-          this.router.navigate(['/auth/sign-in']);
+          this.router.navigate(['/backoffice-auth/sign-in']);
         },
         error: (error) => {
           console.error('Error during logout:', error);
-          this.router.navigate(['/auth/sign-in']);
+          this.router.navigate(['/backoffice-auth/sign-in']);
         }
       });
   }
 
-  // Vérification de l'authentification
-  isAuthenticated(): Observable<boolean> {
-    return this.http.get(`${this.apiUrl}/protected-route`, { 
-      withCredentials: true 
-    }).pipe(
-      map(() => {
-        this._isLoggedIn = true;
-        return true;
-      }),
-      catchError(() => {
-        this._isLoggedIn = false;
-        return of(false);
-      })
-    );
-  }
-
-  // État local (sans appel API)
-  isLoggedInLocally(): boolean {
-    return this._isLoggedIn;
-  }
-
-  // Récupération des données utilisateur
-  getUserData(): Observable<any> {
-    return this.http.get<any>(`${this.apiUrl}/me`, { 
-      withCredentials: true 
+  // Récupération des données admin
+  getAdminData(): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/backoffice/me`, {
+      withCredentials: true
     });
   }
 }
 ```
 
-**Points clés**:
-- ✅ Utilisation de `withCredentials: true` pour les cookies
-- ✅ Gestion des erreurs avec `catchError`
-- ✅ Navigation automatique après connexion
-- ✅ Observable pour réactivité
+### ActionService
+
+**Localisation**: `src/app/modules/benevolat/services/action.service.ts`
+
+**Responsabilité**: Gestion des actions bénévoles
+
+```typescript
+@Injectable({
+  providedIn: 'root'
+})
+export class ActionService {
+  private apiUrl = `${environment.apiUrl}/benevolat`;
+
+  constructor(private http: HttpClient) {}
+
+  // Récupérer les actions d'une association
+  getActions(associationName: string): Observable<Action[]> {
+    return this.http.get<Action[]>(
+      `${this.apiUrl}/actions/${associationName}`,
+      { withCredentials: true }
+    );
+  }
+
+  // Inscription à une action
+  registerToAction(actionId: number, benevolId: number): Observable<any> {
+    return this.http.post(
+      `${this.apiUrl}/actions/${actionId}/register`,
+      { benevolId },
+      { withCredentials: true }
+    );
+  }
+
+  // Récupérer mes inscriptions
+  getMyRegistrations(): Observable<any[]> {
+    return this.http.get<any[]>(
+      `${this.apiUrl}/my-registrations`,
+      { withCredentials: true }
+    );
+  }
+}
+```
 
 ### ThemeService
 
@@ -568,9 +551,9 @@ export class AuthService {
   providedIn: 'root',
 })
 export class ThemeService {
-  private readonly theme = { 
-    mode: 'light', 
-    color: 'myamana' 
+  private readonly theme = {
+    mode: 'light',
+    color: 'acdlp'
   };
 
   constructor() {
@@ -591,31 +574,36 @@ export class ThemeService {
 }
 ```
 
-### FailedDonationsService
+### SupportService
 
-**Localisation**: `src/app/core/services/failed-donations.service.ts`
+**Localisation**: `src/app/shared/services/support.service.ts`
 
-**Responsabilité**: Gestion des dons en échec avec affichage de notifications
+**Responsabilité**: Gestion du système de tickets support (Trello)
 
 ```typescript
 @Injectable({
-  providedIn: 'root',
+  providedIn: 'root'
 })
-export class FailedDonationsService {
-  private failedDonationsSubject = new BehaviorSubject<any[]>([]);
-  public failedDonations$ = this.failedDonationsSubject.asObservable();
-  
-  public showDialog = false;
+export class SupportService {
+  private apiUrl = `${environment.apiUrl}/support`;
 
-  setFailedDonations(donations: any[]): void {
-    this.failedDonationsSubject.next(donations);
-    if (donations.length > 0) {
-      this.showDialog = true;
-    }
+  constructor(private http: HttpClient) {}
+
+  // Créer un ticket
+  createTicket(ticket: any): Observable<any> {
+    return this.http.post(
+      `${this.apiUrl}/tickets`,
+      ticket,
+      { withCredentials: true }
+    );
   }
 
-  closeDialog(): void {
-    this.showDialog = false;
+  // Récupérer mes tickets
+  getMyTickets(): Observable<any[]> {
+    return this.http.get<any[]>(
+      `${this.apiUrl}/my-tickets`,
+      { withCredentials: true }
+    );
   }
 }
 ```
@@ -624,36 +612,34 @@ export class FailedDonationsService {
 
 ## 🛡️ Guards et sécurité
 
-### AuthGuard
+### BackofficeAuthGuard
 
-**Localisation**: `src/app/guards/auth.guard.ts`
+**Localisation**: `src/app/guards/backoffice-auth.guard.ts`
 
-**Responsabilité**: Protection des routes nécessitant une authentification
+**Responsabilité**: Protection des routes admin du backoffice
 
 ```typescript
 @Injectable({
   providedIn: 'root',
 })
-export class AuthGuard implements CanActivate {
+export class BackofficeAuthGuard implements CanActivate {
   constructor(
-    private authService: AuthService, 
+    private backofficeAuthService: BackofficeAuthService,
     private router: Router
   ) {}
 
   canActivate(): Observable<boolean | UrlTree> {
-    return this.authService.isAuthenticated().pipe(
+    return this.backofficeAuthService.isAuthenticated().pipe(
       map((isAuthenticated) => {
         if (isAuthenticated) {
-          console.log("✅ Accès autorisé : utilisateur connecté");
           return true;
         } else {
-          console.warn("❌ Accès refusé : redirection vers la page de connexion");
-          return this.router.createUrlTree(['/auth/sign-in']);
+          return this.router.createUrlTree(['/backoffice-auth/sign-in']);
         }
       }),
       catchError((err) => {
         console.error("Erreur lors de la vérification de l'authentification", err);
-        return of(this.router.createUrlTree(['/auth/sign-in']));
+        return of(this.router.createUrlTree(['/backoffice-auth/sign-in']));
       })
     );
   }
@@ -664,25 +650,19 @@ export class AuthGuard implements CanActivate {
 ```typescript
 const routes: Routes = [
   {
-    path: 'dashboard',
-    loadChildren: () => import('./modules/dashboard/dashboard.module')
-      .then(m => m.DashboardModule),
-    canActivate: [AuthGuard]  // Protection de la route
+    path: 'backoffice',
+    loadChildren: () => import('./modules/backoffice/backoffice.module')
+      .then(m => m.BackofficeModule),
+    canActivate: [BackofficeAuthGuard]  // Protection de la route
   }
 ];
 ```
-
-### BackofficeAuthGuard
-
-**Localisation**: `src/app/guards/backoffice-auth.guard.ts`
-
-**Responsabilité**: Protection des routes admin du backoffice
 
 ### FeatureAccessGuard
 
 **Localisation**: `src/app/guards/feature-access.guard.ts`
 
-**Responsabilité**: Contrôle d'accès basé sur les fonctionnalités
+**Responsabilité**: Contrôle d'accès basé sur les fonctionnalités activées (cantine, bénévoles)
 
 ### OnboardingGuard
 
@@ -707,48 +687,30 @@ Le composant racine de l'application utilise l'approche standalone:
   styleUrls: ['./app.component.scss'],
   standalone: true,
   imports: [
-    NgClass, 
-    NgIf, 
-    AsyncPipe, 
-    RouterOutlet, 
-    ResponsiveHelperComponent, 
-    NgxSonnerToaster
+    NgClass,
+    NgIf,
+    AsyncPipe,
+    RouterOutlet,
+    ResponsiveHelperComponent,
+    NgxSonnerToaster,
+    SupportWidgetComponent
   ],
 })
 export class AppComponent implements OnInit {
-  title = 'My Amana';
-  failedDonations: any[] = [];
+  title = 'ACDLP';
 
   constructor(
     public themeService: ThemeService,
-    public failedDonationsService: FailedDonationsService,
-    private authService: AuthService,
+    private backofficeAuthService: BackofficeAuthService,
     private router: Router
   ) {}
 
   ngOnInit() {
-    console.log('=== App Component Initialization ===');
+    console.log('=== ACDLP App Initialization ===');
     // Vérifier l'authentification au démarrage
-    this.authService.isAuthenticated().subscribe((isAuth: boolean) => {
+    this.backofficeAuthService.isAuthenticated().subscribe((isAuth: boolean) => {
       console.log('App Component - Auth status:', isAuth);
-      if (isAuth) {
-        // S'abonner aux dons en échec
-        this.failedDonationsService.failedDonations$.subscribe(donations => {
-          console.log('App Component - Received donations:', donations);
-          this.failedDonations = donations;
-        });
-      }
     });
-  }
-
-  get shouldShowDialog(): boolean {
-    return this.failedDonationsService.showDialog && 
-           this.failedDonations.length > 0;
-  }
-
-  navigateToSubscriptions(): void {
-    this.failedDonationsService.closeDialog();
-    this.router.navigate(['/dashboard/abonnements']);
   }
 }
 ```
@@ -778,8 +740,8 @@ if (environment.production) {
 // Bootstrap avec standalone component
 bootstrapApplication(AppComponent, {
   providers: [
-    importProvidersFrom(BrowserModule, AppRoutingModule), 
-    provideAnimations(), 
+    importProvidersFrom(BrowserModule, AppRoutingModule),
+    provideAnimations(),
     provideHttpClient()
   ],
 }).catch((err) => console.error(err));
@@ -804,16 +766,16 @@ providers: [
 
 **Exemple de requête POST**:
 ```typescript
-signIn(email: string, password: string): Observable<any> {
-  const body = { email, password };
-  const headers = new HttpHeaders({ 
-    'Content-Type': 'application/json' 
+registerToAction(actionId: number): Observable<any> {
+  const body = { actionId };
+  const headers = new HttpHeaders({
+    'Content-Type': 'application/json'
   });
 
   return this.http.post<any>(
-    `${this.apiUrl}/signin`, 
-    body, 
-    { 
+    `${this.apiUrl}/benevolat/actions/${actionId}/register`,
+    body,
+    {
       headers,
       withCredentials: true  // ⚠️ Important pour les cookies HttpOnly
     }
@@ -823,11 +785,11 @@ signIn(email: string, password: string): Observable<any> {
 
 **Exemple de requête GET**:
 ```typescript
-getUserData(): Observable<any> {
-  return this.http.get<any>(
-    `${this.apiUrl}/me`, 
-    { 
-      withCredentials: true 
+getVolunteers(): Observable<any[]> {
+  return this.http.get<any[]>(
+    `${this.apiUrl}/backoffice/benevolat/benevoles`,
+    {
+      withCredentials: true
     }
   );
 }
@@ -838,18 +800,18 @@ getUserData(): Observable<any> {
 ```typescript
 import { catchError, throwError } from 'rxjs';
 
-createDonation(data: any): Observable<any> {
-  return this.http.post(`${this.apiUrl}/donations`, data, {
+createAction(data: any): Observable<any> {
+  return this.http.post(`${this.apiUrl}/benevolat/actions`, data, {
     withCredentials: true
   }).pipe(
     catchError((error) => {
-      console.error('Erreur lors de la création du don:', error);
-      
+      console.error('Erreur lors de la création de l\'action:', error);
+
       // Gestion personnalisée selon le code d'erreur
       if (error.status === 401) {
-        this.router.navigate(['/auth/sign-in']);
+        this.router.navigate(['/backoffice-auth/sign-in']);
       }
-      
+
       return throwError(() => error);
     })
   );
@@ -862,15 +824,15 @@ createDonation(data: any): Observable<any> {
 ```typescript
 import { map } from 'rxjs/operators';
 
-getDonations(): Observable<Donation[]> {
-  return this.http.get<any[]>(`${this.apiUrl}/donations`, {
+getActions(): Observable<Action[]> {
+  return this.http.get<any[]>(`${this.apiUrl}/benevolat/actions/acdlp`, {
     withCredentials: true
   }).pipe(
     map(data => data.map(item => ({
       id: item.id,
-      montant: item.amount,
-      date: new Date(item.date),
-      donateur: item.donor_name
+      nom: item.nom,
+      date: new Date(item.date_action),
+      lieu: item.ville
     })))
   );
 }
@@ -882,9 +844,9 @@ import { forkJoin } from 'rxjs';
 
 loadDashboardData(): Observable<any> {
   return forkJoin({
-    donations: this.getDonations(),
-    stats: this.getStats(),
-    volunteers: this.getVolunteers()
+    volunteers: this.getVolunteers(),
+    actions: this.getActions(),
+    orders: this.getOrders()
   });
 }
 ```
@@ -907,10 +869,10 @@ L'application utilise Tailwind CSS pour le styling avec des plugins supplémenta
 ```html
 <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
   <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-    Titre
+    Gestion Bénévoles
   </h2>
   <p class="text-gray-600 dark:text-gray-300">
-    Contenu
+    Liste des bénévoles inscrits
   </p>
 </div>
 ```
@@ -936,17 +898,17 @@ export class MyComponent {
 **FontAwesome**:
 ```typescript
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
-import { faHeart, faUser } from '@fortawesome/free-solid-svg-icons';
+import { faUsers, faCalendar } from '@fortawesome/free-solid-svg-icons';
 
 @Component({
   standalone: true,
   imports: [FontAwesomeModule],
   template: `
-    <fa-icon [icon]="faHeart"></fa-icon>
+    <fa-icon [icon]="faUsers"></fa-icon>
   `
 })
 export class MyComponent {
-  faHeart = faHeart;
+  faUsers = faUsers;
 }
 ```
 
@@ -958,7 +920,7 @@ export class MyComponent {
   selector: 'app-button',
   standalone: true,
   template: `
-    <button 
+    <button
       [class]="buttonClass"
       [disabled]="disabled"
       (click)="handleClick()">
@@ -995,7 +957,7 @@ export class ButtonComponent {
 import { toast } from 'ngx-sonner';
 
 // Succès
-toast.success('Don créé avec succès !');
+toast.success('Inscription à l\'action réussie !');
 
 // Erreur
 toast.error('Une erreur est survenue');
@@ -1004,7 +966,7 @@ toast.error('Une erreur est survenue');
 toast.info('Traitement en cours...');
 
 // Avertissement
-toast.warning('Attention, action irréversible');
+toast.warning('Attention, cette action est irréversible');
 ```
 
 ---
@@ -1022,38 +984,33 @@ toast.warning('Attention, action irréversible');
   "@angular/platform-browser": "^18.1.0",
   "@angular/platform-browser-dynamic": "^18.1.0",
   "@angular/animations": "^18.1.0",
-  
+
   // UI & Styling
   "tailwindcss": "^3.1.6",
   "@tailwindcss/forms": "^0.5.2",
   "@tailwindcss/typography": "^0.5.4",
   "@tailwindcss/aspect-ratio": "^0.4.0",
   "tailwind-scrollbar": "^1.3.1",
-  
+
   // Icônes
   "lucide-angular": "^0.503.0",
   "@fortawesome/angular-fontawesome": "^0.14.1",
   "@fortawesome/fontawesome-svg-core": "^6.5.1",
   "@fortawesome/free-solid-svg-icons": "^6.5.1",
-  "@fortawesome/free-brands-svg-icons": "^6.5.1",
   "angular-svg-icon": "^13.0.0",
-  
+
   // Charts & Visualisation
   "apexcharts": "^3.35.3",
   "ng-apexcharts": "^1.7.1",
-  
+
   // Éditeurs
   "ngx-quill": "^26.0.6",
   "quill": "^2.0.2",
-  
-  // Paiements
-  "@stripe/stripe-js": "^2.4.0",
-  "@paypal/paypal-js": "^8.2.0",
-  
+
   // UI Components & Utilities
   "ngx-sonner": "^2.0.1",
   "driver.js": "^1.3.6",
-  
+
   // Core
   "rxjs": "~7.4.0",
   "tslib": "^2.3.0",
@@ -1061,45 +1018,10 @@ toast.warning('Attention, action irréversible');
 }
 ```
 
-### Dépendances de développement
-
-```json
-{
-  "@angular-devkit/build-angular": "^18.1.0",
-  "@angular/cli": "^18.1.0",
-  "@angular/compiler-cli": "^18.1.0",
-  
-  // Tests
-  "@playwright/test": "^1.42.1",
-  "jasmine-core": "~3.10.0",
-  "karma": "~6.3.0",
-  "karma-chrome-launcher": "~3.1.0",
-  "karma-coverage": "~2.0.3",
-  "karma-jasmine": "~4.0.0",
-  "karma-jasmine-html-reporter": "~1.7.0",
-  
-  // Build & Styling
-  "autoprefixer": "^10.4.7",
-  "postcss": "^8.4.14",
-  
-  // Code Quality
-  "prettier": "^2.7.1",
-  "prettier-plugin-tailwindcss": "^0.1.12",
-  
-  // Types
-  "@types/jasmine": "~3.10.0",
-  "@types/node": "^12.11.1",
-  
-  // Autres
-  "typescript": "~5.4.5",
-  "cz-conventional-changelog": "^3.3.0"
-}
-```
-
-### Dépendances clés expliquées
+### Dépendances expliquées
 
 #### ApexCharts (`apexcharts`, `ng-apexcharts`)
-Bibliothèque de graphiques interactive pour visualiser les données de dons, statistiques, etc.
+Bibliothèque de graphiques interactive pour visualiser les statistiques bénévoles, commandes cantine, etc.
 
 ```typescript
 import { NgApexchartsModule } from 'ng-apexcharts';
@@ -1107,7 +1029,7 @@ import { NgApexchartsModule } from 'ng-apexcharts';
 // Configuration d'un graphique
 chartOptions = {
   series: [{
-    name: "Dons",
+    name: "Inscriptions",
     data: [10, 41, 35, 51, 49, 62, 69]
   }],
   chart: {
@@ -1115,13 +1037,13 @@ chartOptions = {
     height: 350
   },
   xaxis: {
-    categories: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul']
+    categories: ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim']
   }
 };
 ```
 
 #### Driver.js (`driver.js`)
-Création de tours guidés pour l'onboarding des utilisateurs.
+Création de tours guidés pour l'onboarding des administrateurs.
 
 ```typescript
 import { driver } from 'driver.js';
@@ -1129,8 +1051,20 @@ import { driver } from 'driver.js';
 const driverObj = driver({
   showProgress: true,
   steps: [
-    { element: '#create-donation', popover: { title: 'Créer un don', description: 'Cliquez ici pour créer un nouveau don' } },
-    { element: '#donations-list', popover: { title: 'Liste des dons', description: 'Consultez tous vos dons ici' } }
+    {
+      element: '#benevoles-menu',
+      popover: {
+        title: 'Gestion Bénévoles',
+        description: 'Gérez vos bénévoles et leurs inscriptions'
+      }
+    },
+    {
+      element: '#cantine-menu',
+      popover: {
+        title: 'Cantine Solidaire',
+        description: 'Gérez les commandes et la distribution de repas'
+      }
+    }
   ]
 });
 
@@ -1138,25 +1072,25 @@ driverObj.drive();
 ```
 
 #### Quill (`quill`, `ngx-quill`)
-Éditeur de texte riche pour la création de contenus.
+Éditeur de texte riche pour la création de descriptions d'actions.
 
 ```typescript
 import { QuillModule } from 'ngx-quill';
 
 @Component({
   template: `
-    <quill-editor 
-      [(ngModel)]="content"
+    <quill-editor
+      [(ngModel)]="description"
       [modules]="quillModules">
     </quill-editor>
   `
 })
-export class MyComponent {
-  content = '';
+export class ActionFormComponent {
+  description = '';
   quillModules = {
     toolbar: [
       ['bold', 'italic', 'underline'],
-      ['link', 'image']
+      ['link']
     ]
   };
 }
@@ -1166,39 +1100,7 @@ export class MyComponent {
 
 ## 💡 Exemples de code
 
-### 1. Créer un nouveau composant standalone
-
-```typescript
-import { Component } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { RouterLink } from '@angular/router';
-
-@Component({
-  selector: 'app-my-component',
-  standalone: true,
-  imports: [CommonModule, RouterLink],
-  template: `
-    <div class="container mx-auto p-4">
-      <h1 class="text-2xl font-bold">{{ title }}</h1>
-      <p>{{ description }}</p>
-      <a routerLink="/home" class="text-blue-600 hover:underline">
-        Retour à l'accueil
-      </a>
-    </div>
-  `,
-  styles: [`
-    :host {
-      display: block;
-    }
-  `]
-})
-export class MyComponent {
-  title = 'Mon Composant';
-  description = 'Description du composant';
-}
-```
-
-### 2. Créer un service avec appels API
+### 1. Service pour gérer les actions bénévoles
 
 ```typescript
 import { Injectable } from '@angular/core';
@@ -1207,90 +1109,69 @@ import { Observable, throwError } from 'rxjs';
 import { catchError, map, tap } from 'rxjs/operators';
 import { environment } from 'src/environments/environment';
 
-export interface Donation {
+export interface Action {
   id: number;
-  montant: number;
+  nom: string;
+  description: string;
   date: Date;
-  donateurNom: string;
-  donateurEmail: string;
-  type: 'ponctuel' | 'mensuel';
-  statut: 'success' | 'pending' | 'failed';
+  lieu: string;
+  nb_participants: number;
+  responsable_email: string;
 }
 
 @Injectable({
   providedIn: 'root'
 })
-export class DonationService {
-  private apiUrl = `${environment.apiUrl}/donations`;
+export class ActionService {
+  private apiUrl = `${environment.apiUrl}/benevolat`;
 
   constructor(private http: HttpClient) {}
 
-  // Récupérer toutes les donations
-  getDonations(): Observable<Donation[]> {
-    return this.http.get<any[]>(this.apiUrl, {
+  // Récupérer toutes les actions
+  getActions(associationName: string): Observable<Action[]> {
+    return this.http.get<any[]>(`${this.apiUrl}/actions/${associationName}`, {
       withCredentials: true
     }).pipe(
-      map(data => data.map(item => this.mapToDonation(item))),
+      map(data => data.map(item => this.mapToAction(item))),
       catchError(this.handleError)
     );
   }
 
-  // Récupérer une donation par ID
-  getDonationById(id: number): Observable<Donation> {
-    return this.http.get<any>(`${this.apiUrl}/${id}`, {
-      withCredentials: true
-    }).pipe(
-      map(data => this.mapToDonation(data)),
-      catchError(this.handleError)
-    );
-  }
-
-  // Créer une nouvelle donation
-  createDonation(donation: Partial<Donation>): Observable<Donation> {
+  // Créer une nouvelle action
+  createAction(action: Partial<Action>): Observable<Action> {
     const headers = new HttpHeaders({ 'Content-Type': 'application/json' });
-    
-    return this.http.post<any>(this.apiUrl, donation, {
+
+    return this.http.post<any>(`${this.apiUrl}/actions`, action, {
       headers,
       withCredentials: true
     }).pipe(
-      map(data => this.mapToDonation(data)),
-      tap(() => console.log('Donation créée avec succès')),
+      map(data => this.mapToAction(data)),
+      tap(() => console.log('Action créée avec succès')),
       catchError(this.handleError)
     );
   }
 
-  // Mettre à jour une donation
-  updateDonation(id: number, donation: Partial<Donation>): Observable<Donation> {
-    const headers = new HttpHeaders({ 'Content-Type': 'application/json' });
-    
-    return this.http.put<any>(`${this.apiUrl}/${id}`, donation, {
-      headers,
-      withCredentials: true
-    }).pipe(
-      map(data => this.mapToDonation(data)),
-      catchError(this.handleError)
-    );
-  }
-
-  // Supprimer une donation
-  deleteDonation(id: number): Observable<void> {
-    return this.http.delete<void>(`${this.apiUrl}/${id}`, {
-      withCredentials: true
-    }).pipe(
+  // Inscription à une action
+  registerToAction(actionId: number): Observable<any> {
+    return this.http.post(
+      `${this.apiUrl}/actions/${actionId}/register`,
+      {},
+      { withCredentials: true }
+    ).pipe(
       catchError(this.handleError)
     );
   }
 
   // Mapper les données de l'API vers notre modèle
-  private mapToDonation(data: any): Donation {
+  private mapToAction(data: any): Action {
     return {
       id: data.id,
-      montant: parseFloat(data.montant),
-      date: new Date(data.date),
-      donateurNom: data.donateur_nom,
-      donateurEmail: data.donateur_email,
-      type: data.type,
-      statut: data.statut
+      nom: data.nom,
+      description: data.description,
+      date: new Date(data.date_action),
+      lieu: data.ville,
+      nb_participants: data.nb_participants,
+      responsable_email: data.responsable_email
     };
   }
 
@@ -1298,262 +1179,169 @@ export class DonationService {
   private handleError(error: any): Observable<never> {
     console.error('Erreur API:', error);
     let errorMessage = 'Une erreur est survenue';
-    
+
     if (error.error instanceof ErrorEvent) {
-      // Erreur côté client
       errorMessage = `Erreur: ${error.error.message}`;
     } else {
-      // Erreur côté serveur
       errorMessage = `Code: ${error.status}\nMessage: ${error.message}`;
     }
-    
+
     return throwError(() => new Error(errorMessage));
   }
 }
 ```
 
-### 3. Formulaire réactif avec validation
+### 2. Formulaire réactif pour inscription bénévole
 
 ```typescript
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
-import { DonationService } from '../services/donation.service';
 import { toast } from 'ngx-sonner';
 
 @Component({
-  selector: 'app-donation-form',
+  selector: 'app-volunteer-form',
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule],
   template: `
     <div class="max-w-md mx-auto p-6 bg-white rounded-lg shadow-md">
-      <h2 class="text-2xl font-bold mb-6">Faire un don</h2>
-      
-      <form [formGroup]="donationForm" (ngSubmit)="onSubmit()">
-        <!-- Montant -->
-        <div class="mb-4">
-          <label class="block text-gray-700 font-medium mb-2">
-            Montant (€)
-          </label>
-          <input 
-            type="number" 
-            formControlName="montant"
-            class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-            [class.border-red-500]="montant?.invalid && montant?.touched"
-          />
-          <div *ngIf="montant?.invalid && montant?.touched" class="text-red-500 text-sm mt-1">
-            <span *ngIf="montant?.errors?.['required']">Le montant est requis</span>
-            <span *ngIf="montant?.errors?.['min']">Le montant minimum est de 5€</span>
-          </div>
-        </div>
+      <h2 class="text-2xl font-bold mb-6">Inscription Bénévole</h2>
 
-        <!-- Type de don -->
-        <div class="mb-4">
-          <label class="block text-gray-700 font-medium mb-2">
-            Type de don
-          </label>
-          <select 
-            formControlName="type"
-            class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="ponctuel">Don ponctuel</option>
-            <option value="mensuel">Don mensuel</option>
-          </select>
-        </div>
-
+      <form [formGroup]="volunteerForm" (ngSubmit)="onSubmit()">
         <!-- Nom -->
         <div class="mb-4">
-          <label class="block text-gray-700 font-medium mb-2">
-            Nom complet
-          </label>
-          <input 
-            type="text" 
-            formControlName="donateurNom"
-            class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-            [class.border-red-500]="donateurNom?.invalid && donateurNom?.touched"
+          <label class="block text-gray-700 font-medium mb-2">Nom</label>
+          <input
+            type="text"
+            formControlName="nom"
+            class="w-full px-4 py-2 border rounded-lg"
+            [class.border-red-500]="nom?.invalid && nom?.touched"
           />
-          <div *ngIf="donateurNom?.invalid && donateurNom?.touched" class="text-red-500 text-sm mt-1">
+          <div *ngIf="nom?.invalid && nom?.touched" class="text-red-500 text-sm mt-1">
             Le nom est requis
           </div>
         </div>
 
+        <!-- Prénom -->
+        <div class="mb-4">
+          <label class="block text-gray-700 font-medium mb-2">Prénom</label>
+          <input
+            type="text"
+            formControlName="prenom"
+            class="w-full px-4 py-2 border rounded-lg"
+            [class.border-red-500]="prenom?.invalid && prenom?.touched"
+          />
+        </div>
+
         <!-- Email -->
         <div class="mb-4">
-          <label class="block text-gray-700 font-medium mb-2">
-            Email
-          </label>
-          <input 
-            type="email" 
-            formControlName="donateurEmail"
-            class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-            [class.border-red-500]="donateurEmail?.invalid && donateurEmail?.touched"
+          <label class="block text-gray-700 font-medium mb-2">Email</label>
+          <input
+            type="email"
+            formControlName="email"
+            class="w-full px-4 py-2 border rounded-lg"
+            [class.border-red-500]="email?.invalid && email?.touched"
           />
-          <div *ngIf="donateurEmail?.invalid && donateurEmail?.touched" class="text-red-500 text-sm mt-1">
-            <span *ngIf="donateurEmail?.errors?.['required']">L'email est requis</span>
-            <span *ngIf="donateurEmail?.errors?.['email']">Email invalide</span>
+          <div *ngIf="email?.invalid && email?.touched" class="text-red-500 text-sm mt-1">
+            <span *ngIf="email?.errors?.['required']">L'email est requis</span>
+            <span *ngIf="email?.errors?.['email']">Email invalide</span>
           </div>
         </div>
 
-        <!-- Bouton de soumission -->
-        <button 
+        <!-- Téléphone -->
+        <div class="mb-4">
+          <label class="block text-gray-700 font-medium mb-2">Téléphone</label>
+          <input
+            type="tel"
+            formControlName="telephone"
+            class="w-full px-4 py-2 border rounded-lg"
+          />
+        </div>
+
+        <button
           type="submit"
-          [disabled]="donationForm.invalid || isSubmitting"
-          class="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+          [disabled]="volunteerForm.invalid || isSubmitting"
+          class="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 disabled:bg-gray-400 transition-colors"
         >
-          <span *ngIf="!isSubmitting">Faire un don</span>
+          <span *ngIf="!isSubmitting">S'inscrire</span>
           <span *ngIf="isSubmitting">Traitement en cours...</span>
         </button>
       </form>
     </div>
   `
 })
-export class DonationFormComponent implements OnInit {
-  donationForm!: FormGroup;
+export class VolunteerFormComponent implements OnInit {
+  volunteerForm!: FormGroup;
   isSubmitting = false;
 
-  constructor(
-    private fb: FormBuilder,
-    private donationService: DonationService
-  ) {}
+  constructor(private fb: FormBuilder) {}
 
   ngOnInit(): void {
-    this.donationForm = this.fb.group({
-      montant: [null, [Validators.required, Validators.min(5)]],
-      type: ['ponctuel', Validators.required],
-      donateurNom: ['', Validators.required],
-      donateurEmail: ['', [Validators.required, Validators.email]]
+    this.volunteerForm = this.fb.group({
+      nom: ['', Validators.required],
+      prenom: ['', Validators.required],
+      email: ['', [Validators.required, Validators.email]],
+      telephone: ['', Validators.required]
     });
   }
 
-  // Getters pour accéder facilement aux contrôles
-  get montant() { return this.donationForm.get('montant'); }
-  get type() { return this.donationForm.get('type'); }
-  get donateurNom() { return this.donationForm.get('donateurNom'); }
-  get donateurEmail() { return this.donationForm.get('donateurEmail'); }
+  get nom() { return this.volunteerForm.get('nom'); }
+  get prenom() { return this.volunteerForm.get('prenom'); }
+  get email() { return this.volunteerForm.get('email'); }
+  get telephone() { return this.volunteerForm.get('telephone'); }
 
   onSubmit(): void {
-    if (this.donationForm.valid) {
+    if (this.volunteerForm.valid) {
       this.isSubmitting = true;
-      
-      this.donationService.createDonation(this.donationForm.value).subscribe({
-        next: (donation) => {
-          console.log('Donation créée:', donation);
-          toast.success('Don créé avec succès !');
-          this.donationForm.reset({ type: 'ponctuel' });
-          this.isSubmitting = false;
-        },
-        error: (error) => {
-          console.error('Erreur:', error);
-          toast.error('Erreur lors de la création du don');
-          this.isSubmitting = false;
-        }
-      });
+      console.log('Inscription:', this.volunteerForm.value);
+
+      // Simuler l'envoi
+      setTimeout(() => {
+        toast.success('Inscription réussie !');
+        this.volunteerForm.reset();
+        this.isSubmitting = false;
+      }, 1500);
     }
   }
 }
 ```
 
-### 4. Utiliser un Guard pour protéger une route
-
-```typescript
-// Définition de la route avec guard
-const routes: Routes = [
-  {
-    path: 'dashboard',
-    component: DashboardComponent,
-    canActivate: [AuthGuard],  // Protection avec le guard
-    children: [
-      {
-        path: 'donations',
-        component: DonationsComponent
-      },
-      {
-        path: 'volunteers',
-        component: VolunteersComponent,
-        canActivate: [FeatureAccessGuard],  // Protection supplémentaire
-        data: { feature: 'volunteers' }
-      }
-    ]
-  }
-];
-```
-
-### 5. Intercepteur HTTP (exemple pour logging)
+### 3. Guard pour protéger les routes backoffice
 
 ```typescript
 import { Injectable } from '@angular/core';
-import { HttpInterceptor, HttpRequest, HttpHandler, HttpEvent } from '@angular/common/http';
-import { Observable } from 'rxjs';
-import { tap } from 'rxjs/operators';
+import { Router, CanActivate, UrlTree } from '@angular/router';
+import { Observable, of } from 'rxjs';
+import { map, catchError } from 'rxjs/operators';
+import { BackofficeAuthService } from '../modules/backoffice-auth/services/backoffice-auth.service';
 
-@Injectable()
-export class LoggingInterceptor implements HttpInterceptor {
-  intercept(req: HttpRequest<any>, next: HttpHandler): Observable<HttpEvent<any>> {
-    const startTime = Date.now();
-    
-    console.log(`[HTTP] ${req.method} ${req.url}`);
-    
-    return next.handle(req).pipe(
-      tap({
-        next: (event) => {
-          const elapsed = Date.now() - startTime;
-          console.log(`[HTTP] ${req.method} ${req.url} - ${elapsed}ms`);
-        },
-        error: (error) => {
-          const elapsed = Date.now() - startTime;
-          console.error(`[HTTP ERROR] ${req.method} ${req.url} - ${elapsed}ms`, error);
+@Injectable({
+  providedIn: 'root',
+})
+export class BackofficeAuthGuard implements CanActivate {
+  constructor(
+    private backofficeAuthService: BackofficeAuthService,
+    private router: Router
+  ) {}
+
+  canActivate(): Observable<boolean | UrlTree> {
+    return this.backofficeAuthService.isAuthenticated().pipe(
+      map((isAuthenticated) => {
+        if (isAuthenticated) {
+          console.log("✅ Accès backoffice autorisé");
+          return true;
+        } else {
+          console.warn("❌ Accès backoffice refusé : redirection connexion");
+          return this.router.createUrlTree(['/backoffice-auth/sign-in']);
         }
+      }),
+      catchError((err) => {
+        console.error("Erreur vérification authentification", err);
+        return of(this.router.createUrlTree(['/backoffice-auth/sign-in']));
       })
     );
   }
 }
-
-// Enregistrement dans les providers
-providers: [
-  {
-    provide: HTTP_INTERCEPTORS,
-    useClass: LoggingInterceptor,
-    multi: true
-  }
-]
-```
-
-### 6. Directive personnalisée
-
-```typescript
-import { Directive, ElementRef, HostListener, Input } from '@angular/core';
-
-@Directive({
-  selector: '[appHighlight]',
-  standalone: true
-})
-export class HighlightDirective {
-  @Input() appHighlight = 'yellow';
-
-  constructor(private el: ElementRef) {}
-
-  @HostListener('mouseenter') onMouseEnter() {
-    this.highlight(this.appHighlight);
-  }
-
-  @HostListener('mouseleave') onMouseLeave() {
-    this.highlight('');
-  }
-
-  private highlight(color: string) {
-    this.el.nativeElement.style.backgroundColor = color;
-  }
-}
-
-// Utilisation
-@Component({
-  template: `
-    <p appHighlight="lightblue">
-      Survolez ce texte
-    </p>
-  `,
-  imports: [HighlightDirective]
-})
 ```
 
 ---
@@ -1566,29 +1354,20 @@ export class HighlightDirective {
 
 ```typescript
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { DonationFormComponent } from './donation-form.component';
+import { VolunteerFormComponent } from './volunteer-form.component';
 import { ReactiveFormsModule } from '@angular/forms';
-import { DonationService } from '../services/donation.service';
-import { of, throwError } from 'rxjs';
 
-describe('DonationFormComponent', () => {
-  let component: DonationFormComponent;
-  let fixture: ComponentFixture<DonationFormComponent>;
-  let donationService: jasmine.SpyObj<DonationService>;
+describe('VolunteerFormComponent', () => {
+  let component: VolunteerFormComponent;
+  let fixture: ComponentFixture<VolunteerFormComponent>;
 
   beforeEach(async () => {
-    const donationServiceSpy = jasmine.createSpyObj('DonationService', ['createDonation']);
-
     await TestBed.configureTestingModule({
-      imports: [DonationFormComponent, ReactiveFormsModule],
-      providers: [
-        { provide: DonationService, useValue: donationServiceSpy }
-      ]
+      imports: [VolunteerFormComponent, ReactiveFormsModule]
     }).compileComponents();
 
-    fixture = TestBed.createComponent(DonationFormComponent);
+    fixture = TestBed.createComponent(VolunteerFormComponent);
     component = fixture.componentInstance;
-    donationService = TestBed.inject(DonationService) as jasmine.SpyObj<DonationService>;
     fixture.detectChanges();
   });
 
@@ -1596,40 +1375,24 @@ describe('DonationFormComponent', () => {
     expect(component).toBeTruthy();
   });
 
-  it('should initialize form with default values', () => {
-    expect(component.donationForm.get('type')?.value).toBe('ponctuel');
-    expect(component.donationForm.get('montant')?.value).toBeNull();
+  it('should initialize form with empty values', () => {
+    expect(component.volunteerForm.get('nom')?.value).toBe('');
+    expect(component.volunteerForm.get('email')?.value).toBe('');
   });
 
-  it('should mark form as invalid when montant is less than 5', () => {
-    component.donationForm.patchValue({ montant: 3 });
-    expect(component.donationForm.get('montant')?.valid).toBeFalse();
+  it('should mark form as invalid when email is invalid', () => {
+    component.volunteerForm.patchValue({ email: 'invalid-email' });
+    expect(component.volunteerForm.get('email')?.valid).toBeFalse();
   });
 
   it('should mark form as valid when all fields are filled correctly', () => {
-    component.donationForm.patchValue({
-      montant: 10,
-      type: 'ponctuel',
-      donateurNom: 'Jean Dupont',
-      donateurEmail: 'jean@example.com'
+    component.volunteerForm.patchValue({
+      nom: 'Dupont',
+      prenom: 'Jean',
+      email: 'jean@example.com',
+      telephone: '0612345678'
     });
-    expect(component.donationForm.valid).toBeTrue();
-  });
-
-  it('should call donationService.createDonation on submit', () => {
-    const mockDonation = { id: 1, montant: 10, type: 'ponctuel' };
-    donationService.createDonation.and.returnValue(of(mockDonation as any));
-
-    component.donationForm.patchValue({
-      montant: 10,
-      type: 'ponctuel',
-      donateurNom: 'Jean Dupont',
-      donateurEmail: 'jean@example.com'
-    });
-
-    component.onSubmit();
-
-    expect(donationService.createDonation).toHaveBeenCalled();
+    expect(component.volunteerForm.valid).toBeTrue();
   });
 });
 ```
@@ -1639,19 +1402,19 @@ describe('DonationFormComponent', () => {
 ```typescript
 import { TestBed } from '@angular/core/testing';
 import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
-import { DonationService } from './donation.service';
+import { ActionService } from './action.service';
 import { environment } from 'src/environments/environment';
 
-describe('DonationService', () => {
-  let service: DonationService;
+describe('ActionService', () => {
+  let service: ActionService;
   let httpMock: HttpTestingController;
 
   beforeEach(() => {
     TestBed.configureTestingModule({
       imports: [HttpClientTestingModule],
-      providers: [DonationService]
+      providers: [ActionService]
     });
-    service = TestBed.inject(DonationService);
+    service = TestBed.inject(ActionService);
     httpMock = TestBed.inject(HttpTestingController);
   });
 
@@ -1663,112 +1426,55 @@ describe('DonationService', () => {
     expect(service).toBeTruthy();
   });
 
-  it('should fetch donations', () => {
-    const mockDonations = [
-      { id: 1, montant: 10, date: '2024-01-01', donateur_nom: 'Test', donateur_email: 'test@test.com', type: 'ponctuel', statut: 'success' }
+  it('should fetch actions', () => {
+    const mockActions = [
+      {
+        id: 1,
+        nom: 'Distribution alimentaire',
+        date_action: '2024-01-01',
+        ville: 'Paris'
+      }
     ];
 
-    service.getDonations().subscribe(donations => {
-      expect(donations.length).toBe(1);
-      expect(donations[0].montant).toBe(10);
+    service.getActions('acdlp').subscribe(actions => {
+      expect(actions.length).toBe(1);
+      expect(actions[0].nom).toBe('Distribution alimentaire');
     });
 
-    const req = httpMock.expectOne(`${environment.apiUrl}/donations`);
+    const req = httpMock.expectOne(`${environment.apiUrl}/benevolat/actions/acdlp`);
     expect(req.request.method).toBe('GET');
-    req.flush(mockDonations);
-  });
-
-  it('should create a donation', () => {
-    const newDonation = {
-      montant: 50,
-      type: 'mensuel' as const,
-      donateurNom: 'Test User',
-      donateurEmail: 'test@test.com'
-    };
-
-    const mockResponse = { id: 1, ...newDonation };
-
-    service.createDonation(newDonation).subscribe(donation => {
-      expect(donation.id).toBe(1);
-      expect(donation.montant).toBe(50);
-    });
-
-    const req = httpMock.expectOne(`${environment.apiUrl}/donations`);
-    expect(req.request.method).toBe('POST');
-    expect(req.request.body).toEqual(newDonation);
-    req.flush(mockResponse);
+    req.flush(mockActions);
   });
 });
 ```
 
 ### Tests E2E avec Playwright
 
-**playwright.config.ts**:
-
-```typescript
-import { defineConfig, devices } from '@playwright/test';
-
-export default defineConfig({
-  testDir: './tests-e2e',
-  fullyParallel: true,
-  forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : undefined,
-  reporter: 'html',
-  use: {
-    baseURL: 'http://localhost:4200',
-    trace: 'on-first-retry',
-  },
-  projects: [
-    {
-      name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
-    },
-  ],
-  webServer: {
-    command: 'npm run start',
-    url: 'http://localhost:4200',
-    reuseExistingServer: !process.env.CI,
-  },
-});
-```
-
 **Exemple de test E2E**:
 
 ```typescript
-// tests-e2e/donation.e2e.spec.ts
+// tests-e2e/volunteer.e2e.spec.ts
 import { test, expect } from '@playwright/test';
 
-test.describe('Donation Form', () => {
+test.describe('Volunteer Registration', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/donation');
+    await page.goto('/benevolat/form');
   });
 
-  test('should display donation form', async ({ page }) => {
-    await expect(page.locator('h2')).toContainText('Faire un don');
-    await expect(page.locator('input[formControlName="montant"]')).toBeVisible();
+  test('should display registration form', async ({ page }) => {
+    await expect(page.locator('h2')).toContainText('Inscription Bénévole');
+    await expect(page.locator('input[formControlName="nom"]')).toBeVisible();
   });
 
-  test('should submit donation successfully', async ({ page }) => {
-    await page.fill('input[formControlName="montant"]', '50');
-    await page.selectOption('select[formControlName="type"]', 'ponctuel');
-    await page.fill('input[formControlName="donateurNom"]', 'Jean Dupont');
-    await page.fill('input[formControlName="donateurEmail"]', 'jean@example.com');
-    
+  test('should submit registration successfully', async ({ page }) => {
+    await page.fill('input[formControlName="nom"]', 'Dupont');
+    await page.fill('input[formControlName="prenom"]', 'Jean');
+    await page.fill('input[formControlName="email"]', 'jean@example.com');
+    await page.fill('input[formControlName="telephone"]', '0612345678');
+
     await page.click('button[type="submit"]');
-    
-    // Attendre le message de succès
-    await expect(page.locator('text=Don créé avec succès')).toBeVisible();
-  });
 
-  test('should show validation errors', async ({ page }) => {
-    await page.fill('input[formControlName="montant"]', '2');
-    await page.fill('input[formControlName="donateurEmail"]', 'invalid-email');
-    
-    await page.click('button[type="submit"]');
-    
-    await expect(page.locator('text=Le montant minimum est de 5€')).toBeVisible();
-    await expect(page.locator('text=Email invalide')).toBeVisible();
+    await expect(page.locator('text=Inscription réussie')).toBeVisible();
   });
 });
 ```
@@ -1801,11 +1507,7 @@ npx playwright test --ui
     "prod": "ng build --configuration production",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
-    "test:e2e": "npx playwright test --ui",
-    "lint": "ng lint",
-    "prettier": "prettier --config ./.prettierrc --write \"src/{app,environments}/**/*{.ts,.html,.scss,.json}\"",
-    "prettier:verify": "prettier --config ./.prettierrc --check \"src/{app,environments}/**/*{.ts,.html,.scss,.json}\"",
-    "prettier:staged": "pretty-quick --staged"
+    "test:e2e": "npx playwright test --ui"
   }
 }
 ```
@@ -1837,7 +1539,6 @@ ng build --configuration production
 - Tree-shaking pour éliminer le code inutilisé
 - Ahead-of-Time (AOT) compilation
 - Lazy loading des modules
-- Optimisation des images
 - Budgets de taille configurés
 
 ### Configuration des budgets
@@ -1849,8 +1550,8 @@ Dans `angular.json`:
   "budgets": [
     {
       "type": "initial",
-      "maximumWarning": "4mb",
-      "maximumError": "5mb"
+      "maximumWarning": "3mb",
+      "maximumError": "4mb"
     },
     {
       "type": "anyComponentStyle",
@@ -1863,13 +1564,13 @@ Dans `angular.json`:
 
 ### Déploiement
 
-**Avec Docker** (voir docker-compose.yml dans le projet):
+**Avec Docker** (voir docker-compose.yml):
 
 ```yaml
 services:
   angular:
     build:
-      context: ./src/www/myamana/client/myamana-angular
+      context: ./src/www/acdlp/client/acdlp-angular
       dockerfile: Dockerfile
     ports:
       - "4200:80"
@@ -1877,27 +1578,12 @@ services:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
 ```
 
-**Déploiement sur serveur statique**:
-
-```bash
-# Build de production
-npm run prod
-
-# Les fichiers dans dist/angular-tailwind/ peuvent être déployés sur:
-# - Nginx
-# - Apache
-# - Netlify
-# - Vercel
-# - Firebase Hosting
-# etc.
-```
-
 **Configuration Nginx**:
 
 ```nginx
 server {
     listen 80;
-    server_name myamana.fr;
+    server_name acdlp.fr;
     root /usr/share/nginx/html;
     index index.html;
 
@@ -1913,7 +1599,7 @@ server {
 
     # Compression gzip
     gzip on;
-    gzip_types text/plain text/css application/json application/javascript text/xml application/xml application/xml+rss text/javascript;
+    gzip_types text/plain text/css application/json application/javascript text/xml application/xml;
 }
 ```
 
@@ -1925,3 +1611,10 @@ server {
 
 - **Angular**: https://angular.dev/
 - **RxJS**: https://rxjs.dev/
+- **Tailwind CSS**: https://tailwindcss.com/
+- **Driver.js**: https://driverjs.com/
+- **ApexCharts**: https://apexcharts.com/
+
+---
+
+**Dernière mise à jour**: 2026-01-26
