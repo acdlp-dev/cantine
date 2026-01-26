@@ -1,0 +1,27 @@
+:host {
+    display: block;
+
+    .input-field {
+        @apply w-full p-2 border border-gray-300 rounded-md transition-all duration-200;
+
+        &:focus {
+            @apply outline-none ring-2 ring-donation border-transparent;
+        }
+
+        &.error {
+            @apply border-red-500;
+
+            &:focus {
+                @apply ring-red-500;
+            }
+        }
+    }
+
+    input[type="checkbox"] {
+        @apply rounded border-gray-300 text-[donationColor] focus:ring-[donationColor];
+
+        &:checked {
+            @apply bg-[donationColor] border-transparent;
+        }
+    }
+}

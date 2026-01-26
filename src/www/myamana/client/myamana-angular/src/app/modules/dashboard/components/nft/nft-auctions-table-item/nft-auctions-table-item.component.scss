@@ -1,0 +1,36 @@
+td {
+  vertical-align: middle; /* Assure l'alignement vertical des cellules */
+}
+
+.flex {
+  display: flex;
+}
+
+.align-middle {
+  vertical-align: middle; /* Aligne les contenus verticalement au centre */
+}
+
+.text-left {
+  text-align: left;
+}
+
+.text-right {
+  text-align: right;
+}
+
+.py-4 {
+  padding-top: 1rem;
+  padding-bottom: 1rem;
+}
+
+.h-10 {
+  height: 2.5rem;
+}
+
+.w-10 {
+  width: 2.5rem;
+}
+
+.mr-2 {
+  margin-right: 0.5rem;
+}

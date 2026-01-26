@@ -1,0 +1,2874 @@
+const express = require('express');
+const router = express.Router();
+const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
+const db = require('../services/bdd');
+const mailService = require('../services/mailService');
+const googleSheetsService = require('../services/googleSheetsService');
+const icsService = require('../services/icsService');
+const { authMiddleware } = require('./auth');
+
+// QR code library import
+const qrcode = require('qrcode');
+
+/**
+ * GET /api/benevolat/actions/:associationName
+ * Récupère les actions d'une association pour le calendrier bénévole
+ * Supporte le filtrage par profil bénévole et inscriptions
+ */
+router.get('/benevolat/actions/:associationName', authMiddleware, async (req, res) => {
+    try {
+        const { associationName } = req.params;
+        const { filter = 'all' } = req.query; // 'all' ou 'inscribed'
+        const benevoleId = req.user.id;
+
+        // Récupérer le profil du bénévole pour le filtrage
+        const benevoleQuery = 'SELECT genre, age FROM benevoles WHERE id = ?';
+        const benevoles = await db.select(benevoleQuery, [benevoleId]);
+
+        if (!benevoles || benevoles.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'Profil bénévole introuvable'
+            });
+        }
+
+        const benevole = benevoles[0];
+        const benevoleAge = benevole.age;
+        const benevoleGenre = benevole.genre;
+
+        // 1. Récupérer les actions depuis la base remote
+        let actionsQuery = `
+            SELECT
+                a.id,
+                a.association_nom,
+                a.rue,
+                a.ville,
+                a.pays,
+                a.nom,
+                a.description,
+                a.date_action,
+                a.heure_debut,
+                a.heure_fin,
+                a.recurrence,
+                a.responsable_email,
+                resp.nom as responsable_nom,
+                resp.prenom as responsable_prenom,
+                resp.telephone as responsable_telephone,
+                a.nb_participants,
+                a.genre,
+                a.age,
+                a.created_at
+            FROM actions a
+            LEFT JOIN benevoles resp ON a.responsable_email = resp.email
+            WHERE a.association_nom = ?
+        `;
+
+        let params = [associationName];
+
+        // Filtrage par profil bénévole (genre et âge)
+        actionsQuery += ` AND (a.genre = 'mixte' OR a.genre = ?)`;
+        params.push(benevoleGenre);
+
+        actionsQuery += ` AND (a.age = 'tous' OR
+                        (? >= 18 AND a.age = 'majeure') OR
+                        (? < 18 AND a.age = 'mineur'))`;
+        params.push(benevoleAge, benevoleAge);
+
+        actionsQuery += ` ORDER BY a.date_action ASC, a.heure_debut ASC`;
+
+        let actions = await db.select(actionsQuery, params, 'remote');
+        console.log(`[DEBUG] Actions récupérées: ${actions ? actions.length : 0}`);
+
+        // 1.4 Récupérer les actions masquées pour filtrer côté frontend
+        const maskedActionsQuery = `
+            SELECT action_id, date_masquee
+            FROM Actions_Masquees
+            WHERE association_nom = ?
+        `;
+        const maskedActions = await db.select(maskedActionsQuery, [associationName], 'remote');
+
+        // 1.5. Récupérer le nombre total de participants pour chaque action de cette association
+        const participantsCountQuery = `
+            SELECT ba.action_id, ba.date_action, COUNT(*) as nb_inscrits
+            FROM Benevoles_Actions ba
+            JOIN actions a ON ba.action_id = a.id
+            WHERE a.association_nom = ?
+            GROUP BY ba.action_id, ba.date_action
+        `;
+        const participantsCounts = await db.select(participantsCountQuery, [associationName]);
+        console.log(`[DEBUG] Participants counts récupérés: ${participantsCounts ? participantsCounts.length : 0}`);
+
+        // Créer une map pour un accès rapide : key = "action_id_date_action", value = nb_inscrits
+        const participantsMap = new Map();
+        if (participantsCounts && participantsCounts.length > 0) {
+            participantsCounts.forEach(count => {
+                // Normaliser la date au format YYYY-MM-DD
+                const dateStr = count.date_action instanceof Date
+                    ? count.date_action.toISOString().split('T')[0]
+                    : count.date_action;
+                const key = `${count.action_id}_${dateStr}`;
+                participantsMap.set(key, count.nb_inscrits);
+                console.log(`[DEBUG] Compteur ajouté: ${key} = ${count.nb_inscrits}`);
+            });
+        }
+
+        // 2. Récupérer les infos de l'association depuis la base REMOTE
+        let associationInfo = null;
+        if (actions && actions.length > 0) {
+            console.log(`[DEBUG] Recherche association pour: ${associationName}`);
+            const assoQuery = `
+                SELECT surnom, nom, logoUrl
+                FROM Assos
+                WHERE uri = ?
+            `;
+            const assoResults = await db.select(assoQuery, [associationName], 'remote');
+            console.log(`[DEBUG] Résultats Assos:`, assoResults);
+
+            if (assoResults && assoResults.length > 0) {
+                associationInfo = assoResults[0];
+                console.log(`[DEBUG] Association trouvée:`, {
+                    surnom: associationInfo.surnom,
+                    nom: associationInfo.nom,
+                    logoUrl: associationInfo.logoUrl
+                });
+            } else {
+                console.log(`[DEBUG] Aucune association trouvée pour surnom: ${associationName}`);
+            }
+        }
+
+        // 3. Enrichir les actions avec les infos de l'association
+        if (associationInfo) {
+            console.log(`[DEBUG] Enrichissement des actions avec:`, {
+                logo_url: associationInfo.logoUrl,
+                nom_complet: associationInfo.nom,
+                surnom: associationInfo.surnom
+            });
+            actions = actions.map(action => ({
+                ...action,
+                association_logo_url: associationInfo.logoUrl,
+                association_nom_complet: associationInfo.nom,
+                association_surnom: associationInfo.surnom
+            }));
+            console.log(`[DEBUG] Premier action enrichie:`, {
+                id: actions[0].id,
+                nom: actions[0].nom,
+                association_logo_url: actions[0].association_logo_url,
+                association_nom_complet: actions[0].association_nom_complet
+            });
+        } else {
+            console.log(`[DEBUG] Pas d'enrichissement - associationInfo est null`);
+        }
+
+        // Si on ne veut que les actions inscrites, on les filtre après récupération des inscriptions
+        if (filter === 'inscribed') {
+            // Récupérer toutes les inscriptions du bénévole
+            const inscriptionsQuery = `
+                SELECT DISTINCT action_id, date_action
+                FROM Benevoles_Actions
+                WHERE benevole_id = ?
+            `;
+            const inscriptions = await db.select(inscriptionsQuery, [benevoleId]);
+
+            // Filtrer les actions pour ne garder que celles où le bénévole est inscrit
+            const inscriptionsSet = new Set();
+            inscriptions.forEach(ins => {
+                inscriptionsSet.add(`${ins.action_id}_${ins.date_action}`);
+            });
+
+            // On garde toutes les actions car le filtrage par inscription se fait côté frontend
+            // en fonction des dates calculées des instances récurrentes
+        }
+
+        // Récupérer toutes les inscriptions du bénévole pour cette association
+        const inscriptionsQuery = `
+            SELECT ba.id as inscription_id, ba.action_id, ba.date_action
+            FROM Benevoles_Actions ba
+            JOIN actions a ON ba.action_id = a.id
+            WHERE ba.benevole_id = ? AND a.association_nom = ?
+        `;
+        const inscriptions = await db.select(inscriptionsQuery, [benevoleId, associationName]);
+
+        // Créer une map pour les actions masquées
+        const maskedMap = new Map();
+        if (maskedActions && maskedActions.length > 0) {
+            maskedActions.forEach(masked => {
+                const dateStr = masked.date_masquee instanceof Date
+                    ? masked.date_masquee.toISOString().split('T')[0]
+                    : masked.date_masquee;
+                const key = `${masked.action_id}_${dateStr}`;
+                maskedMap.set(key, true);
+            });
+        }
+
+        // Convertir les maps en objets pour l'envoyer au frontend
+        const participantsCountsObject = {};
+        participantsMap.forEach((count, key) => {
+            participantsCountsObject[key] = count;
+        });
+
+        const maskedActionsObject = {};
+        maskedMap.forEach((isMasked, key) => {
+            maskedActionsObject[key] = isMasked;
+        });
+
+        res.status(200).json({
+            success: true,
+            actions: actions || [],
+            inscriptions: inscriptions || [],
+            participants_counts: participantsCountsObject,
+            masked_actions: maskedActionsObject, // NOUVEAU : actions masquées
+            total: actions ? actions.length : 0,
+            filter: filter,
+            benevole: {
+                id: benevoleId,
+                email: req.user.email,
+                genre: benevoleGenre,
+                age: benevoleAge
+            }
+        });
+
+    } catch (error) {
+        console.error('Erreur lors de la récupération des actions:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Erreur lors de la récupération des actions'
+        });
+    }
+});
+
+/**
+ * POST /api/benevolat/inscription
+ * Inscription d'un bénévole à une action spécifique
+ * Si benevole_id est fourni dans le body, l'admin peut inscrire un autre bénévole
+ */
+router.post('/benevolat/inscription', authMiddleware, async (req, res) => {
+    try {
+        const { action_id, date_action, benevole_id: benevoleIdFromBody } = req.body;
+
+        // Si benevole_id est fourni, utiliser celui-ci (inscription par admin)
+        // Sinon, utiliser l'id de l'utilisateur connecté (auto-inscription)
+        const benevole_id = benevoleIdFromBody || req.user.id;
+
+        if (!action_id || !date_action) {
+            return res.status(400).json({
+                success: false,
+                message: 'action_id et date_action sont requis'
+            });
+        }
+
+        // Vérifier que l'action existe et récupérer ses détails
+        const actionQuery = `
+            SELECT a.*,
+                   COUNT(ba.id) as inscriptions_actuelles,
+                   (a.nb_participants - COUNT(ba.id)) as places_restantes
+            FROM actions a
+            LEFT JOIN Benevoles_Actions ba ON a.id = ba.action_id AND ba.date_action = ?
+            WHERE a.id = ?
+            GROUP BY a.id
+        `;
+
+        const actions = await db.select(actionQuery, [date_action, action_id]);
+
+        if (!actions || actions.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'Action introuvable'
+            });
+        }
+
+        const action = actions[0];
+
+        // Vérifier s'il reste des places
+        if (action.places_restantes <= 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'Action complète, plus de places disponibles'
+            });
+        }
+
+        // Vérifier si déjà inscrit
+        const existingQuery = `
+            SELECT id FROM Benevoles_Actions
+            WHERE benevole_id = ? AND action_id = ? AND date_action = ?
+        `;
+
+        const existing = await db.select(existingQuery, [benevole_id, action_id, date_action]);
+
+        if (existing && existing.length > 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'Vous êtes déjà inscrit à cette action'
+            });
+        }
+
+        // Procéder à l'inscription
+        const insertQuery = `
+            INSERT INTO Benevoles_Actions (benevole_id, action_id, date_action)
+            VALUES (?, ?, ?)
+        `;
+
+        const result = await db.query(insertQuery, [benevole_id, action_id, date_action], 'remote');
+
+        // Envoi des emails de notification après l'inscription réussie
+        try {
+            console.log(`[BENEVOLAT INSCRIPTION] Envoi des notifications email pour l'inscription ${result.insertId}`);
+
+            // 1. Récupérer les informations du bénévole inscrit
+            const benevoleQuery = 'SELECT nom, prenom, email, telephone FROM benevoles WHERE id = ?';
+            const benevoleResults = await db.select(benevoleQuery, [benevole_id]);
+
+            if (benevoleResults && benevoleResults.length > 0) {
+                const benevole = benevoleResults[0];
+
+                // 2. Récupérer les informations du responsable depuis la table benevoles
+                const responsableQuery = 'SELECT nom, prenom, telephone FROM benevoles WHERE email = ?';
+                const responsableResults = await db.select(responsableQuery, [action.responsable_email]);
+
+                const responsable = responsableResults && responsableResults.length > 0
+                    ? responsableResults[0]
+                    : { nom: '', prenom: '', telephone: '' };
+
+                // 3. Récupérer le logo de l'association
+                let logoUrl = '';
+                if (action.association_nom) {
+                    try {
+                        const assoQuery = 'SELECT nom, logoUrl FROM Assos WHERE uri = ?';
+                        const assoResults = await db.select(assoQuery, [action.association_nom], 'remote');
+                        if (assoResults && assoResults.length > 0 && assoResults[0].logoUrl) {
+                            // Préfixer le logo avec l'URL de base
+                            logoUrl = `https://v2.myamana.fr/${assoResults[0].logoUrl}`;
+                        }
+                    } catch (assoErr) {
+                        console.warn(`[BENEVOLAT INSCRIPTION] Impossible de récupérer le logo de l'association:`, assoErr);
+                    }
+                }
+
+                // 4. Formater la date et les horaires
+                const dateFormatted = new Date(date_action).toLocaleDateString('fr-FR', {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                });
+
+                const heureDebut = action.heure_debut.substring(0, 5); // Format HH:MM
+                const heureFin = action.heure_fin.substring(0, 5); // Format HH:MM
+
+                // Construire le lieu
+                const lieu = [action.rue, action.ville, action.pays]
+                    .filter(Boolean)
+                    .join(', ') || 'À préciser';
+
+                // Variables communes aux deux emails
+                const commonVariables = {
+                    action_nom: action.nom,
+                    action_date: dateFormatted,
+                    action_heure_debut: heureDebut,
+                    action_heure_fin: heureFin,
+                    action_lieu: lieu,
+                    logo_url: logoUrl
+                };
+
+                // 5a. Envoyer l'email au responsable
+                try {
+                    const responsableTemplateId = 7450635;
+                    const responsableVariables = {
+                        ...commonVariables,
+                        responsable_prenom: responsable.prenom || 'Responsable',
+                        benevole_prenom: benevole.prenom,
+                        benevole_nom: benevole.nom,
+                        benevole_email: benevole.email,
+                        benevole_telephone: benevole.telephone || 'Non renseigné'
+                    };
+
+                    await mailService.sendTemplateEmail(
+                        action.responsable_email,
+                        responsableTemplateId,
+                        responsableVariables,
+                        `Inscription : ${action.nom} le ${dateFormatted} ${heureDebut}`
+                    );
+
+                    console.log(`[BENEVOLAT INSCRIPTION] ✓ Email envoyé au responsable: ${action.responsable_email}`);
+                } catch (emailErr) {
+                    console.error(`[BENEVOLAT INSCRIPTION] ✗ Erreur envoi email responsable:`, emailErr);
+                }
+
+                // 5b. Envoyer l'email de confirmation au bénévole avec fichier ICS
+                try {
+                    const benevoleTemplateId = 7450641;
+                    const benevoleVariables = {
+                        ...commonVariables,
+                        benevole_prenom: benevole.prenom
+                    };
+
+                    // Récupérer le nom complet de l'association pour le fichier ICS
+                    let associationNomComplet = action.association_nom;
+                    try {
+                        const assoQuery = 'SELECT nom FROM Assos WHERE uri = ?';
+                        const assoResults = await db.select(assoQuery, [action.association_nom], 'remote');
+                        if (assoResults && assoResults.length > 0 && assoResults[0].nom) {
+                            associationNomComplet = assoResults[0].nom;
+                        }
+                    } catch (assoErr) {
+                        console.warn(`[BENEVOLAT INSCRIPTION] Impossible de récupérer le nom complet de l'association:`, assoErr);
+                    }
+
+                    // Construire le nom complet du responsable
+                    const responsableNomComplet = responsable.prenom && responsable.nom
+                        ? `${responsable.prenom} ${responsable.nom}`
+                        : '';
+
+                    // Générer le fichier ICS
+                    const icsBase64 = icsService.generateICSBase64({
+                        associationNom: associationNomComplet,
+                        actionNom: action.nom,
+                        dateAction: date_action,
+                        heureDebut: action.heure_debut,
+                        heureFin: action.heure_fin,
+                        lieu: lieu,
+                        description: action.description,
+                        responsableEmail: action.responsable_email,
+                        responsableNom: responsableNomComplet,
+                        inscriptionId: result.insertId
+                    });
+
+                    // Préparer la pièce jointe ICS
+                    const attachments = [{
+                        ContentType: 'text/calendar',
+                        Filename: 'evenement.ics',
+                        Base64Content: icsBase64
+                    }];
+
+                    await mailService.sendTemplateEmail(
+                        benevole.email,
+                        benevoleTemplateId,
+                        benevoleVariables,
+                        `Confirmation : Vous êtes inscrit(e) à ${action.nom} le ${date_action}`,
+                        undefined, // replyTo
+                        undefined, // from
+                        attachments // pièce jointe ICS
+                    );
+
+                    console.log(`[BENEVOLAT INSCRIPTION] ✓ Email de confirmation avec fichier ICS envoyé au bénévole: ${benevole.email}`);
+                } catch (emailErr) {
+                    console.error(`[BENEVOLAT INSCRIPTION] ✗ Erreur envoi email bénévole:`, emailErr);
+                }
+            }
+        } catch (notificationErr) {
+            // Logger l'erreur mais ne pas bloquer la réponse de l'inscription
+            console.error('[BENEVOLAT INSCRIPTION] Erreur lors de l\'envoi des notifications:', notificationErr);
+        }
+
+        res.status(201).json({
+            success: true,
+            message: 'Inscription réussie',
+            inscription_id: result.insertId,
+            action: {
+                id: action.id,
+                nom: action.nom,
+                date_action: date_action,
+                places_restantes: action.places_restantes - 1
+            }
+        });
+
+    } catch (error) {
+        console.error('Erreur lors de l\'inscription:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Erreur lors de l\'inscription'
+        });
+    }
+});
+
+/**
+ * GET /api/benevolat/actions/:actionId/participants
+ * Récupère la liste des participants d'une action (réservé aux bénévoles de type "responsable")
+ * Query params: date_action (optionnel) pour filtrer par date (utile pour actions récurrentes)
+ */
+router.get('/benevolat/actions/:actionId/participants', authMiddleware, async (req, res) => {
+  try {
+    const { actionId } = req.params;
+    const { date_action } = req.query; // Date spécifique pour les actions récurrentes
+    const userId = req.user.id;
+
+    // Vérifier que l'action existe
+    const actionQuery = 'SELECT id FROM actions WHERE id = ?';
+    const actions = await db.select(actionQuery, [actionId], 'remote');
+
+    if (!actions || actions.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Action introuvable'
+      });
+    }
+
+    // Vérifier que l'utilisateur connecté est de type "responsable"
+    const benevoleQuery = 'SELECT type FROM benevoles WHERE id = ?';
+    const benevoles = await db.select(benevoleQuery, [userId]);
+
+    if (!benevoles || benevoles.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Bénévole introuvable'
+      });
+    }
+
+    const benevole = benevoles[0];
+
+    // Autoriser uniquement les bénévoles de type "responsable"
+    if (benevole.type !== 'responsable') {
+      return res.status(403).json({
+        success: false,
+        message: 'Accès réservé aux responsables'
+      });
+    }
+
+    // Récupérer les participants
+    let participantsQuery = `
+      SELECT
+        ba.id as inscription_id,
+        ba.statut,
+        ba.date_action,
+        b.nom,
+        b.prenom,
+        b.email,
+        b.telephone
+      FROM Benevoles_Actions ba
+      JOIN benevoles b ON ba.benevole_id = b.id
+      WHERE ba.action_id = ?
+    `;
+
+    const queryParams = [actionId];
+
+    // Si une date spécifique est fournie, filtrer par cette date
+    if (date_action) {
+      participantsQuery += ' AND ba.date_action = ?';
+      queryParams.push(date_action);
+    }
+
+    participantsQuery += ' ORDER BY b.nom, b.prenom';
+
+    const participants = await db.select(participantsQuery, queryParams);
+
+    return res.status(200).json({
+      success: true,
+      participants: participants || [],
+      total: participants ? participants.length : 0
+    });
+  } catch (err) {
+    console.error('[Get Action Participants Error]:', err);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la récupération des participants'
+    });
+  }
+});
+
+/**
+ * PATCH /api/benevolat/actions/participants/:inscriptionId/statut
+ * Met à jour le statut d'un participant (réservé au responsable)
+ */
+router.patch('/benevolat/actions/participants/:inscriptionId/statut', authMiddleware, async (req, res) => {
+  try {
+    const { inscriptionId } = req.params;
+    const { statut } = req.body;
+    const userEmail = req.user.email;
+
+    // Validation du statut
+    if (!statut || !['inscrit', 'présent', 'absent'].includes(statut)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Statut invalide. Doit être "inscrit", "présent" ou "absent"'
+      });
+    }
+
+    // Vérifier que l'inscription existe et que l'utilisateur est le responsable
+    const checkQuery = `
+      SELECT ba.id, a.responsable_email
+      FROM Benevoles_Actions ba
+      JOIN actions a ON ba.action_id = a.id
+      WHERE ba.id = ?
+    `;
+
+    const inscriptions = await db.select(checkQuery, [inscriptionId]);
+
+    if (!inscriptions || inscriptions.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Inscription introuvable'
+      });
+    }
+
+    // Vérifier que l'utilisateur connecté est un bénévole de type responsable
+    const userTypeQuery = 'SELECT type FROM benevoles WHERE email = ?';
+    const userTypes = await db.select(userTypeQuery, [userEmail]);
+
+    if (!userTypes || userTypes.length === 0 || userTypes[0].type !== 'responsable') {
+      return res.status(403).json({
+        success: false,
+        message: 'Seuls les responsables peuvent modifier le statut'
+      });
+    }
+
+    // Mettre à jour le statut
+    await db.update(
+      'Benevoles_Actions',
+      { statut: statut },
+      'id = ?',
+      [inscriptionId],
+      'remote'
+    );
+
+    // Si le statut passe à "présent", débloquer automatiquement le bénévole
+    if (statut === 'présent') {
+      try {
+        console.log(`[Déblocage Auto] Vérification pour l'inscription ${inscriptionId}`);
+
+        // 1. Récupérer le benevole_id et son statut actuel
+        const getBenevoleQuery = `
+          SELECT ba.benevole_id, b.statut as benevole_statut, b.email as benevole_email
+          FROM Benevoles_Actions ba
+          JOIN benevoles b ON ba.benevole_id = b.id
+          WHERE ba.id = ?
+        `;
+        const inscriptionData = await db.select(getBenevoleQuery, [inscriptionId]);
+
+        if (inscriptionData && inscriptionData.length > 0) {
+          const benevoleId = inscriptionData[0].benevole_id;
+          const currentStatut = inscriptionData[0].benevole_statut;
+          const benevoleEmail = inscriptionData[0].benevole_email;
+
+          // 2. Vérifier si le bénévole n'est pas déjà confirmé
+          if (currentStatut !== 'confirmé') {
+            // 3. Mettre à jour le statut à "confirmé"
+            await db.update(
+              'benevoles',
+              { statut: 'confirmé' },
+              'id = ?',
+              [benevoleId],
+              'remote'
+            );
+
+            console.log(`[Déblocage Auto] ✓ Bénévole ${benevoleId} (${benevoleEmail}) confirmé (était: ${currentStatut || 'restreint'})`);
+
+            // 4. Synchroniser automatiquement vers Google Sheets
+            try {
+              console.log('[Déblocage Auto] Déclenchement de la synchronisation Google Sheets');
+
+              // Récupérer tous les bénévoles
+              const syncQuery = 'SELECT nom, prenom, genre, telephone, statut FROM benevoles ORDER BY nom, prenom';
+              const allBenevoles = await db.select(syncQuery, [], 'remote');
+
+              // Synchroniser de manière asynchrone (ne pas bloquer la réponse)
+              googleSheetsService.syncVolunteers(allBenevoles)
+                .then(result => {
+                  console.log(`[Déblocage Auto] ✓ Synchronisation Google Sheets réussie: ${result.count} bénévoles`);
+                })
+                .catch(syncErr => {
+                  console.error('[Déblocage Auto] ✗ Erreur synchronisation Google Sheets:', syncErr);
+                });
+
+            } catch (syncErr) {
+              console.error('[Déblocage Auto] ✗ Erreur lors du déclenchement de la synchronisation:', syncErr);
+            }
+          } else {
+            console.log(`[Déblocage Auto] ℹ Bénévole ${benevoleId} (${benevoleEmail}) déjà confirmé, aucune action requise`);
+          }
+        }
+      } catch (err) {
+        // Logger l'erreur mais ne pas bloquer la mise à jour du statut de participation
+        console.error('[Déblocage Auto] Erreur lors du déblocage du bénévole:', err);
+      }
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'Statut mis à jour avec succès',
+      statut: statut
+    });
+  } catch (err) {
+    console.error('[Update Participant Status Error]:', err);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la mise à jour du statut'
+    });
+  }
+});
+
+/**
+ * GET /api/benevolat/stats
+ * Récupère les statistiques du bénévole connecté
+ */
+router.get('/benevolat/stats', authMiddleware, async (req, res) => {
+  try {
+    const benevoleId = req.user.id;
+
+    // Récupérer les infos du bénévole
+    const benevoleQuery = 'SELECT nom, prenom, statut, genre, type FROM benevoles WHERE id = ?';
+    const benevoles = await db.select(benevoleQuery, [benevoleId]);
+
+    if (!benevoles || benevoles.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Bénévole introuvable'
+      });
+    }
+
+    const benevole = benevoles[0];
+
+    // Compter les actions par statut
+    const statsQuery = `
+      SELECT
+        COUNT(CASE WHEN statut = 'inscrit' THEN 1 END) as inscrites,
+        COUNT(CASE WHEN statut = 'présent' THEN 1 END) as effectuees,
+        COUNT(CASE WHEN statut = 'absent' THEN 1 END) as manquees
+      FROM Benevoles_Actions
+      WHERE benevole_id = ?
+    `;
+
+    const stats = await db.select(statsQuery, [benevoleId]);
+
+    return res.status(200).json({
+      success: true,
+      nom: benevole.nom,
+      prenom: benevole.prenom,
+      statut: benevole.statut || 'restreint',
+      genre: benevole.genre,
+      type: benevole.type || 'bénévole',
+      inscrites: stats[0]?.inscrites || 0,
+      effectuees: stats[0]?.effectuees || 0,
+      manquees: stats[0]?.manquees || 0
+    });
+  } catch (err) {
+    console.error('[Get Benevole Stats Error]:', err);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la récupération des statistiques'
+    });
+  }
+});
+
+/**
+ * GET /api/benevolat/profile
+ * Récupère les informations de profil du bénévole connecté
+ */
+router.get('/benevolat/profile', authMiddleware, async (req, res) => {
+  try {
+    const benevoleId = req.user.id;
+
+    console.log(`[GET PROFILE] Récupération du profil pour benevole_id: ${benevoleId}`);
+
+    // Récupérer les informations du bénévole
+    const query = `
+      SELECT nom, prenom, adresse, ville, code_postal, pays, telephone, vehicule
+      FROM benevoles
+      WHERE id = ?
+    `;
+
+    const benevoles = await db.select(query, [benevoleId]);
+
+    if (!benevoles || benevoles.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Bénévole introuvable'
+      });
+    }
+
+    const benevole = benevoles[0];
+
+    console.log(`[GET PROFILE] ✓ Profil récupéré pour: ${benevole.nom} ${benevole.prenom}`);
+
+    return res.status(200).json({
+      success: true,
+      profile: {
+        nom: benevole.nom,
+        prenom: benevole.prenom,
+        adresse: benevole.adresse || '',
+        ville: benevole.ville || '',
+        code_postal: benevole.code_postal || '',
+        pays: benevole.pays || 'France',
+        telephone: benevole.telephone || '',
+        vehicule: benevole.vehicule || 'non'
+      }
+    });
+  } catch (err) {
+    console.error('[Get Profile Error]:', err);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la récupération du profil'
+    });
+  }
+});
+
+/**
+ * PATCH /api/benevolat/profile
+ * Met à jour les informations modifiables du profil du bénévole connecté
+ * Champs modifiables : adresse, ville, code_postal, pays, telephone, vehicule
+ * Champs en lecture seule : nom, prenom
+ */
+router.patch('/benevolat/profile', authMiddleware, async (req, res) => {
+  try {
+    const benevoleId = req.user.id;
+    const { adresse, ville, code_postal, pays, telephone, vehicule } = req.body;
+
+    console.log(`[UPDATE PROFILE] Mise à jour du profil pour benevole_id: ${benevoleId}`);
+
+    // Vérifier que le bénévole existe
+    const checkQuery = 'SELECT id FROM benevoles WHERE id = ?';
+    const existing = await db.select(checkQuery, [benevoleId]);
+
+    if (!existing || existing.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Bénévole introuvable'
+      });
+    }
+
+    // Validation du champ vehicule
+    if (vehicule && vehicule !== 'oui' && vehicule !== 'non') {
+      return res.status(400).json({
+        success: false,
+        message: 'Le champ vehicule doit être "oui" ou "non"'
+      });
+    }
+
+    // Préparer les données de mise à jour (uniquement les champs modifiables fournis)
+    const updateData = {};
+    if (adresse !== undefined) updateData.adresse = adresse;
+    if (ville !== undefined) updateData.ville = ville;
+    if (code_postal !== undefined) updateData.code_postal = code_postal;
+    if (pays !== undefined) updateData.pays = pays;
+    if (telephone !== undefined) updateData.telephone = telephone;
+    if (vehicule !== undefined) updateData.vehicule = vehicule;
+
+    // Vérifier qu'au moins un champ est fourni
+    if (Object.keys(updateData).length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Aucune donnée à mettre à jour'
+      });
+    }
+
+    console.log(`[UPDATE PROFILE] Champs à mettre à jour:`, Object.keys(updateData));
+
+    // Mettre à jour le profil
+    await db.update(
+      'benevoles',
+      updateData,
+      'id = ?',
+      [benevoleId],
+      'remote'
+    );
+
+    console.log(`[UPDATE PROFILE] ✓ Profil mis à jour avec succès`);
+
+    return res.status(200).json({
+      success: true,
+      message: 'Profil mis à jour avec succès'
+    });
+  } catch (err) {
+    console.error('[Update Profile Error]:', err);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la mise à jour du profil',
+      error: err.message
+    });
+  }
+});
+
+/**
+ * DELETE /api/benevolat/desinscription/:inscriptionId/future-occurrences
+ * Désinscription d'un bénévole de toutes les occurrences futures d'une action récurrente
+ */
+router.delete('/benevolat/desinscription/:inscriptionId/future-occurrences', authMiddleware, async (req, res) => {
+    try {
+        const { inscriptionId } = req.params;
+        const currentUserId = req.user.id;
+        const userAssociationNom = req.user.uri;
+
+        // Récupérer l'inscription et l'action
+        const checkQuery = `
+            SELECT ba.*,
+                   a.nom as action_nom,
+                   a.association_nom,
+                   a.recurrence,
+                   a.rue, a.ville, a.pays,
+                   a.heure_debut, a.heure_fin,
+                   a.responsable_email
+            FROM Benevoles_Actions ba
+            JOIN actions a ON ba.action_id = a.id
+            WHERE ba.id = ?
+        `;
+
+        const inscriptions = await db.select(checkQuery, [inscriptionId]);
+
+        if (!inscriptions || inscriptions.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'Inscription introuvable'
+            });
+        }
+
+        const inscription = inscriptions[0];
+
+        // Vérifier les permissions
+        const isOwnInscription = inscription.benevole_id === currentUserId;
+        const isAssociationAdmin = inscription.association_nom === userAssociationNom;
+
+        if (!isOwnInscription && !isAssociationAdmin) {
+            return res.status(403).json({
+                success: false,
+                message: 'Vous n\'avez pas les permissions pour désinscrire ce bénévole'
+            });
+        }
+
+        // Vérifier que l'action est récurrente
+        if (inscription.recurrence === 'Aucune') {
+            return res.status(400).json({
+                success: false,
+                message: 'Cette action n\'est pas récurrente'
+            });
+        }
+
+        // Récupérer toutes les inscriptions futures (>= date de l'occurrence cliquée)
+        const futureInscriptionsQuery = `
+            SELECT ba.id, ba.date_action
+            FROM Benevoles_Actions ba
+            WHERE ba.benevole_id = ?
+              AND ba.action_id = ?
+              AND ba.date_action >= ?
+            ORDER BY ba.date_action ASC
+        `;
+
+        const futureInscriptions = await db.select(futureInscriptionsQuery, [
+            inscription.benevole_id,
+            inscription.action_id,
+            inscription.date_action
+        ]);
+
+        if (!futureInscriptions || futureInscriptions.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'Aucune inscription future trouvée'
+            });
+        }
+
+        const count = futureInscriptions.length;
+        const dateDebut = futureInscriptions[0].date_action;
+        const dateFin = futureInscriptions[count - 1].date_action;
+
+        // Récupérer les informations du bénévole pour l'email
+        const benevoleQuery = 'SELECT nom, prenom, email, telephone FROM benevoles WHERE id = ?';
+        const benevoleResults = await db.select(benevoleQuery, [inscription.benevole_id]);
+
+        // Supprimer toutes les inscriptions futures
+        const deleteQuery = `
+            DELETE FROM Benevoles_Actions
+            WHERE benevole_id = ?
+              AND action_id = ?
+              AND date_action >= ?
+        `;
+
+        await db.query(deleteQuery, [
+            inscription.benevole_id,
+            inscription.action_id,
+            inscription.date_action
+        ],'remote' );
+
+        // Envoyer l'email récapitulatif
+        if (benevoleResults && benevoleResults.length > 0) {
+            try {
+                const benevole = benevoleResults[0];
+
+                // Récupérer le logo de l'association
+                let logoUrl = '';
+                if (inscription.association_nom) {
+                    try {
+                        const assoQuery = 'SELECT logoUrl FROM Assos WHERE uri = ?';
+                        const assoResults = await db.select(assoQuery, [inscription.association_nom], 'remote');
+                        if (assoResults && assoResults.length > 0 && assoResults[0].logoUrl) {
+                            logoUrl = `https://v2.myamana.fr/${assoResults[0].logoUrl}`;
+                        }
+                    } catch (assoErr) {
+                        console.warn(`[BENEVOLAT DESINSCRIPTION GROUPEE] Logo introuvable:`, assoErr);
+                    }
+                }
+
+                // Formater les dates
+                const dateDebutFormatted = new Date(dateDebut).toLocaleDateString('fr-FR', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                });
+
+                const dateFinFormatted = new Date(dateFin).toLocaleDateString('fr-FR', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                });
+
+                const heureDebut = inscription.heure_debut.substring(0, 5);
+                const heureFin = inscription.heure_fin.substring(0, 5);
+
+                const lieu = [inscription.rue, inscription.ville, inscription.pays]
+                    .filter(Boolean)
+                    .join(', ') || 'À préciser';
+
+                // Construire le libellé de récurrence
+                let recurrenceLabel = '';
+                switch (inscription.recurrence) {
+                    case 'Quotidienne':
+                        recurrenceLabel = 'quotidiennes';
+                        break;
+                    case 'Hebdomadaire':
+                        recurrenceLabel = 'hebdomadaires';
+                        break;
+                    default:
+                        recurrenceLabel = '';
+                }
+
+                // Construire le texte de date pour l'email
+                const actionDateText = `Toutes les "${inscription.action_nom}" ${recurrenceLabel} à partir du ${dateDebutFormatted}`;
+
+                // Variables pour l'email récapitulatif
+                const variables = {
+                    logo_url: logoUrl,
+                    benevole_prenom: benevole.prenom,
+                    action_nom: inscription.action_nom,
+                    action_date: actionDateText,
+                    action_heure_debut: heureDebut,
+                    action_heure_fin: heureFin,
+                    action_lieu: lieu,
+                    nb_occurrences: count.toString(),
+                    date_debut: dateDebutFormatted,
+                    date_fin: dateFinFormatted
+                };
+
+                // Envoyer l'email au bénévole
+                await mailService.sendTemplateEmail(
+                    benevole.email,
+                    7450673, // Utiliser le même template que pour la désinscription simple (à adapter si besoin)
+                    variables,
+                    `Désinscription : ${inscription.action_nom} - ${count} occurrence(s)`
+                );
+
+                console.log(`[BENEVOLAT DESINSCRIPTION GROUPEE] ✓ Email envoyé à ${benevole.email} pour ${count} occurrences`);
+            } catch (emailErr) {
+                console.error(`[BENEVOLAT DESINSCRIPTION GROUPEE] ✗ Erreur envoi email:`, emailErr);
+            }
+        }
+
+        res.status(200).json({
+            success: true,
+            message: `Bénévole désinscrit de ${count} occurrence(s)`,
+            count: count,
+            date_debut: dateDebut,
+            date_fin: dateFin,
+            action: {
+                nom: inscription.action_nom
+            }
+        });
+
+    } catch (error) {
+        console.error('Erreur lors de la désinscription groupée:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Erreur lors de la désinscription groupée'
+        });
+    }
+});
+
+/**
+ * DELETE /api/benevolat/desinscription/:inscriptionId
+ * Désinscription d'un bénévole d'une action
+ * Un admin (membre de l'association) peut désinscrire n'importe quel bénévole
+ */
+router.delete('/benevolat/desinscription/:inscriptionId', authMiddleware, async (req, res) => {
+    try {
+        const { inscriptionId } = req.params;
+        const currentUserId = req.user.id;
+        const userAssociationNom = req.user.uri; // Association de l'utilisateur connecté
+
+        // Récupérer l'inscription et vérifier les permissions
+        const checkQuery = `
+            SELECT ba.*,
+                   a.nom as action_nom,
+                   a.association_nom,
+                   a.rue, a.ville, a.pays,
+                   a.heure_debut, a.heure_fin,
+                   a.responsable_email
+            FROM Benevoles_Actions ba
+            JOIN actions a ON ba.action_id = a.id
+            WHERE ba.id = ?
+        `;
+
+        const inscriptions = await db.select(checkQuery, [inscriptionId]);
+
+        if (!inscriptions || inscriptions.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'Inscription introuvable'
+            });
+        }
+
+        const inscription = inscriptions[0];
+
+        // Vérifier les permissions : soit c'est le bénévole lui-même, soit c'est un admin de l'association
+        const isOwnInscription = inscription.benevole_id === currentUserId;
+        const isAssociationAdmin = inscription.association_nom === userAssociationNom;
+
+        if (!isOwnInscription && !isAssociationAdmin) {
+            return res.status(403).json({
+                success: false,
+                message: 'Vous n\'avez pas les permissions pour désinscrire ce bénévole'
+            });
+        }
+
+        // Envoi des emails de notification AVANT la suppression
+        try {
+            console.log(`[BENEVOLAT DESINSCRIPTION] Envoi des notifications email pour la désinscription ${inscriptionId}`);
+
+            // 1. Récupérer les informations du bénévole
+            const benevoleQuery = 'SELECT nom, prenom, email, telephone FROM benevoles WHERE id = ?';
+            const benevoleResults = await db.select(benevoleQuery, [inscription.benevole_id]);
+
+            if (benevoleResults && benevoleResults.length > 0) {
+                const benevole = benevoleResults[0];
+
+                // 2. Récupérer les informations du responsable
+                const responsableQuery = 'SELECT nom, prenom FROM benevoles WHERE email = ?';
+                const responsableResults = await db.select(responsableQuery, [inscription.responsable_email]);
+
+                const responsable = responsableResults && responsableResults.length > 0
+                    ? responsableResults[0]
+                    : { nom: '', prenom: '' };
+
+                // 3. Récupérer le logo de l'association
+                let logoUrl = '';
+                if (inscription.association_nom) {
+                    try {
+                        const assoQuery = 'SELECT nom, logoUrl FROM Assos WHERE uri = ?';
+                        const assoResults = await db.select(assoQuery, [inscription.association_nom], 'remote');
+                        if (assoResults && assoResults.length > 0 && assoResults[0].logoUrl) {
+                            logoUrl = `https://v2.myamana.fr/${assoResults[0].logoUrl}`;
+                        }
+                    } catch (assoErr) {
+                        console.warn(`[BENEVOLAT DESINSCRIPTION] Impossible de récupérer le logo de l'association:`, assoErr);
+                    }
+                }
+
+                // 4. Formater la date et les horaires
+                const dateFormatted = new Date(inscription.date_action).toLocaleDateString('fr-FR', {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                });
+
+                const heureDebut = inscription.heure_debut.substring(0, 5);
+                const heureFin = inscription.heure_fin.substring(0, 5);
+
+                // Construire le lieu
+                const lieu = [inscription.rue, inscription.ville, inscription.pays]
+                    .filter(Boolean)
+                    .join(', ') || 'À préciser';
+
+                // Variables communes aux deux emails
+                const commonVariables = {
+                    action_nom: inscription.action_nom,
+                    action_date: dateFormatted,
+                    action_heure_debut: heureDebut,
+                    action_heure_fin: heureFin,
+                    action_lieu: lieu,
+                    logo_url: logoUrl
+                };
+
+                // 5a. Envoyer l'email de confirmation au bénévole
+                try {
+                    const benevoleTemplateId = 7450673;
+                    const benevoleVariables = {
+                        ...commonVariables,
+                        benevole_prenom: benevole.prenom
+                    };
+
+                    await mailService.sendTemplateEmail(
+                        benevole.email,
+                        benevoleTemplateId,
+                        benevoleVariables,
+                        `Désinscription : ${inscription.action_nom} le ${dateFormatted} ${heureDebut}`
+                    );
+
+                    console.log(`[BENEVOLAT DESINSCRIPTION] ✓ Email de confirmation envoyé au bénévole: ${benevole.email}`);
+                } catch (emailErr) {
+                    console.error(`[BENEVOLAT DESINSCRIPTION] ✗ Erreur envoi email bénévole:`, emailErr);
+                }
+
+                // 5b. Envoyer l'email de notification au responsable
+                try {
+                    const responsableTemplateId = 7450675;
+                    const responsableVariables = {
+                        ...commonVariables,
+                        responsable_prenom: responsable.prenom || 'Responsable',
+                        benevole_prenom: benevole.prenom,
+                        benevole_nom: benevole.nom,
+                        benevole_email: benevole.email,
+                        benevole_telephone: benevole.telephone || 'Non renseigné'
+                    };
+
+                    await mailService.sendTemplateEmail(
+                        inscription.responsable_email,
+                        responsableTemplateId,
+                        responsableVariables,
+                        `Désinscription : ${inscription.action_nom} le ${dateFormatted} ${heureDebut}`
+                    );
+
+                    console.log(`[BENEVOLAT DESINSCRIPTION] ✓ Email envoyé au responsable: ${inscription.responsable_email}`);
+                } catch (emailErr) {
+                    console.error(`[BENEVOLAT DESINSCRIPTION] ✗ Erreur envoi email responsable:`, emailErr);
+                }
+            }
+        } catch (notificationErr) {
+            // Logger l'erreur mais ne pas bloquer la désinscription
+            console.error('[BENEVOLAT DESINSCRIPTION] Erreur lors de l\'envoi des notifications:', notificationErr);
+        }
+
+        // Supprimer l'inscription
+        const deleteQuery = 'DELETE FROM Benevoles_Actions WHERE id = ?';
+        await db.query(deleteQuery, [inscriptionId],'remote');
+
+        res.status(200).json({
+            success: true,
+            message: 'Désinscription réussie',
+            action: {
+                nom: inscription.action_nom,
+                date_action: inscription.date_action
+            }
+        });
+
+    } catch (error) {
+        console.error('Erreur lors de la désinscription:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Erreur lors de la désinscription'
+        });
+    }
+});
+
+/**
+ * Route pour récupérer la liste des bénévoles par email
+ * Cette route nécessite une authentification
+ */
+router.post('/volunteers', authMiddleware, async (req, res) => {
+  const { email } = req.body;
+  console.log("Demande de liste de bénévoles pour " + email);
+
+  try {
+    const results = await db.select('SELECT * FROM benevoles WHERE email = ? ORDER BY ajout DESC', [email], 'remote');
+    if (results.length === 0) {
+      return res.status(404).json({ message: 'Email not found.' });
+    }
+    return res.status(200).json({ results });
+  } catch (err) {
+    console.error(`[Volunteers Error]: ${err.message}`, err);
+    return res.status(500).json({ message: 'Internal server error.' });
+  }
+});
+
+/**
+ * Route pour récupérer tous les bénévoles d'une association
+ * Cette route nécessite une authentification
+ */
+router.post('/volunteers/by-association', authMiddleware, async (req, res) => {
+  const { asso } = req.body;
+  console.log("Demande de liste de bénévoles pour l'association " + asso);
+
+  try {
+    const results = await db.select('SELECT * FROM benevoles WHERE asso = ? ORDER BY ajout DESC', [asso], 'remote');
+    return res.status(200).json({ results });
+  } catch (err) {
+    console.error(`[Volunteers By Association Error]: ${err.message}`, err);
+    return res.status(500).json({ message: 'Internal server error.' });
+  }
+});
+
+/**
+ * Route pour récupérer la liste des bénévoles pour le backoffice
+ * GET /api/backoffice/benevoles
+ */
+router.get('/backoffice/benevoles', authMiddleware, async (req, res) => {
+  try {
+    const associationNom = req.user.uri; // Association de l'utilisateur connecté
+    const { search, limit = 10000 } = req.query;
+
+    const limitNumber = parseInt(limit, 10) || 10000;
+
+    let query = `
+      SELECT
+        b.id, b.type, b.nom, b.prenom, b.email, b.telephone, b.adresse, b.ville,
+        b.code_postal, b.pays, b.age, b.genre, b.metiers_competences, b.statut,
+        b.created_at,
+        (SELECT MAX(ba.date_action)
+         FROM Benevoles_Actions ba
+         WHERE ba.benevole_id = b.id AND ba.statut = 'présent'
+        ) as date_derniere_action_presente
+      FROM benevoles b
+      WHERE b.association_nom = ?
+    `;
+
+    const params = [associationNom];
+
+    // Recherche globale
+    if (search) {
+      query += ` AND (nom LIKE ? OR prenom LIKE ? OR email LIKE ? OR telephone LIKE ? OR ville LIKE ?)`;
+      const searchTerm = `%${search}%`;
+      params.push(searchTerm, searchTerm, searchTerm, searchTerm, searchTerm);
+    }
+
+    query += ` ORDER BY created_at DESC LIMIT ${limitNumber}`;
+
+    const results = await db.select(query, params, 'remote');
+
+    return res.status(200).json({
+      success: true,
+      results: results || [],
+      total: results ? results.length : 0
+    });
+  } catch (err) {
+    console.error('[Get Benevoles Error]:', err);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la récupération des bénévoles'
+    });
+  }
+});
+
+/**
+ * Route pour récupérer la liste des responsables
+ * GET /api/backoffice/benevoles/responsables
+ */
+router.get('/backoffice/benevoles/responsables', authMiddleware, async (req, res) => {
+  try {
+    const associationNom = req.user.uri;
+
+    const query = `
+      SELECT nom, prenom, email
+      FROM benevoles
+      WHERE association_nom = ? AND type = 'responsable'
+      ORDER BY nom, prenom
+    `;
+
+    const results = await db.select(query, [associationNom], 'remote');
+
+    return res.status(200).json({
+      success: true,
+      results: results || []
+    });
+  } catch (err) {
+    console.error('[Get Responsables Error]:', err);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la récupération des responsables'
+    });
+  }
+});
+
+/**
+ * Route pour mettre à jour le type d'un bénévole
+ * PATCH /api/backoffice/benevoles/:email/type
+ */
+router.patch('/backoffice/benevoles/:email/type', authMiddleware, async (req, res) => {
+  try {
+    const { email } = req.params;
+    const { type } = req.body;
+    const associationNom = req.user.uri;
+
+    // Validation
+    if (!type || (type !== 'bénévole' && type !== 'responsable')) {
+      return res.status(400).json({
+        success: false,
+        message: 'Type invalide. Doit être "bénévole" ou "responsable"'
+      });
+    }
+
+    // Vérifier que le bénévole existe et appartient à l'association
+    const checkQuery = 'SELECT id FROM benevoles WHERE email = ? AND association_nom = ?';
+    const existing = await db.select(checkQuery, [email, associationNom], 'remote');
+
+    if (!existing || existing.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Bénévole introuvable'
+      });
+    }
+
+    // Mettre à jour le type
+    await db.update(
+      'benevoles',
+      { type: type },
+      'email = ? AND association_nom = ?',
+      [email, associationNom],
+      'remote'
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: 'Type mis à jour avec succès',
+      type: type
+    });
+  } catch (err) {
+    console.error('[Update Benevole Type Error]:', err);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la mise à jour du type'
+    });
+  }
+});
+
+/**
+ * Route pour mettre à jour toutes les informations d'un bénévole
+ * PATCH /api/backoffice/benevoles/:email
+ */
+router.patch('/backoffice/benevoles/:email', authMiddleware, async (req, res) => {
+  try {
+    const { email } = req.params;
+    const associationNom = req.user.uri;
+    const {
+      type,
+      nom,
+      prenom,
+      telephone,
+      adresse,
+      ville,
+      code_postal,
+      pays,
+      age,
+      genre,
+      metiers_competences,
+      statut
+    } = req.body;
+
+    // Vérifier que le bénévole existe et appartient à l'association
+    const checkQuery = 'SELECT id FROM benevoles WHERE email = ? AND association_nom = ?';
+    const existing = await db.select(checkQuery, [email, associationNom], 'remote');
+
+    if (!existing || existing.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Bénévole introuvable'
+      });
+    }
+
+    // Validation des champs obligatoires
+    if (!nom || !prenom) {
+      return res.status(400).json({
+        success: false,
+        message: 'Le nom et le prénom sont obligatoires'
+      });
+    }
+
+    // Validation du type
+    if (type && type !== 'bénévole' && type !== 'responsable') {
+      return res.status(400).json({
+        success: false,
+        message: 'Type invalide. Doit être "bénévole" ou "responsable"'
+      });
+    }
+
+    // Préparer les données de mise à jour (uniquement les champs fournis)
+    const updateData = {};
+    if (type !== undefined) updateData.type = type;
+    if (nom !== undefined) updateData.nom = nom;
+    if (prenom !== undefined) updateData.prenom = prenom;
+    if (telephone !== undefined) updateData.telephone = telephone;
+    if (adresse !== undefined) updateData.adresse = adresse;
+    if (ville !== undefined) updateData.ville = ville;
+    if (code_postal !== undefined) updateData.code_postal = code_postal;
+    if (pays !== undefined) updateData.pays = pays;
+    if (age !== undefined) updateData.age = age;
+    if (genre !== undefined) updateData.genre = genre;
+    if (metiers_competences !== undefined) updateData.metiers_competences = metiers_competences;
+    if (statut !== undefined) updateData.statut = statut;
+
+    // Mettre à jour le bénévole
+    await db.update(
+      'benevoles',
+      updateData,
+      'email = ? AND association_nom = ?',
+      [email, associationNom],
+      'remote'
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: 'Bénévole mis à jour avec succès'
+    });
+  } catch (err) {
+    console.error('[Update Benevole Error]:', err);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la mise à jour du bénévole',
+      error: err.message
+    });
+  }
+});
+
+/**
+ * Route pour récupérer les actions d'un bénévole
+ * GET /api/backoffice/benevoles/:email/actions
+ */
+router.get('/backoffice/benevoles/:email/actions', authMiddleware, async (req, res) => {
+  try {
+    const { email } = req.params;
+    const associationNom = req.user.uri;
+
+    // Vérifier que le bénévole existe et appartient à l'association
+    const benevoleQuery = 'SELECT id FROM benevoles WHERE email = ? AND association_nom = ?';
+    const benevoles = await db.select(benevoleQuery, [email, associationNom], 'remote');
+
+    if (!benevoles || benevoles.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Bénévole introuvable'
+      });
+    }
+
+    const benevoleId = benevoles[0].id;
+
+    // Récupérer les actions du bénévole
+    const actionsQuery = `
+      SELECT
+        ba.id as inscription_id,
+        ba.date_action,
+        ba.created_at as inscription_date,
+        a.nom as action_nom,
+        a.rue,
+        a.ville,
+        a.heure_debut,
+        a.heure_fin
+      FROM Benevoles_Actions ba
+      JOIN actions a ON ba.action_id = a.id
+      WHERE ba.benevole_id = ?
+      ORDER BY ba.date_action DESC, a.heure_debut DESC
+    `;
+
+    const actions = await db.select(actionsQuery, [benevoleId]);
+
+    return res.status(200).json({
+      success: true,
+      actions: actions || [],
+      total: actions ? actions.length : 0
+    });
+  } catch (err) {
+    console.error('[Get Benevole Actions Error]:', err);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la récupération des actions du bénévole'
+    });
+  }
+});
+
+/**
+ * Route pour récupérer la liste des actions de l'association
+ * GET /api/backoffice/actions/list
+ */
+router.get('/backoffice/actions/list', authMiddleware, async (req, res) => {
+  try {
+    const associationNom = req.user.uri;
+
+    const query = `
+      SELECT
+        id, association_nom, rue, ville, pays, nom, description, date_action,
+        heure_debut, heure_fin, recurrence, responsable_email,
+        nb_participants, genre, age, created_at
+      FROM actions
+      WHERE association_nom = ?
+      ORDER BY date_action DESC, heure_debut ASC
+    `;
+
+    const actions = await db.select(query, [associationNom], 'remote');
+
+    // Récupérer le nombre de participants pour chaque action
+    const participantsCountQuery = `
+      SELECT ba.action_id, ba.date_action, COUNT(*) as nb_inscrits
+      FROM Benevoles_Actions ba
+      JOIN actions a ON ba.action_id = a.id
+      WHERE a.association_nom = ?
+      GROUP BY ba.action_id, ba.date_action
+    `;
+    const participantsCounts = await db.select(participantsCountQuery, [associationNom]);
+
+    // Récupérer les actions masquées
+    const maskedActionsQuery = `
+      SELECT action_id, date_masquee
+      FROM Actions_Masquees
+      WHERE association_nom = ?
+    `;
+    const maskedActions = await db.select(maskedActionsQuery, [associationNom], 'remote');
+
+    // Créer une map pour un accès rapide : key = "action_id_date_action", value = nb_inscrits
+    const participantsMap = new Map();
+    if (participantsCounts && participantsCounts.length > 0) {
+      participantsCounts.forEach(count => {
+        // Normaliser la date au format YYYY-MM-DD
+        const dateStr = count.date_action instanceof Date
+          ? count.date_action.toISOString().split('T')[0]
+          : count.date_action;
+        const key = `${count.action_id}_${dateStr}`;
+        participantsMap.set(key, count.nb_inscrits);
+      });
+    }
+
+    // Créer une map pour les actions masquées
+    const maskedMap = new Map();
+    if (maskedActions && maskedActions.length > 0) {
+      maskedActions.forEach(masked => {
+        const dateStr = masked.date_masquee instanceof Date
+          ? masked.date_masquee.toISOString().split('T')[0]
+          : masked.date_masquee;
+        const key = `${masked.action_id}_${dateStr}`;
+        maskedMap.set(key, true);
+      });
+    }
+
+    // Convertir les maps en objets pour l'envoyer au frontend
+    const participantsCountsObject = {};
+    participantsMap.forEach((count, key) => {
+      participantsCountsObject[key] = count;
+    });
+
+    const maskedActionsObject = {};
+    maskedMap.forEach((isMasked, key) => {
+      maskedActionsObject[key] = isMasked;
+    });
+
+    return res.status(200).json({
+      success: true,
+      actions: actions || [],
+      participants_counts: participantsCountsObject,
+      masked_actions: maskedActionsObject,
+      total: actions ? actions.length : 0
+    });
+  } catch (err) {
+    console.error('[Get Actions List Error]:', err);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la récupération des actions'
+    });
+  }
+});
+
+/**
+ * Route pour mettre à jour une action
+ * PUT /api/backoffice/actions/:id
+ */
+router.put('/backoffice/actions/:id', authMiddleware, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const associationNom = req.user.uri;
+    const {
+      rue, ville, pays, nom, description, date_action, heure_debut, heure_fin,
+      recurrence, responsable_email, nb_participants, genre, age
+    } = req.body;
+
+    console.log(`[UPDATE ACTION] ===== DÉBUT MISE À JOUR ACTION ID=${id} =====`);
+    console.log(`[UPDATE ACTION] Nouveau responsable_email: ${responsable_email}`);
+
+    // Vérifier que l'action existe et appartient à l'association
+    const checkQuery = 'SELECT id, responsable_email, recurrence, date_action FROM actions WHERE id = ? AND association_nom = ?';
+    const existing = await db.select(checkQuery, [id, associationNom], 'remote');
+
+    if (!existing || existing.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Action introuvable'
+      });
+    }
+
+    const oldResponsableEmail = existing[0].responsable_email;
+    const oldRecurrence = existing[0].recurrence;
+    const oldDateAction = existing[0].date_action;
+
+    // Validation des champs obligatoires
+    if (!nom || !date_action || !heure_debut || !heure_fin || !responsable_email) {
+      return res.status(400).json({
+        success: false,
+        message: 'Champs obligatoires manquants'
+      });
+    }
+
+    // Détecter si le responsable a changé
+    const responsableChanged = oldResponsableEmail !== responsable_email;
+
+    if (responsableChanged) {
+      console.log(`[UPDATE ACTION] Changement de responsable détecté: ${oldResponsableEmail} → ${responsable_email}`);
+
+      // 1. Vérifier que le nouveau responsable existe
+      const newResponsableQuery = 'SELECT id FROM benevoles WHERE email = ? AND association_nom = ?';
+      const newResponsables = await db.select(newResponsableQuery, [responsable_email, associationNom], 'remote');
+
+      if (!newResponsables || newResponsables.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: `Le nouveau responsable ${responsable_email} n'existe pas dans la base de données`
+        });
+      }
+
+      const newResponsableId = newResponsables[0].id;
+
+      // 2. Récupérer l'ID de l'ancien responsable (peut ne pas exister)
+      let oldResponsableId = null;
+      if (oldResponsableEmail) {
+        const oldResponsableQuery = 'SELECT id FROM benevoles WHERE email = ? AND association_nom = ?';
+        const oldResponsables = await db.select(oldResponsableQuery, [oldResponsableEmail, associationNom], 'remote');
+
+        if (oldResponsables && oldResponsables.length > 0) {
+          oldResponsableId = oldResponsables[0].id;
+        }
+      }
+
+      // 3. Calculer la date limite (aujourd'hui)
+      const today = new Date();
+      const todayStr = today.toISOString().split('T')[0];
+
+      console.log(`[UPDATE ACTION] Date de référence: ${todayStr}`);
+
+      // 4. Désinscrire l'ancien responsable (si existant) des occurrences futures
+      if (oldResponsableId) {
+        const deleteQuery = `
+          DELETE FROM Benevoles_Actions
+          WHERE benevole_id = ?
+            AND action_id = ?
+            AND date_action >= ?
+        `;
+
+        const deleteResult = await db.query(deleteQuery, [oldResponsableId, id, todayStr], 'remote');
+
+        console.log(`[UPDATE ACTION] ✓ Ancien responsable désinscrit: ${deleteResult.affectedRows || 0} inscription(s) supprimée(s)`);
+      } else {
+        console.log(`[UPDATE ACTION] ℹ Ancien responsable ${oldResponsableEmail} non trouvé, aucune désinscription nécessaire`);
+      }
+
+      // 5. Générer les dates d'inscription pour le nouveau responsable
+      const inscriptionDates = [];
+      const actionDate = new Date(date_action);
+      const recurrenceType = recurrence || 'Aucune';
+
+      console.log(`[UPDATE ACTION] Type de récurrence: ${recurrenceType}, Date action: ${date_action}, Date référence: ${todayStr}`);
+
+      if (recurrenceType === 'Aucune') {
+        // Action ponctuelle : 1 seule inscription si la date est future
+        if (date_action >= todayStr) {
+          inscriptionDates.push(date_action);
+          console.log(`[UPDATE ACTION] Action ponctuelle future, ajout de ${date_action}`);
+        } else {
+          console.log(`[UPDATE ACTION] Action ponctuelle passée (${date_action}), aucune inscription`);
+        }
+      } else if (recurrenceType === 'Quotidienne') {
+        // Action quotidienne : trouver la prochaine occurrence à partir d'aujourd'hui
+        // puis générer 365 jours
+        const startDate = new Date(Math.max(today.getTime(), actionDate.getTime()));
+        for (let i = 0; i < 365; i++) {
+          const currentDate = new Date(startDate);
+          currentDate.setDate(startDate.getDate() + i);
+          const dateStr = currentDate.toISOString().split('T')[0];
+          inscriptionDates.push(dateStr);
+        }
+        console.log(`[UPDATE ACTION] Action quotidienne, 365 dates générées à partir de ${startDate.toISOString().split('T')[0]}`);
+      } else if (recurrenceType === 'Hebdomadaire') {
+        // Action hebdomadaire : trouver la prochaine occurrence à partir d'aujourd'hui
+        // en respectant le jour de la semaine de l'action d'origine
+        const actionDayOfWeek = actionDate.getDay();
+        const todayDayOfWeek = today.getDay();
+
+        // Calculer combien de jours jusqu'à la prochaine occurrence
+        let daysUntilNext = (actionDayOfWeek - todayDayOfWeek + 7) % 7;
+        if (daysUntilNext === 0 && today.toISOString().split('T')[0] < date_action) {
+          // Si c'est aujourd'hui mais la date d'action est dans le futur, attendre la semaine prochaine
+          daysUntilNext = 7;
+        }
+
+        const firstOccurrence = new Date(today);
+        firstOccurrence.setDate(today.getDate() + daysUntilNext);
+
+        // Générer 52 semaines à partir de la première occurrence
+        for (let i = 0; i < 52; i++) {
+          const currentDate = new Date(firstOccurrence);
+          currentDate.setDate(firstOccurrence.getDate() + (i * 7));
+          const dateStr = currentDate.toISOString().split('T')[0];
+          inscriptionDates.push(dateStr);
+        }
+        console.log(`[UPDATE ACTION] Action hebdomadaire, 52 occurrences générées à partir de ${firstOccurrence.toISOString().split('T')[0]} (jour: ${actionDayOfWeek})`);
+      }
+
+      console.log(`[UPDATE ACTION] ${inscriptionDates.length} date(s) d'inscription à créer pour le nouveau responsable`);
+
+      // 6. Inscrire le nouveau responsable aux occurrences futures
+      if (inscriptionDates.length > 0) {
+        const values = inscriptionDates.map(dateStr =>
+          `(${newResponsableId}, ${id}, '${dateStr}', 'inscrit')`
+        ).join(', ');
+
+        const insertQuery = `
+          INSERT INTO Benevoles_Actions (benevole_id, action_id, date_action, statut)
+          VALUES ${values}
+          ON DUPLICATE KEY UPDATE benevole_id = benevole_id
+        `;
+
+        await db.query(insertQuery, [], 'remote');
+
+        console.log(`[UPDATE ACTION] ✓ Nouveau responsable inscrit: ${inscriptionDates.length} inscription(s) créée(s)`);
+      }
+    }
+
+    // Préparer les données de mise à jour
+    const updateData = {
+      rue: rue || null,
+      ville: ville || null,
+      pays: pays || 'France',
+      nom: nom,
+      description: description || null,
+      date_action: date_action,
+      heure_debut: heure_debut,
+      heure_fin: heure_fin,
+      recurrence: recurrence || 'Aucune',
+      responsable_email: responsable_email,
+      nb_participants: nb_participants || 6,
+      genre: genre || 'mixte',
+      age: age || 'majeure'
+    };
+
+    await db.update('actions', updateData, 'id = ?', [id], 'remote');
+
+    return res.status(200).json({
+      success: true,
+      message: 'Action mise à jour avec succès',
+      responsable_changed: responsableChanged
+    });
+  } catch (err) {
+    console.error('[Update Action Error]:', err);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la mise à jour de l\'action',
+      error: err.message
+    });
+  }
+});
+
+/**
+ * Route pour récupérer les participants d'une action (backoffice admin)
+ * GET /api/backoffice/actions/:actionId/participants
+ */
+router.get('/backoffice/actions/:actionId/participants', authMiddleware, async (req, res) => {
+  try {
+    const { actionId } = req.params;
+    const { date_action } = req.query;
+    const associationNom = req.user.uri;
+
+    // Vérifier que l'action existe et appartient à l'association
+    const actionQuery = 'SELECT id FROM actions WHERE id = ? AND association_nom = ?';
+    const actions = await db.select(actionQuery, [actionId, associationNom], 'remote');
+
+    if (!actions || actions.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Action introuvable'
+      });
+    }
+
+    // Récupérer les participants
+    let participantsQuery = `
+      SELECT
+        ba.id as inscription_id,
+        ba.statut,
+        ba.date_action,
+        b.nom,
+        b.prenom,
+        b.email,
+        b.telephone
+      FROM Benevoles_Actions ba
+      JOIN benevoles b ON ba.benevole_id = b.id
+      WHERE ba.action_id = ?
+    `;
+
+    const queryParams = [actionId];
+
+    if (date_action) {
+      participantsQuery += ' AND ba.date_action = ?';
+      queryParams.push(date_action);
+    }
+
+    participantsQuery += ' ORDER BY b.nom, b.prenom';
+
+    const participants = await db.select(participantsQuery, queryParams);
+
+    return res.status(200).json({
+      success: true,
+      participants: participants || [],
+      total: participants ? participants.length : 0
+    });
+  } catch (err) {
+    console.error('[Get Action Participants (Admin) Error]:', err);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la récupération des participants'
+    });
+  }
+});
+
+/**
+ * Route pour masquer une occurrence d'action (backoffice admin)
+ * POST /api/backoffice/actions/:actionId/mask
+ */
+router.post('/backoffice/actions/:actionId/mask', authMiddleware, async (req, res) => {
+  try {
+    const { actionId } = req.params;
+    const { date_action } = req.body;
+    const associationNom = req.user.uri;
+
+    if (!date_action) {
+      return res.status(400).json({
+        success: false,
+        message: 'date_action est requis'
+      });
+    }
+
+    // Vérifier que l'action existe et appartient à l'association
+    const actionQuery = 'SELECT id FROM actions WHERE id = ? AND association_nom = ?';
+    const actions = await db.select(actionQuery, [actionId, associationNom], 'remote');
+
+    if (!actions || actions.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Action introuvable'
+      });
+    }
+
+    // Insérer dans Actions_Masquees (avec gestion du doublon)
+    const insertQuery = `
+      INSERT INTO Actions_Masquees (action_id, date_masquee, association_nom)
+      VALUES (?, ?, ?)
+      ON DUPLICATE KEY UPDATE action_id = action_id
+    `;
+
+    await db.query(insertQuery, [actionId, date_action, associationNom], 'remote');
+
+    return res.status(200).json({
+      success: true,
+      message: 'Action masquée avec succès'
+    });
+  } catch (err) {
+    console.error('[Mask Action Error]:', err);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors du masquage de l\'action'
+    });
+  }
+});
+
+/**
+ * Route pour démasquer une occurrence d'action (backoffice admin)
+ * DELETE /api/backoffice/actions/:actionId/mask
+ */
+router.delete('/backoffice/actions/:actionId/mask', authMiddleware, async (req, res) => {
+  try {
+    const { actionId } = req.params;
+    const { date_action } = req.query;
+    const associationNom = req.user.uri;
+
+    if (!date_action) {
+      return res.status(400).json({
+        success: false,
+        message: 'date_action est requis'
+      });
+    }
+
+    // Vérifier que l'action existe et appartient à l'association
+    const actionQuery = 'SELECT id FROM actions WHERE id = ? AND association_nom = ?';
+    const actions = await db.select(actionQuery, [actionId, associationNom], 'remote');
+
+    if (!actions || actions.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Action introuvable'
+      });
+    }
+
+    // Supprimer de Actions_Masquees
+    const deleteQuery = `
+      DELETE FROM Actions_Masquees
+      WHERE action_id = ? AND date_masquee = ? AND association_nom = ?
+    `;
+
+    await db.query(deleteQuery, [actionId, date_action, associationNom], 'remote');
+
+    return res.status(200).json({
+      success: true,
+      message: 'Action démasquée avec succès'
+    });
+  } catch (err) {
+    console.error('[Unmask Action Error]:', err);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors du démasquage de l\'action'
+    });
+  }
+});
+
+/**
+ * Route pour créer une nouvelle action
+ * POST /api/backoffice/actions
+ */
+router.post('/backoffice/actions', authMiddleware, async (req, res) => {
+  try {
+    const associationNom = req.user.uri;
+    const {
+      rue, ville, pays, nom, description, date_action, heure_debut, heure_fin,
+      recurrence, responsable_email, nb_participants, genre, age
+    } = req.body;
+
+    // Validation des champs obligatoires
+    if (!nom || !date_action || !heure_debut || !heure_fin || !responsable_email) {
+      return res.status(400).json({
+        success: false,
+        message: 'Champs obligatoires manquants: nom, date_action, heure_debut, heure_fin, responsable_email sont requis'
+      });
+    }
+
+    // Préparer les données de l'action
+    const actionData = {
+      association_nom: associationNom,
+      rue: rue || null,
+      ville: ville || null,
+      pays: pays || 'France',
+      nom: nom,
+      description: description || null,
+      date_action: date_action,
+      heure_debut: heure_debut,
+      heure_fin: heure_fin,
+      recurrence: recurrence || 'Aucune',
+      responsable_email: responsable_email,
+      nb_participants: nb_participants || 6,
+      genre: genre || 'mixte',
+      age: age || 'majeure'
+    };
+
+    const result = await db.insert('actions', actionData, 'remote');
+    const actionId = result.insertId;
+
+    // Inscrire automatiquement le responsable à l'action
+    try {
+      console.log(`[Create Action] Tentative d'inscription automatique du responsable: ${responsable_email}`);
+
+      // Récupérer l'ID du responsable
+      const responsableQuery = 'SELECT id FROM benevoles WHERE email = ? AND association_nom = ?';
+      const responsables = await db.select(responsableQuery, [responsable_email, associationNom], 'remote');
+
+      console.log(`[Create Action] Résultat recherche responsable:`, responsables);
+
+      if (responsables && responsables.length > 0) {
+        const responsableId = responsables[0].id;
+        console.log(`[Create Action] Responsable trouvé avec ID: ${responsableId}`);
+
+        // Générer les dates d'inscription selon la récurrence
+        const inscriptionDates = [];
+        const startDate = new Date(date_action);
+        const recurrenceType = recurrence || 'Aucune';
+
+        console.log(`[Create Action] Type de récurrence: ${recurrenceType}`);
+
+        if (recurrenceType === 'Aucune') {
+          // Action ponctuelle : 1 seule inscription
+          inscriptionDates.push(date_action);
+        } else if (recurrenceType === 'Quotidienne') {
+          // Action quotidienne : 365 jours
+          for (let i = 0; i < 365; i++) {
+            const currentDate = new Date(startDate);
+            currentDate.setDate(startDate.getDate() + i);
+            const dateStr = currentDate.toISOString().split('T')[0];
+            inscriptionDates.push(dateStr);
+          }
+        } else if (recurrenceType === 'Hebdomadaire') {
+          // Action hebdomadaire : 52 semaines
+          for (let i = 0; i < 52; i++) {
+            const currentDate = new Date(startDate);
+            currentDate.setDate(startDate.getDate() + (i * 7));
+            const dateStr = currentDate.toISOString().split('T')[0];
+            inscriptionDates.push(dateStr);
+          }
+        }
+
+        console.log(`[Create Action] Nombre de dates générées: ${inscriptionDates.length}`);
+
+        // Insérer toutes les inscriptions en masse
+        if (inscriptionDates.length > 0) {
+          const values = inscriptionDates.map(dateStr =>
+            `(${responsableId}, ${actionId}, '${dateStr}', 'inscrit')`
+          ).join(', ');
+
+          const insertQuery = `
+            INSERT INTO Benevoles_Actions (benevole_id, action_id, date_action, statut)
+            VALUES ${values}
+          `;
+
+          console.log(`[Create Action] Exécution de la requête d'insertion...`);
+          console.log(`[Create Action] Requête SQL (premiers 200 caractères): ${insertQuery.substring(0, 200)}...`);
+
+          const insertResult = await db.query(insertQuery, [], 'remote');
+
+          console.log(`[Create Action] Résultat insertion:`, insertResult);
+          console.log(`[Create Action] ✓ ${inscriptionDates.length} inscriptions créées pour le responsable ${responsable_email}`);
+        }
+      } else {
+        console.warn(`[Create Action] ⚠ Responsable ${responsable_email} non trouvé dans la table benevoles pour l'association ${associationNom}`);
+        console.warn(`[Create Action] ⚠ Inscription automatique ignorée`);
+      }
+    } catch (inscriptionErr) {
+      // Logger l'erreur mais ne pas bloquer la création de l'action
+      console.error('[Create Action] ✗ Erreur lors de l\'inscription automatique du responsable:', inscriptionErr);
+      console.error('[Create Action] Stack trace:', inscriptionErr.stack);
+    }
+
+    return res.status(201).json({
+      success: true,
+      message: 'Action créée avec succès',
+      id: actionId
+    });
+  } catch (err) {
+    console.error('[Create Action Error]:', err);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la création de l\'action',
+      error: err.message
+    });
+  }
+});
+
+/**
+ * GET /api/benevolat/cron/send-reminders
+ * Envoie un email de rappel aux bénévoles inscrits à une action prévue le lendemain
+ * Cette route est appelée par un cron quotidien à 14h
+ */
+router.get('/benevolat/cron/send-reminders', async (req, res) => {
+  try {
+    console.log('[CRON REMINDERS] Début de l\'exécution du cron de rappel');
+
+    // 1. Calculer la date de demain
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowStr = tomorrow.toISOString().split('T')[0]; // Format YYYY-MM-DD
+
+    console.log(`[CRON REMINDERS] Date cible: ${tomorrowStr}`);
+
+    // 2. Récupérer toutes les inscriptions pour demain
+    const query = `
+      SELECT
+        ba.id as inscription_id,
+        ba.benevole_id,
+        ba.action_id,
+        ba.date_action,
+        b.nom as benevole_nom,
+        b.prenom as benevole_prenom,
+        b.email as benevole_email,
+        a.nom as action_nom,
+        a.heure_debut,
+        a.heure_fin,
+        a.rue,
+        a.ville,
+        a.pays,
+        a.association_nom
+      FROM Benevoles_Actions ba
+      JOIN benevoles b ON ba.benevole_id = b.id
+      JOIN actions a ON ba.action_id = a.id
+      WHERE ba.date_action = ?
+        AND ba.statut = 'inscrit'
+        AND ba.relance_email IS NULL
+      ORDER BY b.email, a.heure_debut
+    `;
+
+    const inscriptions = await db.select(query, [tomorrowStr]);
+
+    console.log(`[CRON REMINDERS] ${inscriptions ? inscriptions.length : 0} inscriptions trouvées`);
+
+    if (!inscriptions || inscriptions.length === 0) {
+      return res.status(200).json({
+        success: true,
+        message: 'Aucune inscription à rappeler pour demain',
+        date_cible: tomorrowStr,
+        emails_envoyes: 0,
+        erreurs: 0
+      });
+    }
+
+    // 3. Envoyer les emails de rappel
+    let emailsEnvoyes = 0;
+    let erreurs = 0;
+    const details = [];
+    const dateExecution = new Date();
+
+    for (const inscription of inscriptions) {
+      try {
+        console.log(`[CRON REMINDERS] Traitement de l'inscription ${inscription.inscription_id} pour ${inscription.benevole_email}`);
+
+        // 3a. Récupérer le logo de l'association
+        let logoUrl = '';
+        if (inscription.association_nom) {
+          try {
+            const assoQuery = 'SELECT logoUrl FROM Assos WHERE uri = ?';
+            const assoResults = await db.select(assoQuery, [inscription.association_nom], 'remote');
+            if (assoResults && assoResults.length > 0 && assoResults[0].logoUrl) {
+              logoUrl = `https://v2.myamana.fr/${assoResults[0].logoUrl}`;
+            }
+          } catch (assoErr) {
+            console.warn(`[CRON REMINDERS] Impossible de récupérer le logo pour ${inscription.association_nom}:`, assoErr);
+          }
+        }
+
+        // 3b. Formater la date en français
+        const dateFormatted = new Date(inscription.date_action).toLocaleDateString('fr-FR', {
+          weekday: 'long',
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
+        });
+
+        // 3c. Formater les horaires
+        const heureDebut = inscription.heure_debut.substring(0, 5); // HH:MM
+        const heureFin = inscription.heure_fin.substring(0, 5); // HH:MM
+
+        // 3d. Construire l'adresse
+        const lieu = [inscription.rue, inscription.ville, inscription.pays]
+          .filter(Boolean)
+          .join(', ') || 'À préciser';
+
+        // 3e. Préparer les variables du template
+        const variables = {
+          logo_url: logoUrl,
+          benevole_prenom: inscription.benevole_prenom || 'Bénévole',
+          action_nom: inscription.action_nom,
+          action_date: dateFormatted,
+          action_heure_debut: heureDebut,
+          action_heure_fin: heureFin,
+          action_lieu: lieu
+        };
+
+        // 3f. Envoyer l'email
+        await mailService.sendTemplateEmail(
+          inscription.benevole_email,
+          7451569, // ID du template de rappel
+          variables,
+          `Rappel : ${inscription.action_nom} demain à ${heureDebut}`
+        );
+
+        // 3g. Mettre à jour la colonne relance_email
+        await db.update(
+          'Benevoles_Actions',
+          { relance_email: dateExecution },
+          'id = ?',
+          [inscription.inscription_id],
+          'remote'
+        );
+
+        emailsEnvoyes++;
+        details.push({
+          benevole_email: inscription.benevole_email,
+          action_nom: inscription.action_nom,
+          date_action: inscription.date_action,
+          statut: 'envoyé'
+        });
+
+        console.log(`[CRON REMINDERS] ✓ Email envoyé à ${inscription.benevole_email} pour ${inscription.action_nom}`);
+
+      } catch (emailErr) {
+        erreurs++;
+        details.push({
+          benevole_email: inscription.benevole_email,
+          action_nom: inscription.action_nom,
+          date_action: inscription.date_action,
+          statut: 'erreur',
+          erreur: emailErr.message
+        });
+
+        console.error(`[CRON REMINDERS] ✗ Erreur envoi email pour ${inscription.benevole_email}:`, emailErr);
+      }
+    }
+
+    // 4. Retourner le résumé
+    console.log(`[CRON REMINDERS] Fin de l'exécution: ${emailsEnvoyes} emails envoyés, ${erreurs} erreurs`);
+
+    return res.status(200).json({
+      success: true,
+      message: `${emailsEnvoyes} email(s) de rappel envoyé(s)`,
+      date_cible: tomorrowStr,
+      date_execution: dateExecution.toISOString(),
+      emails_envoyes: emailsEnvoyes,
+      erreurs: erreurs,
+      details: details
+    });
+
+  } catch (error) {
+    console.error('[CRON REMINDERS] Erreur globale:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors de l\'envoi des rappels',
+      error: error.message
+    });
+  }
+});
+
+/**
+ * GET /api/benevolat/cron/sync-to-sheets
+ * Synchronise tous les bénévoles de la base de données vers le Google Sheet
+ * Cette route est appelée par un cron pour maintenir le Google Sheet à jour
+ */
+router.get('/benevolat/cron/sync-to-sheets', async (req, res) => {
+  try {
+    console.log('[CRON SHEETS SYNC] Début de la synchronisation vers Google Sheets');
+
+    const dateExecution = new Date();
+
+    // 1. Récupérer tous les bénévoles de la table
+    const query = `
+      SELECT nom, prenom, genre, telephone, statut
+      FROM benevoles
+      ORDER BY nom, prenom
+    `;
+
+    const benevoles = await db.select(query, [], 'remote');
+
+    console.log(`[CRON SHEETS SYNC] ${benevoles ? benevoles.length : 0} bénévole(s) récupéré(s) de la base de données`);
+
+    if (!benevoles || benevoles.length === 0) {
+      return res.status(200).json({
+        success: true,
+        message: 'Aucun bénévole à synchroniser',
+        date_execution: dateExecution.toISOString(),
+        count: 0
+      });
+    }
+
+    // 2. Synchroniser vers Google Sheets
+    const result = await googleSheetsService.syncVolunteers(benevoles);
+
+    console.log(`[CRON SHEETS SYNC] Synchronisation terminée avec succès: ${result.count} bénévole(s) synchronisé(s)`);
+
+    return res.status(200).json({
+      success: true,
+      message: `${result.count} bénévole(s) synchronisé(s) vers Google Sheets`,
+      date_execution: dateExecution.toISOString(),
+      count: result.count,
+      updated_cells: result.updatedCells,
+      updated_rows: result.updatedRows
+    });
+
+  } catch (error) {
+    console.error('[CRON SHEETS SYNC] Erreur lors de la synchronisation:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la synchronisation vers Google Sheets',
+      error: error.message
+    });
+  }
+});
+
+// =============================================
+// NOUVEAUX ENDPOINTS POUR LE SYSTÈME DE CARTE REPAS
+// =============================================
+
+  /**
+   * POST /api/benevolat/qrcode/generate
+   * Génère un QR code pour un bénéficiaire avec URL de validation
+   */
+  router.post('/benevolat/qrcode/generate', authMiddleware, async (req, res) => {
+    try {
+      const { nom, prenom, nombre_beneficiaires, frontend_url } = req.body;
+      const associationNom = req.user.associationName || req.user.uri || req.user.nameAsso || 'MyAmana';
+      const createdBy = req.user.id;
+
+      // Validation des champs obligatoires
+      if (!nom || !prenom || !nombre_beneficiaires) {
+        return res.status(400).json({
+          success: false,
+          message: 'Les champs nom, prenom et nombre_beneficiaires sont obligatoires'
+        });
+      }
+
+      // Validation du nombre de bénéficiaires
+      if (nombre_beneficiaires < 1 || nombre_beneficiaires > 10) {
+        return res.status(400).json({
+          success: false,
+          message: 'Le nombre de bénéficiaires doit être compris entre 1 et 10'
+        });
+      }
+
+      // Générer un identifiant unique pour le QR code
+      const qrCodeId = `QR-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+
+      // Créer les données du QR code (format JSON)
+      const qrCodeData = {
+        id: qrCodeId,
+        nom,
+        prenom,
+        nombre_beneficiaires: parseInt(nombre_beneficiaires),
+        association: associationNom,
+        created_at: new Date().toISOString(),
+        created_by: createdBy
+      };
+
+      // Créer l'URL de validation
+      const requestedBaseUrl = typeof frontend_url === 'string' ? frontend_url.trim() : '';
+      const baseUrl = (requestedBaseUrl || process.env.FRONTEND_URL || 'https://myamana.fr').replace(/\/$/, '');
+      const validationUrl = `${baseUrl}/benevolat/qrcode/validate/${qrCodeId}`;
+
+      // Stocker dans la base de données avec l'URL de validation
+      const insertResult = await db.insert('qrcode_cards', {
+        nom,
+        prenom,
+        nombre_beneficiaires: parseInt(nombre_beneficiaires),
+        qrcode_data: JSON.stringify(qrCodeData),
+        validation_url: validationUrl,
+        created_by: createdBy,
+        association_nom: associationNom || 'MyAmana', // Valeur par défaut si undefined
+        statut: 'active'
+      }, 'remote');
+
+      // Créer les données du QR code avec l'URL de validation
+      const qrCodeContent = {
+        ...qrCodeData,
+        validation_url: validationUrl
+      };
+
+      // Générer le QR code avec l'URL de validation uniquement (scan direct via appareil photo)
+      const qrCodeImage = await qrcode.toDataURL(validationUrl);
+
+      return res.status(201).json({
+        success: true,
+        message: 'QR code généré avec succès',
+        qr_code: {
+          id: insertResult.insertId,
+          qr_code_id: qrCodeId,
+          nom,
+          prenom,
+          nombre_beneficiaires: parseInt(nombre_beneficiaires),
+          association_nom: associationNom || 'MyAmana',
+          validation_url: validationUrl,
+          created_at: new Date().toISOString(),
+          qr_code_image: qrCodeImage,
+          instructions: 'Scannez ce QR code avec l\'appareil photo de votre téléphone pour valider la récupération du repas.'
+        }
+      });
+  } catch (err) {
+    console.error('[Generate QR Code Error]:', err);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la génération du QR code',
+      error: err.message
+    });
+  }
+});
+
+
+/**
+ * GET /api/benevolat/qrcode/pickups
+ * Récupère la liste des récupérations de repas
+ */
+router.get('/benevolat/qrcode/pickups', authMiddleware, async (req, res) => {
+  try {
+    const associationKey = req.user.associationName || req.user.uri || req.user.nameAsso;
+    const associationNames = [];
+    if (associationKey) {
+      associationNames.push(associationKey);
+      if (req.user.uri || associationKey) {
+        const assoRows = await db.select('SELECT nom FROM Assos WHERE uri = ? LIMIT 1', [associationKey], 'remote');
+        if (assoRows && assoRows.length > 0 && assoRows[0].nom && assoRows[0].nom !== associationKey) {
+          associationNames.push(assoRows[0].nom);
+        }
+      }
+    }
+    if (associationNames.length === 0) {
+      associationNames.push('MyAmana');
+    }
+    const { limit = 100, offset = 0, date_from, date_to } = req.query;
+
+    const limitNumber = parseInt(limit, 10) || 100;
+    const offsetNumber = parseInt(offset, 10) || 0;
+
+    let query = `
+      SELECT
+        mp.id,
+        mp.scan_date,
+        mp.nombre_repas,
+        mp.statut,
+        qc.nom,
+        qc.prenom,
+        qc.nombre_beneficiaires,
+        b.nom as volunteer_nom,
+        b.prenom as volunteer_prenom
+      FROM meal_pickups mp
+      JOIN qrcode_cards qc ON mp.qrcode_card_id = qc.id
+      LEFT JOIN benevoles b ON mp.volunteer_id = b.id
+      WHERE qc.association_nom IN (${associationNames.map(() => '?').join(', ')})
+    `;
+
+    const params = [...associationNames];
+
+    // Filtre par date
+    if (date_from) {
+      query += ' AND DATE(mp.scan_date) >= ?';
+      params.push(date_from);
+    }
+
+    if (date_to) {
+      query += ' AND DATE(mp.scan_date) <= ?';
+      params.push(date_to);
+    }
+
+    const safeLimit = Number.isFinite(limitNumber) ? Math.max(0, limitNumber) : 100;
+    const safeOffset = Number.isFinite(offsetNumber) ? Math.max(0, offsetNumber) : 0;
+    query += ` ORDER BY mp.scan_date DESC LIMIT ${safeLimit} OFFSET ${safeOffset}`;
+
+    const pickups = await db.select(query, params, 'remote');
+
+    // Compter le total
+    let countQuery = `
+      SELECT COUNT(*) as total
+      FROM meal_pickups mp
+      JOIN qrcode_cards qc ON mp.qrcode_card_id = qc.id
+      WHERE qc.association_nom IN (${associationNames.map(() => '?').join(', ')})
+    `;
+
+    const countParams = [...associationNames];
+
+    if (date_from) {
+      countQuery += ' AND DATE(mp.scan_date) >= ?';
+      countParams.push(date_from);
+    }
+
+    if (date_to) {
+      countQuery += ' AND DATE(mp.scan_date) <= ?';
+      countParams.push(date_to);
+    }
+
+    const countResult = await db.select(countQuery, countParams, 'remote');
+    const total = countResult[0]?.total || 0;
+
+    return res.status(200).json({
+      success: true,
+      pickups: pickups || [],
+      total: total,
+      limit: limitNumber,
+      offset: offsetNumber
+    });
+  } catch (err) {
+    console.error('[Get Meal Pickups Error]:', err);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la récupération des enregistrements',
+      error: err.message
+    });
+  }
+});
+
+/**
+ * GET /api/benevolat/qrcode/cards
+ * Récupère la liste des cartes QR code générées
+ */
+router.get('/benevolat/qrcode/cards', authMiddleware, async (req, res) => {
+  try {
+    const associationKey = req.user.associationName || req.user.uri || req.user.nameAsso;
+    const associationNames = [];
+    if (associationKey) {
+      associationNames.push(associationKey);
+      const assoRows = await db.select('SELECT nom FROM Assos WHERE uri = ? LIMIT 1', [associationKey], 'remote');
+      if (assoRows && assoRows.length > 0 && assoRows[0].nom && assoRows[0].nom !== associationKey) {
+        associationNames.push(assoRows[0].nom);
+      }
+    }
+    if (associationNames.length === 0) {
+      associationNames.push('MyAmana');
+    }
+    const { limit = 100, offset = 0, statut } = req.query;
+
+    const limitNumber = parseInt(limit, 10) || 100;
+    const offsetNumber = parseInt(offset, 10) || 0;
+
+    let query = `
+      SELECT
+        qc.id,
+        qc.nom,
+        qc.prenom,
+        qc.nombre_beneficiaires,
+        qc.qrcode_data,
+        qc.created_at,
+        qc.statut,
+        qc.validation_url,
+        (SELECT MAX(mp.scan_date) FROM meal_pickups mp WHERE mp.qrcode_card_id = qc.id) AS last_scan_date,
+        (SELECT mp2.statut FROM meal_pickups mp2 WHERE mp2.qrcode_card_id = qc.id ORDER BY mp2.scan_date DESC LIMIT 1) AS last_scan_status
+      FROM qrcode_cards qc
+      WHERE qc.association_nom IN (${associationNames.map(() => '?').join(', ')})
+    `;
+
+    const params = [...associationNames];
+
+    if (statut) {
+      query += ' AND statut = ?';
+      params.push(statut);
+    }
+
+    const safeLimit = Number.isFinite(limitNumber) ? Math.max(0, limitNumber) : 100;
+    const safeOffset = Number.isFinite(offsetNumber) ? Math.max(0, offsetNumber) : 0;
+    query += ` ORDER BY created_at DESC LIMIT ${safeLimit} OFFSET ${safeOffset}`;
+
+    const cards = await db.select(query, params, 'remote');
+
+    // Compter le total
+    let countQuery = `
+      SELECT COUNT(*) as total
+      FROM qrcode_cards
+      WHERE association_nom IN (${associationNames.map(() => '?').join(', ')})
+    `;
+
+    const countParams = [...associationNames];
+
+    if (statut) {
+      countQuery += ' AND statut = ?';
+      countParams.push(statut);
+    }
+
+    const countResult = await db.select(countQuery, countParams, 'remote');
+    const total = countResult[0]?.total || 0;
+
+    return res.status(200).json({
+      success: true,
+      cards: cards || [],
+      total: total,
+      limit: limitNumber,
+      offset: offsetNumber
+    });
+  } catch (err) {
+    console.error('[Get QR Code Cards Error]:', err);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la récupération des cartes QR code',
+      error: err.message
+    });
+  }
+});
+
+/**
+ * GET /api/benevolat/qrcode/cards/:id/qr-image
+ * Récupère une carte et génère le QR code pour téléchargement
+ */
+router.get('/benevolat/qrcode/cards/:id/qr-image', authMiddleware, async (req, res) => {
+  try {
+    const cardId = parseInt(req.params.id, 10);
+    if (!Number.isFinite(cardId)) {
+      return res.status(400).json({ success: false, message: 'ID de carte invalide' });
+    }
+
+    const associationKey = req.user.associationName || req.user.uri || req.user.nameAsso;
+    const associationNames = [];
+    if (associationKey) {
+      associationNames.push(associationKey);
+      const assoRows = await db.select('SELECT nom FROM Assos WHERE uri = ? LIMIT 1', [associationKey], 'remote');
+      if (assoRows && assoRows.length > 0 && assoRows[0].nom && assoRows[0].nom !== associationKey) {
+        associationNames.push(assoRows[0].nom);
+      }
+    }
+    if (associationNames.length === 0) {
+      associationNames.push('MyAmana');
+    }
+
+    const query = `
+      SELECT id, nom, prenom, nombre_beneficiaires, created_at, statut, validation_url, association_nom
+      FROM qrcode_cards
+      WHERE id = ? AND association_nom IN (${associationNames.map(() => '?').join(', ')})
+      LIMIT 1
+    `;
+    const params = [cardId, ...associationNames];
+    const cards = await db.select(query, params, 'remote');
+
+    if (!cards || cards.length === 0) {
+      return res.status(404).json({ success: false, message: 'Carte introuvable' });
+    }
+
+    const card = cards[0];
+    if (!card.validation_url) {
+      return res.status(400).json({ success: false, message: 'URL de validation manquante' });
+    }
+
+    const qr_code_image = await qrcode.toDataURL(card.validation_url);
+
+    return res.status(200).json({
+      success: true,
+      card: { ...card, qr_code_image }
+    });
+  } catch (err) {
+    console.error('[Get QR Code Card Image Error]:', err);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la récupération de la carte',
+      error: err.message
+    });
+  }
+});
+
+/**
+ * GET /api/benevolat/qrcode/validate/:qrCodeId
+ * Valide une récupération de repas via un lien de validation
+ * Accessible sans authentification pour permettre le scan direct
+ */
+router.get('/benevolat/qrcode/validate/:qrCodeId', async (req, res) => {
+  try {
+    const { qrCodeId } = req.params;
+
+    // Vérifier que le QR code existe dans la base de données
+    const qrCardQuery = 'SELECT id, nom, prenom, nombre_beneficiaires, statut, association_nom FROM qrcode_cards WHERE qrcode_data LIKE ?';
+    const qrCards = await db.select(qrCardQuery, [`%${qrCodeId}%`], 'remote');
+
+    if (!qrCards || qrCards.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'QR code introuvable ou invalide'
+      });
+    }
+
+    const qrCard = qrCards[0];
+
+    if (qrCard.statut !== 'active') {
+      return res.status(400).json({
+        success: false,
+        message: 'Ce QR code n\'est pas actif'
+      });
+    }
+
+    // Vérifier si un scan a déjà été effectué aujourd'hui
+    const today = new Date();
+    const todayStr = today.toISOString().split('T')[0];
+
+    const existingScanQuery = `
+      SELECT id FROM meal_pickups
+      WHERE qrcode_card_id = ? AND DATE(scan_date) = ?
+    `;
+    const existingScans = await db.select(existingScanQuery, [qrCard.id, todayStr], 'remote');
+
+    if (existingScans && existingScans.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Repas déjà reçu aujourd\'hui'
+      });
+    }
+
+    // Enregistrer la récupération
+    const insertResult = await db.insert('meal_pickups', {
+      qrcode_card_id: qrCard.id,
+      scan_date: new Date(),
+      volunteer_id: null, // Pas de bénévole associé pour les validations directes
+      nombre_repas: qrCard.nombre_beneficiaires,
+      association_nom: qrCard.association_nom,
+      statut: 'success',
+      validation_method: 'direct_link'
+    }, 'remote');
+
+    // Retourner une réponse JSON pour les applications mobiles
+    // ou une page HTML simple pour les navigateurs
+    const acceptHeader = req.headers.accept || '';
+
+    if (acceptHeader.includes('application/json')) {
+      return res.status(200).json({
+        success: true,
+        message: 'Récupération de repas validée avec succès',
+        validation: {
+          id: insertResult.insertId,
+          scan_date: new Date().toISOString(),
+          nombre_repas: qrCard.nombre_beneficiaires,
+          beneficiary: {
+            nom: qrCard.nom,
+            prenom: qrCard.prenom,
+            nombre_beneficiaires: qrCard.nombre_beneficiaires
+          }
+        }
+      });
+    } else {
+      // Retourner une page HTML simple pour les navigateurs
+      const htmlResponse = `
+        <!DOCTYPE html>
+        <html lang="fr">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Validation réussie - MyAmana</title>
+            <style>
+                body {
+                    font-family: Arial, sans-serif;
+                    text-align: center;
+                    padding: 20px;
+                    background-color: #f5f5f5;
+                }
+                .container {
+                    max-width: 600px;
+                    margin: 0 auto;
+                    background-color: white;
+                    padding: 30px;
+                    border-radius: 10px;
+                    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                }
+                .success-icon {
+                    color: #4CAF50;
+                    font-size: 60px;
+                    margin-bottom: 20px;
+                }
+                .success-message {
+                    color: #4CAF50;
+                    font-size: 24px;
+                    margin-bottom: 30px;
+                }
+                .beneficiary-info {
+                    background-color: #f9f9f9;
+                    padding: 15px;
+                    border-radius: 5px;
+                    margin: 20px 0;
+                    text-align: left;
+                }
+                .footer {
+                    margin-top: 30px;
+                    color: #666;
+                    font-size: 14px;
+                }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="success-icon">✓</div>
+                <div class="success-message">Validation réussie !</div>
+                <p>Votre repas a été validé avec succès.</p>
+
+                <div class="beneficiary-info">
+                    <h3>Bénéficiaire :</h3>
+                    <p><strong>Nom :</strong> ${qrCard.nom} ${qrCard.prenom}</p>
+                    <p><strong>Nombre de repas :</strong> ${qrCard.nombre_beneficiaires}</p>
+                    <p><strong>Date :</strong> ${new Date().toLocaleString('fr-FR')}</p>
+                </div>
+
+                <div class="footer">
+                    <p>Merci d'utiliser le système de carte repas MyAmana.</p>
+                    <p>Cette validation est valable pour aujourd'hui uniquement.</p>
+                </div>
+            </div>
+        </body>
+        </html>
+      `;
+
+      return res.status(200).send(htmlResponse);
+    }
+  } catch (err) {
+    console.error('[Validate QR Code Error]:', err);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la validation du QR code',
+      error: err.message
+    });
+  }
+});
+
+module.exports = router;

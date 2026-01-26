@@ -1,0 +1,338 @@
+<div class="flex h-fit max-w-screen relative">
+  <div class="absolute top-0 right-0 md:top-8 md:right-8 pointer-events-none z-10">
+    <img 
+      [src]="association?.logo_url" 
+      alt="Association Logo" 
+      class="w-36 h-36 opacity-30"
+    />
+  </div>
+  
+  <div class="auth-bg hidden flex-1 justify-center bg-primary bg-cover lg:flex">
+    <div class="max-w-2xl space-y-4 p-8 mt-[30%] xl:mt-[20%] text-center text-white">
+      <img src="./assets/images/auth-screens.png" alt="dashboard widget" />
+    </div>
+  </div>
+  
+  <div class="flex flex-1 items-center justify-center bg-background">
+    <div class="min-h-screen w-[100%] flex flex-col">
+      <div class="container mx-auto px-4 py-4 sm:py-8 max-w-2xl max-h-fit flex-grow">
+        @if (loading) {
+          <div class="text-center">
+            <p>Chargement...</p>
+          </div>
+        } @else if (error) {
+          <div class="text-center text-red-500">
+            <p>Une erreur est survenue lors du chargement des données.</p>
+          </div>
+        } @else {
+          <h1 class="mb-4 text-center text-2xl font-bold sm:mb-8 sm:text-4xl">
+            Compléter votre inscription
+          </h1>
+          <h2 class="mb-4 text-center text-xl sm:mb-8 sm:text-2xl">
+            {{ association?.name_asso }}
+          </h2>
+
+          <div class="mb-6 text-center bg-green-50 border border-green-200 p-3 rounded-lg">
+            <p class="text-sm text-green-800">
+              ✓ Email vérifié : <span class="font-semibold">{{ email }}</span>
+            </p>
+          </div>
+
+          @if (submitSuccess) {
+            <div class="mb-6 rounded-lg bg-green-50 border border-green-200 p-4">
+              <div class="flex items-center">
+                <svg class="w-5 h-5 text-green-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                </svg>
+                <h3 class="text-lg font-medium text-green-800">Inscription complétée !</h3>
+              </div>
+              <div class="mt-2 text-sm text-green-700">
+                <p>Merci pour votre engagement ! Votre inscription de bénévole est maintenant complète.</p>
+                <p class="mt-2">Redirection vers la page de connexion...</p>
+              </div>
+            </div>
+          } @else {
+            <!-- Indicateurs d'étapes -->
+            <div class="mb-8">
+              <div class="flex items-center justify-between">
+                @for (step of [1, 2, 3]; track step) {
+                  <div class="flex items-center" [class.flex-1]="step < 3">
+                    <div 
+                      class="flex items-center justify-center w-10 h-10 rounded-full border-2 transition-all cursor-pointer"
+                      [class.bg-primary]="currentStep === step || (currentStep > step && isStepValid(step))"
+                      [class.text-white]="currentStep === step || (currentStep > step && isStepValid(step))"
+                      [class.border-primary]="currentStep === step || (currentStep > step && isStepValid(step))"
+                      [class.bg-gray-200]="currentStep !== step && !(currentStep > step && isStepValid(step))"
+                      [class.text-gray-600]="currentStep !== step && !(currentStep > step && isStepValid(step))"
+                      [class.border-gray-300]="currentStep !== step && !(currentStep > step && isStepValid(step))"
+                      (click)="goToStep(step)"
+                      [style.background-color]="(currentStep === step || (currentStep > step && isStepValid(step))) ? (association?.code_couleur || '#d7192d') : ''"
+                      [style.border-color]="(currentStep === step || (currentStep > step && isStepValid(step))) ? (association?.code_couleur || '#d7192d') : ''"
+                    >
+                      <span class="font-semibold">{{ step }}</span>
+                    </div>
+                    @if (step < 3) {
+                      <div 
+                        class="flex-1 h-1 mx-2"
+                        [class.bg-primary]="currentStep > step && isStepValid(step)"
+                        [class.bg-gray-300]="!(currentStep > step && isStepValid(step))"
+                        [style.background-color]="(currentStep > step && isStepValid(step)) ? (association?.code_couleur || '#d7192d') : ''"
+                      ></div>
+                    }
+                  </div>
+                }
+              </div>
+              <div class="flex justify-between mt-2 text-sm">
+                <span [class.font-semibold]="currentStep === 1" [class.text-gray-600]="currentStep !== 1">Informations</span>
+                <span [class.font-semibold]="currentStep === 2" [class.text-gray-600]="currentStep !== 2">Coordonnées</span>
+                <span [class.font-semibold]="currentStep === 3" [class.text-gray-600]="currentStep !== 3">Engagement</span>
+              </div>
+            </div>
+
+            <form [formGroup]="volunteerForm" (ngSubmit)="onSubmit()" class="space-y-6">
+              
+              @if (submitError) {
+                <div class="mb-4 rounded-lg bg-red-50 border border-red-200 p-4">
+                  <div class="flex items-center">
+                    <svg class="w-5 h-5 text-red-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                      <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path>
+                    </svg>
+                    <h3 class="text-lg font-medium text-red-800">Erreur</h3>
+                  </div>
+                  <div class="mt-2 text-sm text-red-700">
+                    <p>{{ submitErrorMessage }}</p>
+                  </div>
+                </div>
+              }
+
+              <!-- ÉTAPE 1 : Informations personnelles -->
+              @if (currentStep === 1) {
+                <div class="space-y-4">
+                  <h3 class="text-xl font-semibold mb-4">Informations personnelles</h3>
+                  
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label for="prenom" class="block text-sm font-medium text-gray-700 mb-1">Prénom *</label>
+                      <input type="text" id="prenom" formControlName="prenom" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" [class.border-red-500]="isFieldInvalid('prenom')" />
+                      @if (isFieldInvalid('prenom')) {
+                        <p class="mt-1 text-sm text-red-600">{{ getFieldError('prenom') }}</p>
+                      }
+                    </div>
+
+                    <div>
+                      <label for="nom" class="block text-sm font-medium text-gray-700 mb-1">Nom *</label>
+                      <input type="text" id="nom" formControlName="nom" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" [class.border-red-500]="isFieldInvalid('nom')" />
+                      @if (isFieldInvalid('nom')) {
+                        <p class="mt-1 text-sm text-red-600">{{ getFieldError('nom') }}</p>
+                      }
+                    </div>
+                  </div>
+
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label for="date_naissance" class="block text-sm font-medium text-gray-700 mb-1">Date de naissance *</label>
+                      <input type="date" id="date_naissance" formControlName="date_naissance" [max]="getMaxBirthDate()" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" [class.border-red-500]="isFieldInvalid('date_naissance')" />
+                      @if (isFieldInvalid('date_naissance')) {
+                        <p class="mt-1 text-sm text-red-600">{{ getFieldError('date_naissance') }}</p>
+                      }
+                    </div>
+
+                    <div>
+                      <label for="genre" class="block text-sm font-medium text-gray-700 mb-1">Genre *</label>
+                      <select id="genre" formControlName="genre" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" [class.border-red-500]="isFieldInvalid('genre')">
+                        <option value="">Sélectionner</option>
+                        <option value="Homme">Homme</option>
+                        <option value="Femme">Femme</option>
+                      </select>
+                      @if (isFieldInvalid('genre')) {
+                        <p class="mt-1 text-sm text-red-600">{{ getFieldError('genre') }}</p>
+                      }
+                    </div>
+                  </div>
+
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label for="password" class="block text-sm font-medium text-gray-700 mb-1">Mot de passe *</label>
+                      <div class="relative">
+                        <input [type]="showPassword ? 'text' : 'password'" id="password" formControlName="password" class="w-full px-3 py-2 pr-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" [class.border-red-500]="isFieldInvalid('password')" />
+                        <button type="button" (click)="togglePasswordVisibility()" class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600">
+                          @if (showPassword) {
+                            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                            </svg>
+                          } @else {
+                            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"></path>
+                            </svg>
+                          }
+                        </button>
+                      </div>
+                      @if (isFieldInvalid('password')) {
+                        <p class="mt-1 text-sm text-red-600">{{ getFieldError('password') }}</p>
+                      }
+                    </div>
+
+                    <div>
+                      <label for="confirmPassword" class="block text-sm font-medium text-gray-700 mb-1">Confirmer le mot de passe *</label>
+                      <div class="relative">
+                        <input [type]="showConfirmPassword ? 'text' : 'password'" id="confirmPassword" formControlName="confirmPassword" class="w-full px-3 py-2 pr-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" [class.border-red-500]="isFieldInvalid('confirmPassword') || volunteerForm.errors?.['passwordMismatch']" />
+                        <button type="button" (click)="toggleConfirmPasswordVisibility()" class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600">
+                          @if (showConfirmPassword) {
+                            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                            </svg>
+                          } @else {
+                            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"></path>
+                            </svg>
+                          }
+                        </button>
+                      </div>
+                      @if (isFieldInvalid('confirmPassword')) {
+                        <p class="mt-1 text-sm text-red-600">{{ getFieldError('confirmPassword') }}</p>
+                      }
+                      @if (volunteerForm.errors?.['passwordMismatch'] && volunteerForm.get('confirmPassword')?.touched) {
+                        <p class="mt-1 text-sm text-red-600">Les mots de passe ne correspondent pas</p>
+                      }
+                    </div>
+                  </div>
+                </div>
+              }
+
+              <!-- ÉTAPE 2 : Coordonnées -->
+              @if (currentStep === 2) {
+                <div class="space-y-4">
+                  <h3 class="text-xl font-semibold mb-4">Coordonnées</h3>
+
+                  <div>
+                    <label for="telephone" class="block text-sm font-medium text-gray-700 mb-1">Téléphone *</label>
+                    <input type="tel" id="telephone" formControlName="telephone" placeholder="Ex: 01 23 45 67 89" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" [class.border-red-500]="isFieldInvalid('telephone')" />
+                    @if (isFieldInvalid('telephone')) {
+                      <p class="mt-1 text-sm text-red-600">{{ getFieldError('telephone') }}</p>
+                    }
+                  </div>
+
+                  <div>
+                    <label for="adresse" class="block text-sm font-medium text-gray-700 mb-1">Adresse *</label>
+                    <input type="text" id="adresse" formControlName="adresse" placeholder="Numéro et nom de rue" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" [class.border-red-500]="isFieldInvalid('adresse')" />
+                    @if (isFieldInvalid('adresse')) {
+                      <p class="mt-1 text-sm text-red-600">{{ getFieldError('adresse') }}</p>
+                    }
+                  </div>
+
+                  <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label for="code_postal" class="block text-sm font-medium text-gray-700 mb-1">Code postal *</label>
+                      <input type="text" id="code_postal" formControlName="code_postal" placeholder="75001" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" [class.border-red-500]="isFieldInvalid('code_postal')" />
+                      @if (isFieldInvalid('code_postal')) {
+                        <p class="mt-1 text-sm text-red-600">{{ getFieldError('code_postal') }}</p>
+                      }
+                    </div>
+
+                    <div class="md:col-span-2">
+                      <label for="ville" class="block text-sm font-medium text-gray-700 mb-1">Ville *</label>
+                      <input type="text" id="ville" formControlName="ville" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" [class.border-red-500]="isFieldInvalid('ville')" />
+                      @if (isFieldInvalid('ville')) {
+                        <p class="mt-1 text-sm text-red-600">{{ getFieldError('ville') }}</p>
+                      }
+                    </div>
+                  </div>
+
+                  <div>
+                    <label for="pays" class="block text-sm font-medium text-gray-700 mb-1">Pays *</label>
+                    <input type="text" id="pays" formControlName="pays" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" [class.border-red-500]="isFieldInvalid('pays')" />
+                    @if (isFieldInvalid('pays')) {
+                      <p class="mt-1 text-sm text-red-600">{{ getFieldError('pays') }}</p>
+                    }
+                  </div>
+
+                  <div>
+                    <label for="vehicule" class="block text-sm font-medium text-gray-700 mb-1">Êtes-vous véhiculé(e) ? *</label>
+                    <select id="vehicule" formControlName="vehicule" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" [class.border-red-500]="isFieldInvalid('vehicule')">
+                      <option value="">Sélectionner</option>
+                      <option value="oui">Oui</option>
+                      <option value="non">Non</option>
+                    </select>
+                    @if (isFieldInvalid('vehicule')) {
+                      <p class="mt-1 text-sm text-red-600">{{ getFieldError('vehicule') }}</p>
+                    }
+                  </div>
+                </div>
+              }
+
+              <!-- ÉTAPE 3 : Votre engagement -->
+              @if (currentStep === 3) {
+                <div class="space-y-4">
+                  <h3 class="text-xl font-semibold mb-4">Votre engagement</h3>
+
+                  <div>
+                    <label for="source_connaissance" class="block text-sm font-medium text-gray-700 mb-1">Comment avez-vous connu l'association ? *</label>
+                    <select id="source_connaissance" formControlName="source_connaissance" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" [class.border-red-500]="isFieldInvalid('source_connaissance')">
+                      <option value="">Sélectionner</option>
+                      @for (option of sourceOptions; track option) {
+                        <option [value]="option">{{ option }}</option>
+                      }
+                    </select>
+                    @if (isFieldInvalid('source_connaissance')) {
+                      <p class="mt-1 text-sm text-red-600">{{ getFieldError('source_connaissance') }}</p>
+                    }
+                  </div>
+
+                  @if (showSourceAutreField()) {
+                    <div>
+                      <label for="source_connaissance_autre" class="block text-sm font-medium text-gray-700 mb-1">Veuillez préciser *</label>
+                      <input type="text" id="source_connaissance_autre" formControlName="source_connaissance_autre" placeholder="Précisez comment vous avez connu l'association..." class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" [class.border-red-500]="isFieldInvalid('source_connaissance_autre')" />
+                      @if (isFieldInvalid('source_connaissance_autre')) {
+                        <p class="mt-1 text-sm text-red-600">{{ getFieldError('source_connaissance_autre') }}</p>
+                      }
+                    </div>
+                  }
+
+                  <div>
+                    <label for="metiers_competences" class="block text-sm font-medium text-gray-700 mb-1">Métiers / Compétences utiles (facultatif)</label>
+                    <textarea id="metiers_competences" formControlName="metiers_competences" rows="4" placeholder="Décrivez vos compétences, expériences ou métiers qui pourraient être utiles à l'association..." class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent resize-vertical"></textarea>
+                  </div>
+                </div>
+              }
+
+              <!-- Boutons de navigation -->
+              <div class="flex justify-between items-center pt-4">
+                @if (currentStep > 1) {
+                  <button type="button" (click)="previousStep()" class="px-6 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary">
+                    Précédent
+                  </button>
+                } @else {
+                  <div></div>
+                }
+
+                @if (currentStep < totalSteps) {
+                  <button type="button" (click)="nextStep()" class="px-6 py-2 border border-transparent text-white rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary" [style.background-color]="association?.code_couleur || '#d7192d'">
+                    Suivant
+                  </button>
+                } @else {
+                  <button type="submit" [disabled]="submitting || volunteerForm.invalid" class="px-6 py-2 border border-transparent text-white rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed flex items-center" [style.background-color]="association?.code_couleur || '#d7192d'">
+                    @if (submitting) {
+                      <svg class="animate-spin -ml-1 mr-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Inscription en cours...
+                    } @else {
+                      Finaliser l'inscription
+                    }
+                  </button>
+                }
+              </div>
+
+              <p class="text-sm text-gray-500 text-center">
+                * Champs obligatoires
+              </p>
+            </form>
+          }
+        }
+      </div>
+    </div>
+  </div>
+</div>

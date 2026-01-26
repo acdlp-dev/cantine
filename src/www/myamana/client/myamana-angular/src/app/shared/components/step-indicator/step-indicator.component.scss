@@ -1,0 +1,29 @@
+:host {
+  display: block;
+  
+  .step-indicator {
+    @apply flex items-center justify-center mb-8;
+  }
+
+  .step {
+    @apply flex items-center;
+
+    &:last-child {
+      .step-line {
+        @apply hidden;
+      }
+    }
+  }
+
+  .step-number {
+    @apply w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-colors duration-200;
+  }
+
+  .step-line {
+    @apply w-24 h-1 mx-2 transition-colors duration-200;
+  }
+
+  .step-label {
+    @apply text-sm transition-colors duration-200 mt-2;
+  }
+}

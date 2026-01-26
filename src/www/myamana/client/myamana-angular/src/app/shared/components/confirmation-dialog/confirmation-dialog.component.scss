@@ -1,0 +1,17 @@
+.button-compris {
+  background-color: #4CAF50; /* Vert */
+  color: white; /* Texte en blanc */
+  border: none;
+  padding: 10px 20px;
+  text-align: center;
+  text-decoration: none;
+  display: inline-block;
+  font-size: 14px;
+  margin: 4px 2px;
+  cursor: pointer;
+  border-radius: 5px; /* Coins arrondis */
+}
+
+.button-compris:hover {
+  background-color: #45a049; /* Vert plus foncé au survol */
+}

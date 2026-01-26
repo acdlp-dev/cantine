@@ -1,0 +1,22 @@
+<div class="flex flex-col items-center mb-8">
+  <!-- Step circles and lines -->
+  <div class="flex items-center justify-center w-full mb-2">
+    @for (step of steps; track step.number; let last = $last) {
+      <div class="flex flex-col items-center">
+        <div class="flex items-center">
+          <div class="relative">
+            <div [class]="getStepNumberClass(step.number)" class="w-8 h-8 rounded-full flex items-center justify-center">
+              {{ step.number }}
+            </div>
+            <div [class]="getStepLabelClass(step.number)" class="absolute -bottom-6 whitespace-nowrap text-center w-20" style="left: 50%; transform: translateX(-50%)">
+              {{ step.label }}
+            </div>
+          </div>
+          @if (!last) {
+            <div [class]="getStepLineClass(step.number)" class="w-14 md:w-24 h-0.5 mx-2"></div>
+          }
+        </div>
+      </div>
+    }
+  </div>
+</div>

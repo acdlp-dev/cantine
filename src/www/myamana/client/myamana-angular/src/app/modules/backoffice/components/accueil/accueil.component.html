@@ -1,0 +1,193 @@
+<div class="max-w-7xl mx-auto px-4 py-8">
+    <!-- En-tête de la page -->
+    <div class="mb-10">
+        <div *ngIf="true">
+            <h1 class="text-3xl font-bold text-gray-800 mb-2">
+                BackOffice<span class="text-orange-600 text-4xl">.</span>
+            </h1>
+            <p class="text-gray-600">Bienvenue sur l'interface d'administration MyAmana</p>
+        </div>
+    </div>
+    <!-- Statistiques globales -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+        <div class="bg-white rounded-lg shadow p-6 flex items-center">
+            <div class="rounded-full bg-blue-100 p-3 mr-4">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-blue-600" fill="none" viewBox="0 0 24 24"
+                    stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+            </div>
+            <div>
+                <p class="text-sm text-gray-500">Total des dons</p>
+                <h3 class="text-xl font-bold text-gray-800">{{ (totalDons | number:'1.0-0':'fr-FR') || '...' }} €</h3>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-lg shadow p-6 flex items-center">
+            <div class="rounded-full bg-green-100 p-3 mr-4">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-green-600" fill="none" viewBox="0 0 24 24"
+                    stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                </svg>
+            </div>
+            <div>
+                <p class="text-sm text-gray-500">Donateurs</p>
+                <h3 class="text-xl font-bold text-gray-800">{{ (totalNombreDonateurs | number:'1.0-0':'fr-FR') || '...'
+                    }}</h3>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-lg shadow p-6 flex items-center">
+            <div class="rounded-full bg-purple-100 p-3 mr-4">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-purple-600" fill="none" viewBox="0 0 24 24"
+                    stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                </svg>
+            </div>
+            <div>
+                <p class="text-sm text-gray-500">Nouveaux donateurs</p>
+                <h3 class="text-xl font-bold text-gray-800">+ {{ (nouveauxDonateursMonthly | number) || '...' }} ce mois
+                </h3>
+            </div>
+        </div>
+    </div>
+    <!-- Graphique et activité récente -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-10">
+        <!-- Graphique des dons -->
+        <div class="lg:col-span-2 bg-white rounded-lg shadow-sm p-6 mb-8">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-bold text-gray-800">Évolution des dons</h2>
+                <div class="flex space-x-2">
+                    <button (click)="changerPeriode('7j')" [class.bg-primary]="periodeActive === '7j'"
+                        [class.text-white]="periodeActive === '7j'" [class.bg-gray-100]="periodeActive !== '7j'"
+                        [class.text-gray-700]="periodeActive !== '7j'" class="px-3 py-1 rounded-md text-sm font-medium">
+                        7 jours
+                    </button>
+                    <button (click)="changerPeriode('30j')" [class.bg-primary]="periodeActive === '30j'"
+                        [class.text-white]="periodeActive === '30j'" [class.bg-gray-100]="periodeActive !== '30j'"
+                        [class.text-gray-700]="periodeActive !== '30j'"
+                        class="px-3 py-1 rounded-md text-sm font-medium">
+                        30 jours
+                    </button>
+                    <button (click)="changerPeriode('annee')" [class.bg-primary]="periodeActive === 'annee'"
+                        [class.text-white]="periodeActive === 'annee'" [class.bg-gray-100]="periodeActive !== 'annee'"
+                        [class.text-gray-700]="periodeActive !== 'annee'"
+                        class="px-3 py-1 rounded-md text-sm font-medium">
+                        Année
+                    </button>
+                </div>
+            </div>
+
+            <!-- Indicateur de chargement -->
+            <div *ngIf="isLoading" class="h-64 flex items-center justify-center">
+                <div class="text-gray-400">
+                    Chargement des données...
+                </div>
+            </div>
+
+            <!-- ApexCharts graphique -->
+            <div *ngIf="!isLoading" class="h-64">
+                <apx-chart #chart [series]="chartOptions.series" [chart]="chartOptions.chart"
+                    [xaxis]="chartOptions.xaxis" [yaxis]="chartOptions.yaxis" [dataLabels]="chartOptions.dataLabels"
+                    [grid]="chartOptions.grid" [stroke]="chartOptions.stroke" [tooltip]="chartOptions.tooltip">
+                </apx-chart>
+            </div>
+        </div>
+
+        <!-- Derniers abonnements -->
+        <div class="bg-white rounded-lg shadow p-6">
+            <h2 class="text-xl font-bold text-gray-800 mb-6">Derniers abonnements</h2>
+            <div class="space-y-4 max-h-64 overflow-y-auto">
+                <div *ngIf="isLoading" class="text-gray-400">
+                    Chargement des abonnements...
+                </div>
+                <div *ngFor="let abonnement of derniersAbonnements"
+                    class="flex items-start pb-4 border-b border-gray-100">
+                    <div class="rounded-full bg-green-100 p-2 mr-3">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-500" viewBox="0 0 20 20"
+                            fill="currentColor">
+                            <path fill-rule="evenodd"
+                                d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                                clip-rule="evenodd" />
+                        </svg>
+                    </div>
+                    <div class="flex-1">
+                        <p class="text-sm font-medium">{{ abonnement.prenom }} {{ abonnement.nom }}</p>
+                        <div class="flex justify-between mt-1">
+                            <p class="text-xs text-gray-500">{{ abonnement.ajout | date:'dd/MM/yyyy' }}</p>
+                            <span class="text-xs font-medium text-green-600">{{ abonnement.montant }} €/{{
+                                abonnement.occurence }}</span>
+                        </div>
+                    </div>
+                </div>
+                <div *ngIf="derniersAbonnements?.length === 0 && !isLoading" class="text-center text-gray-500 py-4">
+                    Aucun abonnement récent
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Accès rapides -->
+    <div class="mb-10">
+        <h2 class="text-xl font-bold text-gray-800 mb-6">Accès rapides</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <a routerLink="/backoffice/don-hors-ligne"
+                class="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow">
+                <div class="rounded-full bg-orange-100 p-3 w-14 h-14 flex items-center justify-center mb-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-orange-600" fill="none"
+                        viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                </div>
+                <h3 class="text-lg font-bold text-gray-800 mb-2">Don hors ligne</h3>
+                <p class="text-sm text-gray-600">Enregistrer un don réalisé hors plateforme</p>
+            </a>
+
+            <a routerLink="/backoffice/recu-fiscal"
+                class="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow">
+                <div class="rounded-full bg-purple-100 p-3 w-14 h-14 flex items-center justify-center mb-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-purple-600" fill="none"
+                        viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                </div>
+                <h3 class="text-lg font-bold text-gray-800 mb-2">Reçus fiscaux</h3>
+                <p class="text-sm text-gray-600">Gérer les reçus fiscaux des donateurs</p>
+            </a>
+
+            <a routerLink="/backoffice/campagnes"
+                class="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow">
+                <div class="rounded-full bg-yellow-100 p-3 w-14 h-14 flex items-center justify-center mb-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-yellow-600" fill="none"
+                        viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" />
+                    </svg>
+                </div>
+                <h3 class="text-lg font-bold text-gray-800 mb-2">Campagnes</h3>
+                <p class="text-sm text-gray-600">Gérer les campagnes de dons en cours</p>
+            </a>
+
+            <a routerLink="/backoffice/donateurs"
+                class="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow">
+                <div class="rounded-full bg-green-100 p-3 w-14 h-14 flex items-center justify-center mb-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-green-600" fill="none"
+                        viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                    </svg>
+                </div>
+                <h3 class="text-lg font-bold text-gray-800 mb-2">Donateurs</h3>
+                <p class="text-sm text-gray-600">Liste et gestion des donateurs</p>
+            </a>
+        </div>
+    </div>
+
+</div>

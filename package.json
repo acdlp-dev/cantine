@@ -1,0 +1,14 @@
+{
+  "dependencies": {
+    "chart.js": "^4.4.9",
+    "ngx-quill": "^28.0.2",
+    "nodemod": "^3.0.6",
+    "quill": "^2.0.3",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "@types/chart.js": "^2.9.41",
+    "@types/quill": "^2.0.14",
+    "nodemon": "^3.1.10"
+  }
+}

@@ -1,0 +1,249 @@
+<div class="profile-container">
+  <!-- Header -->
+  <div class="profile-header">
+    <h1 class="text-2xl font-bold text-gray-900">Mes informations</h1>
+    <p class="mt-1 text-sm text-gray-500">
+      Gérez vos informations personnelles
+    </p>
+  </div>
+
+  <!-- Messages -->
+  <div *ngIf="successMessage" class="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+    <div class="flex">
+      <svg class="h-5 w-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+      </svg>
+      <p class="ml-3 text-sm font-medium text-green-800">{{ successMessage }}</p>
+    </div>
+  </div>
+
+  <div *ngIf="errorMessage" class="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+    <div class="flex">
+      <svg class="h-5 w-5 text-red-400" fill="currentColor" viewBox="0 0 20 20">
+        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+      </svg>
+      <p class="ml-3 text-sm font-medium text-red-800">{{ errorMessage }}</p>
+    </div>
+  </div>
+
+  <!-- Loading -->
+  <div *ngIf="loading" class="flex justify-center items-center py-12">
+    <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+  </div>
+
+  <!-- Formulaire -->
+  <form *ngIf="!loading" [formGroup]="profileForm" (ngSubmit)="onSubmit()" class="profile-form">
+    
+    <!-- Section Informations personnelles (lecture seule) -->
+    <div class="form-section">
+      <h2 class="section-title">Informations personnelles</h2>
+      <p class="section-description">Ces informations ne peuvent pas être modifiées</p>
+      
+      <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
+        <!-- Nom -->
+        <div class="form-group">
+          <label class="form-label">Nom</label>
+          <input
+            type="text"
+            formControlName="nom"
+            class="form-input disabled"
+            readonly
+          />
+        </div>
+
+        <!-- Prénom -->
+        <div class="form-group">
+          <label class="form-label">Prénom</label>
+          <input
+            type="text"
+            formControlName="prenom"
+            class="form-input disabled"
+            readonly
+          />
+        </div>
+      </div>
+    </div>
+
+    <!-- Section Coordonnées (modifiable) -->
+    <div class="form-section">
+      <h2 class="section-title">Coordonnées</h2>
+      <p class="section-description">Vous pouvez modifier ces informations</p>
+      
+      <div class="grid grid-cols-1 gap-6">
+        <!-- Adresse -->
+        <div class="form-group">
+          <label class="form-label required">Adresse</label>
+          <input
+            type="text"
+            formControlName="adresse"
+            class="form-input"
+            [class.invalid]="isFieldInvalid('adresse')"
+            placeholder="Ex: 123 rue de la Paix"
+          />
+          <p *ngIf="isFieldInvalid('adresse')" class="error-message">
+            {{ getErrorMessage('adresse') }}
+          </p>
+        </div>
+
+        <div class="grid grid-cols-1 gap-6 sm:grid-cols-3">
+          <!-- Code postal -->
+          <div class="form-group">
+            <label class="form-label required">Code postal</label>
+            <input
+              type="text"
+              formControlName="code_postal"
+              class="form-input"
+              [class.invalid]="isFieldInvalid('code_postal')"
+              placeholder="75001"
+              maxlength="5"
+            />
+            <p *ngIf="isFieldInvalid('code_postal')" class="error-message">
+              {{ getErrorMessage('code_postal') }}
+            </p>
+          </div>
+
+          <!-- Ville -->
+          <div class="form-group sm:col-span-2">
+            <label class="form-label required">Ville</label>
+            <input
+              type="text"
+              formControlName="ville"
+              class="form-input"
+              [class.invalid]="isFieldInvalid('ville')"
+              placeholder="Paris"
+            />
+            <p *ngIf="isFieldInvalid('ville')" class="error-message">
+              {{ getErrorMessage('ville') }}
+            </p>
+          </div>
+        </div>
+
+        <!-- Pays -->
+        <div class="form-group">
+          <label class="form-label required">Pays</label>
+          <input
+            type="text"
+            formControlName="pays"
+            class="form-input"
+            [class.invalid]="isFieldInvalid('pays')"
+          />
+          <p *ngIf="isFieldInvalid('pays')" class="error-message">
+            {{ getErrorMessage('pays') }}
+          </p>
+        </div>
+
+        <!-- Téléphone -->
+        <div class="form-group">
+          <label class="form-label required">Téléphone</label>
+          <input
+            type="tel"
+            formControlName="telephone"
+            class="form-input"
+            [class.invalid]="isFieldInvalid('telephone')"
+            placeholder="0612345678"
+            maxlength="10"
+          />
+          <p *ngIf="isFieldInvalid('telephone')" class="error-message">
+            {{ getErrorMessage('telephone') }}
+          </p>
+        </div>
+
+        <!-- Véhicule -->
+        <div class="form-group">
+          <label class="form-label required">Véhiculé</label>
+          <select
+            formControlName="vehicule"
+            class="form-input"
+            [class.invalid]="isFieldInvalid('vehicule')"
+          >
+            <option value="oui">Oui</option>
+            <option value="non">Non</option>
+          </select>
+          <p *ngIf="isFieldInvalid('vehicule')" class="error-message">
+            {{ getErrorMessage('vehicule') }}
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Boutons d'action -->
+    <div class="form-actions">
+      <button
+        type="button"
+        (click)="onCancel()"
+        class="btn btn-secondary"
+        [disabled]="loading"
+      >
+        Annuler
+      </button>
+      <button
+        type="submit"
+        class="btn btn-primary"
+        [disabled]="loading || profileForm.invalid"
+      >
+        <span *ngIf="!loading">Enregistrer</span>
+        <span *ngIf="loading" class="flex items-center">
+          <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          Enregistrement...
+        </span>
+      </button>
+    </div>
+
+    <!-- Section Changement de mot de passe -->
+    <div class="password-change-section mt-8 p-6 bg-gray-50 border border-gray-200 rounded-lg">
+      <h3 class="text-lg font-medium text-gray-900 mb-3">Changer mon mot de passe</h3>
+      <p class="text-sm text-gray-600 mb-4">
+        Pour des raisons de sécurité, vous recevrez un email avec un lien de réinitialisation.
+      </p>
+
+      <div *ngIf="passwordChangeSuccess" class="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+        <div class="flex">
+          <svg class="h-5 w-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+          </svg>
+          <p class="ml-3 text-sm font-medium text-green-800">{{ passwordChangeSuccess }}</p>
+        </div>
+      </div>
+
+      <div *ngIf="passwordChangeError" class="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+        <div class="flex">
+          <svg class="h-5 w-5 text-red-400" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+          </svg>
+          <p class="ml-3 text-sm font-medium text-red-800">{{ passwordChangeError }}</p>
+        </div>
+      </div>
+
+      <div *ngIf="!passwordChangeCompleted">
+        <button
+          type="button"
+          (click)="requestPasswordChange()"
+          class="btn btn-secondary"
+          [disabled]="passwordChangeLoading"
+        >
+          <span *ngIf="!passwordChangeLoading">Changer mon mot de passe</span>
+          <span *ngIf="passwordChangeLoading" class="flex items-center">
+            <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-gray-600" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            Envoi en cours...
+          </span>
+        </button>
+      </div>
+
+      <div *ngIf="passwordChangeCompleted && !passwordChangeSuccess">
+        <button
+          type="button"
+          (click)="resetPasswordChangeState()"
+          class="btn btn-primary"
+        >
+          Recommencer le processus
+        </button>
+      </div>
+    </div>
+  </form>
+</div>

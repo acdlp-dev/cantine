@@ -1,0 +1,26 @@
+:host {
+    display: block;
+
+    .input-field {
+        &.error {
+            @apply border-red-500;
+
+            &:focus {
+                @apply ring-red-500;
+            }
+        }
+    }
+
+    .amount-buttons {
+        @apply flex justify-center gap-4;
+    }
+
+    .tax-info {
+        @apply text-sm text-gray-600 text-center mt-4;
+    }
+}
+
+.tree-input {
+    margin-bottom: 10px; /* Ajuste l'espacement entre les champs */
+  }
+  

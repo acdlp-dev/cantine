@@ -1,0 +1,191 @@
+/* Styles pour le calendrier des actions bénévoles */
+
+.bg-primary {
+  background-color: #d7192d;
+}
+
+.bg-primary-dark {
+  background-color: #b8162a;
+}
+
+.text-primary {
+  color: #d7192d;
+}
+
+.text-primary-dark {
+  color: #b8162a;
+}
+
+.border-primary {
+  border-color: #d7192d;
+}
+
+/* Calendrier responsive */
+@media (max-width: 768px) {
+  .grid-cols-7 > div {
+    min-height: 80px;
+  }
+  
+  .text-xs {
+    font-size: 0.65rem;
+  }
+}
+
+/* Animation des actions au hover */
+.cursor-pointer {
+  transition: all 0.2s ease-in-out;
+}
+
+.cursor-pointer:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Styles pour les actions selon leur récurrence */
+.bg-blue-500 {
+  background-color: #3b82f6;
+}
+
+.bg-green-500 {
+  background-color: #10b981;
+}
+
+/* Modal overlay animation */
+.fixed.inset-0 {
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Modal content animation */
+.transform.transition-all {
+  animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Scrollbar du modal */
+.overflow-y-auto::-webkit-scrollbar {
+  width: 6px;
+}
+
+.overflow-y-auto::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+.overflow-y-auto::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 3px;
+}
+
+.overflow-y-auto::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+/* Mise en évidence du jour actuel */
+.bg-blue-50 {
+  background-color: #eff6ff;
+  border: 1px solid #dbeafe;
+}
+
+/* Loader animation */
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Styles pour les badges de récurrence */
+.rounded-full {
+  border-radius: 9999px;
+}
+
+/* Navigation du calendrier */
+.border-gray-300:hover {
+  border-color: #d1d5db;
+  background-color: #f9fafb;
+}
+
+/* Actions multiples indicator */
+.text-gray-500 {
+  color: #6b7280;
+}
+
+/* Responsive pour mobile */
+@media (max-width: 640px) {
+  .sm\:max-w-lg {
+    max-width: 95vw;
+  }
+  
+  .sm\:p-6 {
+    padding: 1rem;
+  }
+  
+  .grid-cols-2 {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  
+  .flex.items-center.justify-between {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+  
+  .flex.items-center.space-x-2 {
+    width: 100%;
+    justify-content: space-between;
+  }
+}
+
+/* Focus states pour l'accessibilité */
+button:focus,
+a:focus {
+  outline: 2px solid #d7192d;
+  outline-offset: 2px;
+}
+
+/* Amélioration des contrastes */
+.text-gray-400 {
+  color: #9ca3af;
+}
+
+.text-gray-500 {
+  color: #6b7280;
+}
+
+.text-gray-600 {
+  color: #4b5563;
+}
+
+.text-gray-700 {
+  color: #374151;
+}
+
+.text-gray-900 {
+  color: #111827;
+}

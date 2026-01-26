@@ -1,0 +1,102 @@
+<div class="min-h-screen flex flex-col items-center justify-center bg-gray-50 px-4">
+  <div class="max-w-lg w-full bg-white rounded-xl shadow-lg overflow-hidden">
+    <div class="px-8 pt-8 pb-6 text-center">
+      <!-- Titre conditionnel selon cantine -->
+      <h2 class="text-2xl font-bold text-gray-900 mb-2" *ngIf="!hasCantine">
+        Bienvenue dans votre espace
+      </h2>
+      <h2 class="text-2xl font-bold text-gray-900 mb-2" *ngIf="hasCantine">
+        Développez votre présence
+      </h2>
+      
+      <p class="text-gray-600" *ngIf="!hasCantine">Configuration initiale de votre compte</p>
+      <p class="text-gray-600" *ngIf="hasCantine">MyAmana propose d'autres services pour votre association</p>
+    </div>
+    
+    <div class="border-t border-gray-200"></div>
+    
+    <div class="px-8 py-6">
+      <!-- Description conditionnelle selon cantine -->
+      <h3 class="text-lg font-semibold text-gray-800 mb-4" *ngIf="!hasCantine">
+        Quels services souhaitez-vous activer pour votre association ?
+      </h3>
+      <h3 class="text-lg font-semibold text-gray-800 mb-4" *ngIf="hasCantine">
+        Quels services supplémentaires souhaitez-vous activer ?
+      </h3>
+      
+      <!-- Message informatif selon cantine -->
+      <p class="text-gray-600 mb-6" *ngIf="!hasCantine">
+        Sélectionnez au moins une fonctionnalité que vous souhaitez utiliser.
+        Vous pourrez toujours modifier ces choix ultérieurement depuis les paramètres.
+      </p>
+      <p class="text-gray-600 mb-6" *ngIf="hasCantine">
+        Vous utilisez déjà la Cantine. MyAmana propose d'autres services optionnels.
+        Vous pouvez en ajouter maintenant ou accéder directement à vos commandes.
+      </p>
+      
+      <div class="space-y-4">
+        <!-- Liste des services -->
+        <div *ngFor="let service of services" 
+             (click)="toggleService(service.id)"
+             class="w-full flex items-start px-5 py-4 rounded-lg border cursor-pointer transition-colors"
+             [class.border-blue-600]="service.enabled"
+             [class.bg-blue-50]="service.enabled"
+             [class.border-gray-300]="!service.enabled">
+          <div class="h-6 mt-0.5">
+            <div class="w-5 h-5 rounded border-2 flex items-center justify-center"
+                [class.border-blue-600]="service.enabled"
+                [class.bg-blue-600]="service.enabled"
+                [class.border-gray-400]="!service.enabled">
+              <svg *ngIf="service.enabled" class="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+              </svg>
+            </div>
+          </div>
+          <div class="ml-3">
+            <h4 class="text-base font-medium text-gray-900" [class.font-semibold]="service.enabled">
+              {{ service.title }}
+            </h4>
+            <p class="text-sm text-gray-600 mt-1">
+              {{ service.description }}
+            </p>
+          </div>
+        </div>
+      </div>
+      
+      <div class="mt-8">
+        <!-- Bouton conditionnel selon cantine -->
+        <button 
+          *ngIf="!hasCantine"
+          (click)="confirmChoice()" 
+          [disabled]="!atLeastOneServiceEnabled() || isLoading" 
+          class="w-full bg-orange-600 text-white py-2.5 px-4 rounded-lg font-medium hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 disabled:opacity-50 disabled:cursor-not-allowed">
+          <span *ngIf="!isLoading">Confirmer mes choix</span>
+          <span *ngIf="isLoading" class="flex items-center justify-center">
+            <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            Chargement...
+          </span>
+        </button>
+        
+        <!-- Boutons pour cantine = 1 (optionnel) -->
+        <div *ngIf="hasCantine" class="flex gap-3">
+          <button 
+            (click)="confirmChoice()" 
+            [disabled]="isLoading"
+            class="flex-1 bg-orange-600 text-white py-2.5 px-4 rounded-lg font-medium hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 disabled:opacity-50 disabled:cursor-not-allowed">
+            <span *ngIf="!isLoading">{{ atLeastOneServiceEnabled() ? 'Confirmer' : 'Continuer' }}</span>
+            <span *ngIf="isLoading" class="flex items-center justify-center">
+              <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              Chargement...
+            </span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

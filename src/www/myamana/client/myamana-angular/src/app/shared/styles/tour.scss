@@ -1,0 +1,79 @@
+/* Styles pour la visite guidée */
+.driver-popover {
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  padding: 24px;
+  max-width: 350px;
+}
+
+.driver-popover-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #ff8a66;
+  margin-bottom: 10px;
+}
+
+.driver-popover-description {
+  font-size: 14px;
+  color: #4a5568;
+  line-height: 1.5;
+  margin-bottom: 16px;
+}
+
+.driver-popover-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 16px;
+}
+
+.driver-popover-progress-text {
+  font-size: 12px;
+  color: #718096;
+}
+
+.driver-popover-close-btn {
+  background: #edf2f7;
+  border: none;
+  border-radius: 4px;
+  color: #4a5568;
+  padding: 4px 8px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.driver-popover-prev-btn,
+.driver-popover-next-btn {
+  background: #ff8a66;
+  border: none;
+  border-radius: 4px;
+  color: white;
+  padding: 6px 12px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.driver-popover-prev-btn:hover,
+.driver-popover-next-btn:hover {
+  background: #ff6a3c;
+}
+
+.driver-popover-prev-btn:disabled {
+  background: #ffc7b3;
+  cursor: not-allowed;
+}
+
+.driver-popover-progress {
+  margin-top: 16px;
+  height: 4px;
+  background: #edf2f7;
+  border-radius: 2px;
+}
+
+.driver-popover-progress-inner {
+  height: 100%;
+  background: #ff8a66;
+  border-radius: 2px;
+}

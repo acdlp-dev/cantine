@@ -1,0 +1,54 @@
+.confirmation-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: #f9fafb;
+    padding: 0; /* Supprimer tout padding */
+    margin-top: 100px; /* Supprimer toute marge */
+  }
+  
+  .confirmation-card {
+    background-color: white;
+    padding: 20px; /* Ajuster le padding de la carte si nécessaire */
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    max-width: 500px;
+    width: 100%;
+  }
+  
+  .confirmation-title {
+    font-size: 24px;
+    font-weight: bold;
+    color: #2d3748;
+    margin-bottom: 15px; /* Ajuster cette marge si nécessaire */
+    text-align: center;
+  }
+  
+  .confirmation-message {
+    font-size: 16px;
+    color: #4a5568;
+    line-height: 1.6;
+    margin-bottom: 15px;
+    text-align: center;
+  }
+  
+  .redirect-link {
+    text-align: center;
+  }
+  
+  .confirmation-footer {
+    font-size: 14px;
+    color: #718096;
+  }
+  
+  .redirect-link-text {
+    color: #3182ce;
+    font-weight: bold;
+    text-decoration: none;
+    margin-left: 5px;
+  }
+  
+  .redirect-link-text:hover {
+    text-decoration: underline;
+  }
+  

@@ -1,0 +1,98 @@
+<div class="flex h-screen w-screen">
+  <!-- Section gauche avec image de fond -->
+  <div class="auth-bg hidden flex-1 items-center justify-center bg-primary bg-cover lg:flex">
+    <div class="max-w-2xl space-y-4 p-8 text-center text-white">
+      <img src="./assets/images/auth-screens.png" alt="dashboard widget" />
+    </div>
+  </div>
+
+  <!-- Section droite avec contenu -->
+  <div class="flex flex-1 items-center justify-center bg-background">
+    <div class="container mx-auto px-4 py-8 max-w-2xl">
+      
+      <!-- État de chargement -->
+      <div *ngIf="loading" class="text-center">
+        <div class="mb-6 rounded-lg bg-blue-50 border border-blue-200 p-6">
+          <div class="flex items-center justify-center">
+            <svg class="animate-spin -ml-1 mr-3 h-8 w-8 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <h3 class="text-lg font-medium text-blue-800">Vérification en cours...</h3>
+          </div>
+          <p class="mt-2 text-sm text-blue-700">
+            Nous vérifions votre adresse email, veuillez patienter.
+          </p>
+        </div>
+      </div>
+
+      <!-- État de succès -->
+      <div *ngIf="success" class="text-center">
+        <div class="mb-6 rounded-lg bg-green-50 border border-green-200 p-6">
+          <div class="flex items-center justify-center">
+            <svg fill="currentColor" viewBox="0 0 20 20" class="w-8 h-8 text-green-400 mr-3">
+              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+            </svg>
+            <h3 class="text-lg font-medium text-green-800">Email vérifié avec succès !</h3>
+          </div>
+          
+          <div class="mt-4 text-sm text-green-700">
+            <p class="mb-2">
+              <strong>Merci {{ volunteer?.prenom }} {{ volunteer?.nom }} !</strong>
+            </p>
+            <p class="mb-2">
+              Votre espace bénévole a été créé avec succès pour <strong>{{ volunteer?.association_nom }}</strong>.
+            </p>
+            <p class="mb-4">
+              Vous pouvez maintenant vous connecter à votre espace personnel.
+            </p>
+          </div>
+        </div>
+
+        <div class="text-center">
+          <a href="/app/benevolat/signin" class="inline-flex items-center px-4 py-3 border border-transparent text-base font-medium rounded-md text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary">
+            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"></path>
+            </svg>
+            Accéder à mon espace bénévole
+          </a>
+          <p class="text-sm text-gray-600 mt-4">
+            Connectez-vous avec votre email et mot de passe pour accéder à votre espace personnel.
+          </p>
+        </div>
+      </div>
+
+      <!-- État d'erreur -->
+      <div *ngIf="error" class="text-center">
+        <div class="mb-6 rounded-lg bg-red-50 border border-red-200 p-6">
+          <div class="flex items-center justify-center">
+            <svg fill="currentColor" viewBox="0 0 20 20" class="w-8 h-8 text-red-400 mr-3">
+              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path>
+            </svg>
+            <h3 class="text-lg font-medium text-red-800">Erreur de vérification</h3>
+          </div>
+          
+          <div class="mt-4 text-sm text-red-700">
+            <p>{{ errorMessage }}</p>
+          </div>
+        </div>
+
+        <div class="text-center space-y-4">
+          <button 
+            (click)="retry()" 
+            class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
+            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+            </svg>
+            Réessayer
+          </button>
+          
+          <div class="text-sm text-gray-600">
+            <p>Si le problème persiste, contactez l'association directement.</p>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>

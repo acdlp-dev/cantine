@@ -1,0 +1,595 @@
+<div class="max-w-7xl mx-auto px-4 py-8 bg-gray-50">
+    <!-- En-tête de la page avec animation et style améliorés -->
+    <div class="mb-8 animate__animated animate__fadeIn animate__faster">
+        <h1 class="text-3xl sm:text-4xl font-bold text-gray-800 tracking-tight flex flex-wrap items-baseline gap-2">
+            Paramètres <span class="text-[#ff7443] relative">d'association</span>
+        </h1>
+        <p class="text-gray-600 mt-2">Informations générales et configuration de votre association</p>
+    </div>
+    <!-- Indicateur de chargement général -->
+    <div *ngIf="isLoading" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-xl p-8 shadow-2xl flex flex-col items-center">
+            <div class="animate-spin rounded-full h-14 w-14 border-4 border-[#ff7443]/20 border-t-[#ff7443]"></div>
+            <p class="mt-4 text-sm text-gray-500">Chargement en cours...</p>
+        </div>
+    </div>
+
+    <!-- Toast de succès en bas à droite -->
+    <div *ngIf="successMessage" class="fixed bottom-5 right-5 z-50 animate__animated animate__fadeIn animate__faster">
+        <div class="bg-green-600 text-white px-4 py-3 rounded-lg shadow-lg flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+            </svg>
+            <p>{{ successMessage }}</p>
+        </div>
+    </div>
+
+    <!-- Toast d'erreur en bas à droite -->
+    <div *ngIf="error" class="fixed bottom-5 right-5 z-50 animate__animated animate__fadeIn animate__faster">
+        <div class="bg-red-600 text-white px-4 py-3 rounded-lg shadow-lg flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            <p>{{ error }}</p>
+        </div>
+    </div>
+    <form [formGroup]="infoForm" (ngSubmit)="saveInfosAsso()">
+        <div *ngIf="hasDonations" class="bg-white rounded-xl shadow-lg border border-gray-200 p-6 transition-all duration-300 hover:shadow-xl hover:border-gray-300 mb-8">
+            <div class="flex items-start mb-4">
+                <div class="rounded-full bg-purple-100 p-3 mr-3">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                    </svg>
+                </div>
+                <div>
+                    <h2 class="text-lg font-semibold text-gray-800">Configuration Stripe</h2>
+                    <p class="text-sm text-gray-600">Paramètres pour les paiements en ligne</p>
+                    <p class="text-sm text-amber-600 font-medium mt-1">La configuration de nouvelles clés peut prendre quelques minutes</p>
+                </div>
+                <a href="https://www.youtube.com/watch?v=SPZvRnRANfc" target="_blank" class="text-[#ff7443] text-sm hover:underline ml-auto flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg> Voir tutoriel
+                </a>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
+                <div class="space-y-2">
+                    <label for="stripePublicKey" class="block text-sm font-medium text-gray-700">Clé Publique Stripe
+                        *</label>
+                    <input type="text" id="stripePublicKey" formControlName="stripePublicKey" placeholder="pk_live_..." class="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-[#ff7443] focus:border-[#ff7443]" [ngClass]="{'border-red-500': infoForm.get('stripePublicKey')?.invalid && infoForm.get('stripePublicKey')?.touched}">
+                    <p *ngIf="infoForm.get('stripePublicKey')?.invalid && infoForm.get('stripePublicKey')?.touched" class="mt-1 text-sm text-red-600">
+                        Ce champ est requis
+                    </p>
+                </div>
+                <div class="space-y-2">
+                    <label for="stripeSecretKey" class="block text-sm font-medium text-gray-700">Clé Privée Stripe
+                        *</label>
+                    <input type="password" id="stripeSecretKey" formControlName="stripeSecretKey" placeholder="sk_live_..." class="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-[#ff7443] focus:border-[#ff7443]" [ngClass]="{'border-red-500': infoForm.get('stripeSecretKey')?.invalid && infoForm.get('stripeSecretKey')?.touched}">
+                    <p *ngIf="infoForm.get('stripeSecretKey')?.invalid && infoForm.get('stripeSecretKey')?.touched" class="mt-1 text-sm text-red-600">
+                        Ce champ est requis
+                    </p>
+                </div>
+            </div>
+        </div>
+        <div *ngIf="hasDonations" class="bg-white rounded-xl shadow-lg border border-gray-200 p-6 transition-all duration-300 hover:shadow-xl hover:border-gray-300 mb-8">
+            <div class="flex items-start mb-4">
+                <div class="rounded-full bg-teal-100 p-3 mr-3">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-teal-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2z" />
+                    </svg>
+                </div>
+                <div>
+                    <h2 class="text-lg font-semibold text-gray-800">Moyens de paiement</h2>
+                    <p class="text-sm text-gray-600">Sélectionnez les modes de paiement que vous souhaitez proposer</p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-4">
+                <!-- Dans le HTML, remplacez les deux cases à cocher concernées par: -->
+
+                <!-- Carte bancaire (non décochable) -->
+                <div class="relative">
+                    <input type="checkbox" id="payment_card" formControlName="payment_card" class="peer absolute opacity-0 h-0 w-0" checked (click)="disableMandatoryPaymentMethods($event)" (change)="disableMandatoryPaymentMethods($event)">
+                    <label for="payment_card" class="flex flex-col items-center p-4 border-2 border-[#ff7443] rounded-lg cursor-not-allowed transition-all bg-orange-50">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 mb-2 text-[#ff7443]" viewBox="0 0 24 24"
+                            fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                            stroke-linejoin="round">
+                            <rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect>
+                            <line x1="1" y1="10" x2="23" y2="10"></line>
+                        </svg>
+                        <span class="font-medium text-gray-900">Carte bancaire</span>
+                        <span class="text-xs text-center text-gray-500 mt-1">Visa, Mastercard, etc.</span>
+
+                    </label>
+                </div>
+
+                <!-- Prélèvement SEPA (non décochable) -->
+                <div class="relative">
+                    <input type="checkbox" id="payment_sepa" formControlName="payment_sepa" class="peer absolute opacity-0 h-0 w-0" checked (click)="disableMandatoryPaymentMethods($event)" (change)="disableMandatoryPaymentMethods($event)">
+                    <label for="payment_sepa" class="flex flex-col items-center p-4 border-2 border-[#ff7443] rounded-lg cursor-not-allowed transition-all bg-orange-50">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 mb-2 text-[#ff7443]" viewBox="0 0 24 24"
+                            fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                            stroke-linejoin="round">
+                            <rect x="2" y="5" width="20" height="14" rx="2" ry="2"></rect>
+                            <line x1="2" y1="10" x2="22" y2="10"></line>
+                            <path d="M6 15h.01M9 15h.01"></path>
+                        </svg>
+                        <span class="font-medium text-gray-900">Prélèvement SEPA</span>
+                        <span class="text-xs text-center text-gray-500 mt-1">Virement automatique</span>
+
+                    </label>
+                </div>
+                <!-- PayPal -->
+                <div class="relative">
+                    <input type="checkbox" id="payment_paypal" formControlName="payment_paypal" class="peer absolute opacity-0 h-0 w-0">
+                    <label for="payment_paypal" class="flex flex-col items-center p-4 border-2 rounded-lg cursor-pointer transition-all peer-checked:border-[#ff7443] peer-checked:bg-orange-50 hover:bg-gray-50">
+                        <svg xmlns="http://www.w3.org/2000/svg"
+                            class="h-8 w-8 mb-2 text-gray-500 peer-checked:text-[#ff7443]" viewBox="0 0 24 24">
+                            <g>
+                                <circle cx="12" cy="12" r="10" fill="#0070BA" />
+                                <path
+                                    d="M16.165 9.05C16.154 9.12 16.141 9.193 16.127 9.268C15.635 11.793 13.952 12.666 11.803 12.666H10.709C10.446 12.666 10.224 12.856 10.183 13.116L9.623 16.67L9.464 17.676C9.438 17.847 9.569 18 9.741 18H11.682C11.912 18 12.107 17.833 12.143 17.606L12.162 17.508L12.527 15.189L12.551 15.061C12.587 14.834 12.782 14.667 13.012 14.667H13.303C15.183 14.667 16.655 13.903 17.085 11.694C17.265 10.771 17.172 10 16.697 9.458C16.553 9.295 16.374 9.159 16.165 9.05z"
+                                    fill="white" fill-opacity="0.6" />
+                                <path
+                                    d="M15.65 8.844C15.575 8.822 15.498 8.802 15.418 8.784C15.338 8.766 15.256 8.751 15.172 8.737C14.877 8.69 14.554 8.667 14.207 8.667H11.284C11.212 8.667 11.143 8.683 11.082 8.713C10.947 8.778 10.847 8.905 10.823 9.061L10.201 13.001L10.183 13.116C10.224 12.856 10.446 12.665 10.709 12.665H11.803C13.952 12.665 15.635 11.793 16.127 9.267C16.142 9.193 16.154 9.12 16.165 9.049C16.041 8.983 15.906 8.926 15.761 8.878C15.725 8.866 15.688 8.855 15.65 8.844z"
+                                    fill="white" fill-opacity="0.8" />
+                                <path
+                                    d="M10.823 9.062C10.847 8.905 10.947 8.778 11.082 8.713C11.144 8.684 11.212 8.667 11.284 8.667H14.207C14.554 8.667 14.877 8.69 15.172 8.738C15.256 8.751 15.338 8.767 15.418 8.784C15.498 8.802 15.575 8.822 15.65 8.844C15.688 8.855 15.725 8.867 15.761 8.878C15.906 8.926 16.041 8.983 16.165 9.049C16.312 8.116 16.164 7.48 15.66 6.905C15.103 6.271 14.099 6 12.815 6H9.085C8.822 6 8.598 6.191 8.558 6.451L7.004 16.298C6.973 16.493 7.124 16.669 7.32 16.669H9.623L10.201 13.001L10.823 9.062z"
+                                    fill="white" />
+                            </g>
+                        </svg>
+                        <span class="font-medium text-gray-700 peer-checked:text-gray-900">PayPal</span>
+                        <span class="text-xs text-center text-gray-500 mt-1">Paiement en ligne</span>
+                        <svg class="absolute top-2 right-2 h-5 w-5 text-[#ff7443] hidden peer-checked:block"
+                            fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd"
+                                d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                                clip-rule="evenodd" />
+                        </svg>
+                    </label>
+                </div>
+
+                <!-- Chèque -->
+                <div class="relative">
+                    <input type="checkbox" id="payment_check" formControlName="payment_check" class="peer absolute opacity-0 h-0 w-0">
+                    <label for="payment_check" class="flex flex-col items-center p-4 border-2 rounded-lg cursor-pointer transition-all peer-checked:border-[#ff7443] peer-checked:bg-orange-50 hover:bg-gray-50">
+                        <svg xmlns="http://www.w3.org/2000/svg"
+                            class="h-8 w-8 mb-2 text-gray-500 peer-checked:text-[#ff7443]" viewBox="0 0 24 24"
+                            fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                            stroke-linejoin="round">
+                            <rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect>
+                            <line x1="1" y1="10" x2="23" y2="10"></line>
+                            <path d="M7 15h3m3 0h4"></path>
+                        </svg>
+                        <span class="font-medium text-gray-700 peer-checked:text-gray-900">Chèque</span>
+                        <span class="text-xs text-center text-gray-500 mt-1">Paiement par courrier</span>
+                        <svg class="absolute top-2 right-2 h-5 w-5 text-[#ff7443] hidden peer-checked:block"
+                            fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd"
+                                d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                                clip-rule="evenodd" />
+                        </svg>
+                    </label>
+                </div>
+            </div>
+
+            <div *ngIf="infoForm.get('payment_check')?.value" class="mt-4 p-4 bg-white rounded-lg border border-gray-200 animate__animated animate__fadeIn">
+                <div class="space-y-2">
+                    <label class="flex text-sm font-medium text-gray-700 items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 text-gray-700" fill="none"
+                            viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                        </svg>
+                        Adresse pour les chèques
+                    </label>
+                    <div class="space-y-4">
+                        <div>
+                            <div class="flex items-center space-x-4 mt-1">
+                                <label class="inline-flex items-center">
+                                    <input type="radio" formControlName="same_address" value="yes"
+                                        class="h-4 w-4 text-[#ff7443] focus:ring-[#ff7443] border-gray-300">
+                                    <span class="ml-2">Utiliser l'adresse principale</span>
+                                </label>
+                                <label class="inline-flex items-center">
+                                    <input type="radio" formControlName="same_address" value="no"
+                                        class="h-4 w-4 text-[#ff7443] focus:ring-[#ff7443] border-gray-300">
+                                    <span class="ml-2">Utiliser une adresse différente</span>
+                                </label>
+                            </div>
+                            <p *ngIf="infoForm.get('same_address')?.value === 'no' && submitted && (!infoForm.get('check_line1')?.value || !infoForm.get('check_city')?.value || !infoForm.get('check_postal_code')?.value)" class="mt-1 text-sm text-red-600 animate__animated animate__fadeIn">
+                                Veuillez saisir une adresse complète pour le paiement par chèque
+                            </p>
+                        </div>
+
+                        <div *ngIf="infoForm.get('same_address')?.value === 'no'" class="animate__animated animate__fadeIn">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div class="space-y-1 md:col-span-2">
+                                    <label for="check_line1" class="block text-gray-700 text-sm font-medium">Adresse*</label>
+                                    <div class="relative">
+                                        <input #chequeAddressInput type="text" formControlName="check_address" class="rounded-lg border-gray-300 w-full focus:ring-[#ff8a66] focus:border-[#ff8a66]" [ngClass]="{'border-red-500 bg-red-50': submitted && !infoForm.get('check_line1')?.value}" placeholder="Commencez à saisir une adresse...">
+                                        <div *ngIf="infoForm.get('check_line1')?.value" class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M5 13l4 4L19 7" />
+                                            </svg>
+                                        </div>
+                                    </div>
+                                    <div *ngIf="submitted && !infoForm.get('check_line1')?.value" class="text-red-500 text-xs mt-1 animate__animated animate__fadeIn">
+                                        L'adresse est requise pour le paiement par chèque
+                                    </div>
+                                    <div *ngIf="infoForm.get('check_line1')?.value" class="text-xs text-green-600 mt-1">
+                                        Adresse validée: {{ infoForm.get('check_line1')?.value }}
+                                        <span *ngIf="infoForm.get('check_postal_code')?.value || infoForm.get('check_city')?.value">
+                                            - {{ infoForm.get('check_postal_code')?.value }} {{
+                                            infoForm.get('check_city')?.value }}
+                                        </span>
+                                    </div>
+
+                                </div>
+                                <input type="hidden" formControlName="check_line1">
+                                <div class="space-y-2">
+                                    <label for="check_postal_code" class="block text-sm font-medium text-gray-700">Code
+                                        postal
+                                        *</label>
+                                    <input type="text" id="check_postal_code" formControlName="check_postal_code" class="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-[#ff7443] focus:border-[#ff7443]" [ngClass]="{'border-red-500 bg-red-50': submitted && !infoForm.get('check_postal_code')?.value}"
+                                        placeholder="Code postal">
+                                    <div *ngIf="submitted && !infoForm.get('check_postal_code')?.value" class="text-red-500 text-xs mt-1 animate__animated animate__fadeIn">
+                                        Le code postal est requis
+                                    </div>
+                                </div>
+                                <div class="space-y-2">
+                                    <label for="check_city" class="block text-sm font-medium text-gray-700">Ville
+                                        *</label>
+                                    <input type="text" id="check_city" formControlName="check_city" class="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-[#ff7443] focus:border-[#ff7443]" [ngClass]="{'border-red-500 bg-red-50': submitted && !infoForm.get('check_city')?.value}"
+                                        placeholder="Ville">
+                                    <div *ngIf="submitted && !infoForm.get('check_city')?.value" class="text-red-500 text-xs mt-1 animate__animated animate__fadeIn">
+                                        La ville est requise
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div *ngIf="hasDonations && infoForm.get('payment_paypal')?.value" class="mt-4 p-4 bg-white rounded-lg border border-gray-200 animate__animated animate__fadeIn">
+                <div class="space-y-2">
+                    <label for="paypal_email" class="flex text-sm font-medium text-gray-700 items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 24 24">
+                            <g>
+                                <circle cx="12" cy="12" r="10" fill="#0070BA" />
+                                <path
+                                    d="M16.165 9.05C16.154 9.12 16.141 9.193 16.127 9.268C15.635 11.793 13.952 12.666 11.803 12.666H10.709C10.446 12.666 10.224 12.856 10.183 13.116L9.623 16.67L9.464 17.676C9.438 17.847 9.569 18 9.741 18H11.682C11.912 18 12.107 17.833 12.143 17.606L12.162 17.508L12.527 15.189L12.551 15.061C12.587 14.834 12.782 14.667 13.012 14.667H13.303C15.183 14.667 16.655 13.903 17.085 11.694C17.265 10.771 17.172 10 16.697 9.458C16.553 9.295 16.374 9.159 16.165 9.05z"
+                                    fill="white" fill-opacity="0.6" />
+                                <path
+                                    d="M15.65 8.844C15.575 8.822 15.498 8.802 15.418 8.784C15.338 8.766 15.256 8.751 15.172 8.737C14.877 8.69 14.554 8.667 14.207 8.667H11.284C11.212 8.667 11.143 8.683 11.082 8.713C10.947 8.778 10.847 8.905 10.823 9.061L10.201 13.001L10.183 13.116C10.224 12.856 10.446 12.665 10.709 12.665H11.803C13.952 12.665 15.635 11.793 16.127 9.267C16.142 9.193 16.154 9.12 16.165 9.049C16.041 8.983 15.906 8.926 15.761 8.878C15.725 8.866 15.688 8.855 15.65 8.844z"
+                                    fill="white" fill-opacity="0.8" />
+                                <path
+                                    d="M10.823 9.062C10.847 8.905 10.947 8.778 11.082 8.713C11.144 8.684 11.212 8.667 11.284 8.667H14.207C14.554 8.667 14.877 8.69 15.172 8.738C15.256 8.751 15.338 8.767 15.418 8.784C15.498 8.802 15.575 8.822 15.65 8.844C15.688 8.855 15.725 8.867 15.761 8.878C15.906 8.926 16.041 8.983 16.165 9.049C16.312 8.116 16.164 7.48 15.66 6.905C15.103 6.271 14.099 6 12.815 6H9.085C8.822 6 8.598 6.191 8.558 6.451L7.004 16.298C6.973 16.493 7.124 16.669 7.32 16.669H9.623L10.201 13.001L10.823 9.062z"
+                                    fill="white" />
+                            </g>
+                        </svg>
+                        Email PayPal *
+                    </label>
+                    <input type="email" id="paypal_email" formControlName="paypal_email" placeholder="email@example.com" class="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-[#ff7443] focus:border-[#ff7443]" [ngClass]="{'border-red-500': (infoForm.get('paypal_email')?.invalid && infoForm.get('paypal_email')?.touched) || (submitted && !infoForm.get('paypal_email')?.value)}">
+                    <p *ngIf="infoForm.get('payment_paypal')?.value && !infoForm.get('paypal_email')?.value && submitted" class="mt-1 text-sm text-red-600 animate__animated animate__fadeIn">
+                        Pour activer PayPal, vous devez renseigner l'adresse email associée
+                    </p>
+                    <p *ngIf="infoForm.get('paypal_email')?.invalid && infoForm.get('paypal_email')?.touched && infoForm.get('paypal_email')?.value" class="mt-1 text-sm text-red-600">
+                        Veuillez saisir une adresse email valide
+                    </p>
+
+                    <!-- Nouvelle section pour PayPal Zakat -->
+                    <div *ngIf="hasDonations" class="mt-4 pt-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Avez-vous un compte PayPal dédié à la Zakat ?</label>
+                        <div class="flex items-center space-x-4">
+                            <label class="inline-flex items-center">
+                                <input type="radio" formControlName="hasPaypalZakat" value="yes"
+                                    class="h-4 w-4 text-[#ff7443] focus:ring-[#ff7443] border-gray-300">
+                                <span class="ml-2">Oui</span>
+                            </label>
+                            <label class="inline-flex items-center">
+                                <input type="radio" formControlName="hasPaypalZakat" value="no"
+                                    class="h-4 w-4 text-[#ff7443] focus:ring-[#ff7443] border-gray-300">
+                                <span class="ml-2">Non</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Champ pour l'email PayPal Zakat conditionnellement affiché -->
+                    <div *ngIf="hasDonations && infoForm.get('hasPaypalZakat')?.value === 'yes'" class="mt-4 animate__animated animate__fadeIn">
+                        <label for="paypal_email_zakat" class="flex text-sm font-medium text-gray-700 items-center mt-6">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 24 24">
+                                <g>
+                                    <circle cx="12" cy="12" r="10" fill="#0070BA" />
+                                    <path
+                                        d="M16.165 9.05C16.154 9.12 16.141 9.193 16.127 9.268C15.635 11.793 13.952 12.666 11.803 12.666H10.709C10.446 12.666 10.224 12.856 10.183 13.116L9.623 16.67L9.464 17.676C9.438 17.847 9.569 18 9.741 18H11.682C11.912 18 12.107 17.833 12.143 17.606L12.162 17.508L12.527 15.189L12.551 15.061C12.587 14.834 12.782 14.667 13.012 14.667H13.303C15.183 14.667 16.655 13.903 17.085 11.694C17.265 10.771 17.172 10 16.697 9.458C16.553 9.295 16.374 9.159 16.165 9.05z"
+                                        fill="white" fill-opacity="0.6" />
+                                    <path
+                                        d="M15.65 8.844C15.575 8.822 15.498 8.802 15.418 8.784C15.338 8.766 15.256 8.751 15.172 8.737C14.877 8.69 14.554 8.667 14.207 8.667H11.284C11.212 8.667 11.143 8.683 11.082 8.713C10.947 8.778 10.847 8.905 10.823 9.061L10.201 13.001L10.183 13.116C10.224 12.856 10.446 12.665 10.709 12.665H11.803C13.952 12.665 15.635 11.793 16.127 9.267C16.142 9.193 16.154 9.12 16.165 9.049C16.041 8.983 15.906 8.926 15.761 8.878C15.725 8.866 15.688 8.855 15.65 8.844z"
+                                        fill="white" fill-opacity="0.8" />
+                                    <path
+                                        d="M10.823 9.062C10.847 8.905 10.947 8.778 11.082 8.713C11.144 8.684 11.212 8.667 11.284 8.667H14.207C14.554 8.667 14.877 8.69 15.172 8.738C15.256 8.751 15.338 8.767 15.418 8.784C15.498 8.802 15.575 8.822 15.65 8.844C15.688 8.855 15.725 8.867 15.761 8.878C15.906 8.926 16.041 8.983 16.165 9.049C16.312 8.116 16.164 7.48 15.66 6.905C15.103 6.271 14.099 6 12.815 6H9.085C8.822 6 8.598 6.191 8.558 6.451L7.004 16.298C6.973 16.493 7.124 16.669 7.32 16.669H9.623L10.201 13.001L10.823 9.062z"
+                                        fill="white" />
+                                </g>
+                            </svg>
+                            Email PayPal pour la Zakat *
+                        </label>
+                        <input type="email" id="paypal_email_zakat" formControlName="paypal_email_zakat" placeholder="zakat@example.com" class="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-[#ff7443] focus:border-[#ff7443] mt-2" [ngClass]="{'border-red-500': infoForm.get('hasPaypalZakat')?.value === 'yes' && !infoForm.get('paypal_email_zakat')?.value && submitted}">
+                        <p *ngIf="infoForm.get('hasPaypalZakat')?.value === 'yes' && !infoForm.get('paypal_email_zakat')?.value && submitted" class="mt-1 text-sm text-red-600 animate__animated animate__fadeIn">
+                            Veuillez renseigner l'adresse email PayPal pour la Zakat
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- </form> -->
+
+
+        <!-- Section Reçus fiscaux -->
+        <div *ngIf="hasDonations" class="bg-white rounded-xl shadow-lg border border-gray-200 p-6 transition-all duration-300 hover:shadow-xl hover:border-gray-300 mb-8">
+            <div class="flex items-start mb-4">
+                <div class="rounded-full bg-[#fff8f6] p-3 mr-3">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-[#ff7443]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                </div>
+                <div>
+                    <h2 class="text-lg font-semibold text-gray-800">Paramètres des reçus fiscaux</h2>
+                    <p class="text-sm text-gray-600">Configuration pour la génération des reçus</p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
+                <div class="space-y-2">
+                    <label for="email_sender" class="block text-sm font-medium text-gray-700">Expéditeur de l'email
+                        *</label>
+                    <input type="text" id="email_sender" formControlName="email_sender" class="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-[#ff7443] focus:border-[#ff7443]" [ngClass]="{'border-red-500': infoForm.get('email_sender')?.invalid && infoForm.get('email_sender')?.touched}">
+                    <p class="text-xs text-gray-500">Le nom qui sera indiqué lors de l'envoi des emails automatiques</p>
+                    <p *ngIf="infoForm.get('email_sender')?.invalid && infoForm.get('email_sender')?.touched" class="mt-1 text-sm text-red-600">
+                        Ce champ est requis
+                    </p>
+                </div>
+                <div class="space-y-2">
+                    <label for="fiscal_receipt_first_name" class="block text-sm font-medium text-gray-700">Prénom du
+                        signataire du reçu fiscal *</label>
+                    <input type="text" id="fiscal_receipt_first_name" formControlName="fiscal_receipt_first_name" class="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-[#ff7443] focus:border-[#ff7443]" [ngClass]="{'border-red-500': infoForm.get('fiscal_receipt_first_name')?.invalid && infoForm.get('fiscal_receipt_first_name')?.touched}">
+                    <p *ngIf="infoForm.get('fiscal_receipt_first_name')?.invalid && infoForm.get('fiscal_receipt_first_name')?.touched" class="mt-1 text-sm text-red-600">
+                        Ce champ est requis
+                    </p>
+                </div>
+                <div class="space-y-2">
+                    <label for="fiscal_receipt_last_name" class="block text-sm font-medium text-gray-700">Nom du
+                        signataire du reçu fiscal *</label>
+                    <input type="text" id="fiscal_receipt_last_name" formControlName="fiscal_receipt_last_name" class="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-[#ff7443] focus:border-[#ff7443]" [ngClass]="{'border-red-500': infoForm.get('fiscal_receipt_last_name')?.invalid && infoForm.get('fiscal_receipt_last_name')?.touched}">
+                    <p *ngIf="infoForm.get('fiscal_receipt_last_name')?.invalid && infoForm.get('fiscal_receipt_last_name')?.touched" class="mt-1 text-sm text-red-600">
+                        Ce champ est requis
+                    </p>
+                </div>
+                <div class="space-y-2">
+                    <label for="fiscal_receipt_status" class="block text-sm font-medium text-gray-700">Statut du
+                        signataire *</label>
+                    <input type="text" id="fiscal_receipt_status" formControlName="fiscal_receipt_status" class="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-[#ff7443] focus:border-[#ff7443]" [ngClass]="{'border-red-500': infoForm.get('fiscal_receipt_status')?.invalid && infoForm.get('fiscal_receipt_status')?.touched}">
+                    <p *ngIf="infoForm.get('fiscal_receipt_status')?.invalid && infoForm.get('fiscal_receipt_status')?.touched" class="mt-1 text-sm text-red-600">
+                        Ce champ est requis
+                    </p>
+                </div>
+            </div>
+
+            <div class="mt-6 border-t border-gray-200 pt-6">
+                <div class="flex items-start mb-4">
+                    <div class="rounded-full bg-orange-100 p-3 mr-3">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-orange-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                        </svg>
+                    </div>
+                    <div>
+                        <h2 class="text-lg font-semibold text-gray-800">Informations bancaires</h2>
+                        <p class="text-sm text-gray-600">Coordonnées bancaires pour les virements</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
+                    <div class="space-y-2">
+                        <label for="iban" class="block text-sm font-medium text-gray-700">Votre IBAN Bancaire *</label>
+                        <input type="text" id="iban" formControlName="iban" placeholder="FR76..." class="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-[#ff7443] focus:border-[#ff7443]" [ngClass]="{'border-red-500': infoForm.get('iban')?.invalid && infoForm.get('iban')?.touched}">
+                        <p *ngIf="infoForm.get('iban')?.invalid && infoForm.get('iban')?.touched" class="mt-1 text-sm text-red-600">
+                            Ce champ est requis
+                        </p>
+                    </div>
+                    <div class="space-y-2">
+                        <label for="bic" class="block text-sm font-medium text-gray-700">Votre BIC *</label>
+                        <input type="text" id="bic" formControlName="bic" class="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-[#ff7443] focus:border-[#ff7443]" [ngClass]="{'border-red-500': infoForm.get('bic')?.invalid && infoForm.get('bic')?.touched}">
+                        <p *ngIf="infoForm.get('bic')?.invalid && infoForm.get('bic')?.touched" class="mt-1 text-sm text-red-600">
+                            Ce champ est requis
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div *ngIf="true" class="bg-white rounded-xl shadow-lg border border-gray-200 p-6 transition-all duration-300 hover:shadow-xl hover:border-gray-300 mb-8">
+            <div class="flex items-start mb-4">
+                <div class="rounded-full bg-orange-100 p-3 mr-3">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-orange-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 2l2 7h7l-5.5 4 2 7L12 16l-5.5 4 2-7L3 9h7z" />
+                    </svg>
+                </div>
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-800">Organisme cultuel ou culturel</h3>
+                    <p class="text-sm text-gray-600">Indiquez si votre association est de nature cultuelle ou culturelle</p>
+                </div>
+            </div>
+
+            <div class="flex items-center space-x-6 mt-2">
+                <label class="inline-flex items-center">
+                    <input type="radio" formControlName="is_cultural" value="yes" class="h-4 w-4 text-[#ff7443] focus:ring-[#ff7443] border-gray-300">
+                    <span class="ml-2">Oui</span>
+                </label>
+                <label class="inline-flex items-center">
+                    <input type="radio" formControlName="is_cultural" value="no" class="h-4 w-4 text-[#ff7443] focus:ring-[#ff7443] border-gray-300">
+                    <span class="ml-2">Non</span>
+                </label>
+            </div>
+
+            <p *ngIf="infoForm.get('is_cultural')?.invalid && infoForm.get('is_cultural')?.touched" class="mt-3 text-sm text-red-600">
+                Ce champ est requis
+            </p>
+        </div>
+        <div class="bg-white rounded-xl shadow-lg border border-gray-200 p-6 transition-all duration-300 hover:shadow-xl hover:border-gray-300 mb-8">
+            <div class="flex items-start mb-4">
+                <div class="rounded-full bg-indigo-100 p-3 mr-3">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7h18M3 12h18M3 17h18" />
+                    </svg>
+                </div>
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-800">Informations générales</h3>
+                    <p class="text-sm text-gray-600">Qualité, objet, site et couleur utilisées pour votre association</p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="space-y-2">
+                    <label for="quality" class="block text-sm font-medium text-gray-700">Qualité *</label>
+                    <select id="quality" formControlName="quality" class="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-[#ff7443] focus:border-[#ff7443]" [ngClass]="{'border-red-500': infoForm.get('quality')?.invalid && infoForm.get('quality')?.touched}">
+                        <option value="" disabled>Sélectionnez une qualité</option>
+                        <option value="Organisme d'intérêt général">Organisme d'intérêt général</option>
+                        <option value="Organisme d'intérêt public">Organisme d'intérêt public</option>
+                        <option value="Aucune qualité spécifique">Aucune qualité spécifique</option>
+                    </select>
+                    <p *ngIf="infoForm.get('quality')?.invalid && infoForm.get('quality')?.touched" class="mt-1 text-sm text-red-600">Ce champ est requis</p>
+                </div>
+
+                <div class="space-y-2 md:col-span-2">
+                    <label for="purpose" class="block text-sm font-medium text-gray-700">Votre objet *</label>
+                    <textarea id="purpose" formControlName="purpose" rows="3" class="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-[#ff7443] focus:border-[#ff7443]" [ngClass]="{'border-red-500': infoForm.get('purpose')?.invalid && infoForm.get('purpose')?.touched}"></textarea>
+                    <p *ngIf="infoForm.get('purpose')?.invalid && infoForm.get('purpose')?.touched" class="mt-1 text-sm text-red-600">Ce champ est requis</p>
+                </div>
+
+                <div class="space-y-2">
+                    <label for="website" class="block text-sm font-medium text-gray-700">Votre site internet *</label>
+                    <input type="url" id="website" formControlName="website" placeholder="https://www.example.com" class="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-[#ff7443] focus:border-[#ff7443]" [ngClass]="{'border-red-500': infoForm.get('website')?.invalid && infoForm.get('website')?.touched}">
+                    <p *ngIf="infoForm.get('website')?.invalid && infoForm.get('website')?.touched" class="mt-1 text-sm text-red-600">Veuillez saisir une URL valide (commençant par http:// ou https://)</p>
+                </div>
+
+                <div class="space-y-2">
+                    <label for="color" class="block text-sm font-medium text-gray-700">Votre code couleur *</label>
+                    <div class="flex">
+                        <input type="color" id="color" formControlName="color" class="h-10 p-1 border border-gray-300 rounded-l-md shadow-sm focus:ring-[#ff7443] focus:border-[#ff7443]">
+                        <input type="text" id="colorHex" formControlName="colorHex" placeholder="#ff7443" class="w-full px-4 py-2 border border-gray-300 border-l-0 rounded-r-md shadow-sm focus:ring-[#ff7443] focus:border-[#ff7443]">
+                    </div>
+                    <p class="text-xs text-gray-500">La couleur qui sera utilisée sur votre page de don, dans vos emails etc...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section Options supplémentaires -->
+        <div *ngIf="hasDonations" class="bg-white rounded-xl shadow-lg border border-gray-200 p-6 transition-all duration-300 hover:shadow-xl hover:border-gray-300 mb-8">
+            <div class="flex items-start mb-4">
+                <div class="rounded-full bg-gray-100 p-3 mr-3">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                </div>
+                <div>
+                    <h2 class="text-lg font-semibold text-gray-800">Options supplémentaires</h2>
+                    <p class="text-sm text-gray-600">Configurations additionnelles</p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 gap-6 mt-4">
+
+                <div class="space-y-2">
+                    <label class="block text-sm font-medium text-gray-700">Avez-vous un compte séparé pour la collecte
+                        de la zakat ? *</label>
+                    <div class="flex items-center space-x-4 mt-1">
+                        <label class="inline-flex items-center">
+                            <input type="radio" formControlName="has_zakat" value="yes"
+                                class="h-4 w-4 text-[#ff7443] focus:ring-[#ff7443] border-gray-300">
+                            <span class="ml-2">Oui</span>
+                        </label>
+                        <label class="inline-flex items-center">
+                            <input type="radio" formControlName="has_zakat" value="no"
+                                class="h-4 w-4 text-[#ff7443] focus:ring-[#ff7443] border-gray-300">
+                            <span class="ml-2">Non</span>
+                        </label>
+                    </div>
+                    <p *ngIf="infoForm.get('has_zakat')?.invalid && infoForm.get('has_zakat')?.touched" class="mt-1 text-sm text-red-600">
+                        Ce champ est requis
+                    </p>
+                </div>
+                <!-- Champs Zakat conditionnels -->
+                <div *ngIf="infoForm.get('has_zakat')?.value === 'yes'" class="space-y-2 mt-4 p-4 bg-white rounded-lg border border-gray-200 animate__animated animate__fadeIn">
+                    <h3 class="font-medium text-gray-700 mb-3 flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                        </svg> Informations bancaires pour la Zakat
+                    </h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="space-y-2">
+                            <label for="zakat_iban" class="block text-sm font-medium text-gray-700">IBAN pour la Zakat
+                                *</label>
+                            <input type="text" id="zakat_iban" formControlName="zakat_iban" placeholder="FR76..." class="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-[#ff7443] focus:border-[#ff7443]">
+                        </div>
+                        <div class="space-y-2">
+                            <label for="zakat_bic" class="block text-sm font-medium text-gray-700">BIC pour la Zakat
+                                *</label>
+                            <input type="text" id="zakat_bic" formControlName="zakat_bic" class="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-[#ff7443] focus:border-[#ff7443]">
+                        </div>
+                        <div class="space-y-2 md:col-span-2">
+                            <label for="paypal_email_zakat" class="flex text-sm font-medium text-gray-700 items-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 24 24">
+                                    <g>
+                                        <circle cx="12" cy="12" r="10" fill="#0070BA" />
+                                        <path
+                                            d="M16.165 9.05C16.154 9.12 16.141 9.193 16.127 9.268C15.635 11.793 13.952 12.666 11.803 12.666H10.709C10.446 12.666 10.224 12.856 10.183 13.116L9.623 16.67L9.464 17.676C9.438 17.847 9.569 18 9.741 18H11.682C11.912 18 12.107 17.833 12.143 17.606L12.162 17.508L12.527 15.189L12.551 15.061C12.587 14.834 12.782 14.667 13.012 14.667H13.303C15.183 14.667 16.655 13.903 17.085 11.694C17.265 10.771 17.172 10 16.697 9.458C16.553 9.295 16.374 9.159 16.165 9.05z"
+                                            fill="white" fill-opacity="0.6" />
+                                        <path
+                                            d="M15.65 8.844C15.575 8.822 15.498 8.802 15.418 8.784C15.338 8.766 15.256 8.751 15.172 8.737C14.877 8.69 14.554 8.667 14.207 8.667H11.284C11.212 8.667 11.143 8.683 11.082 8.713C10.947 8.778 10.847 8.905 10.823 9.061L10.201 13.001L10.183 13.116C10.224 12.856 10.446 12.665 10.709 12.665H11.803C13.952 12.665 15.635 11.793 16.127 9.267C16.142 9.193 16.154 9.12 16.165 9.049C16.041 8.983 15.906 8.926 15.761 8.878C15.725 8.866 15.688 8.855 15.65 8.844z"
+                                            fill="white" fill-opacity="0.8" />
+                                        <path
+                                            d="M10.823 9.062C10.847 8.905 10.947 8.778 11.082 8.713C11.144 8.684 11.212 8.667 11.284 8.667H14.207C14.554 8.667 14.877 8.69 15.172 8.738C15.256 8.751 15.338 8.767 15.418 8.784C15.498 8.802 15.575 8.822 15.65 8.844C15.688 8.855 15.725 8.867 15.761 8.878C15.906 8.926 16.041 8.983 16.165 9.049C16.312 8.116 16.164 7.48 15.66 6.905C15.103 6.271 14.099 6 12.815 6H9.085C8.822 6 8.598 6.191 8.558 6.451L7.004 16.298C6.973 16.493 7.124 16.669 7.32 16.669H9.623L10.201 13.001L10.823 9.062z"
+                                            fill="white" />
+                                    </g>
+                                </svg>
+                                Email PayPal pour la Zakat (optionnel)
+                            </label>
+                            <input type="email" id="paypal_email_zakat" formControlName="paypal_email_zakat" placeholder="email@example.com" class="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-[#ff7443] focus:border-[#ff7443]">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-amber-50 border-l-4 border-amber-500 p-4 rounded-md shadow-md my-6 animate__animated animate__fadeIn">
+            <div class="flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-amber-500 mr-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <p class="font-medium text-amber-700">
+                    Attention ! Vérifiez bien vos informations avant de les enregistrer.
+                </p>
+            </div>
+        </div>
+
+        <div class="flex flex-col sm:flex-row sm:justify-center gap-4 mt-8">
+            <button type="button" (click)="saveInfosAsso()" class="inline-flex justify-center items-center px-6 py-3 border border-transparent shadow-sm text-base font-medium rounded-md text-white bg-[#ff7443] hover:bg-[#ff6234] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#ff7443] transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24"
+                    stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                </svg>
+                Enregistrer les modifications
+            </button>
+        </div>

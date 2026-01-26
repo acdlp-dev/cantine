@@ -1,0 +1,186 @@
+<div class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50" [class.pointer-events-none]="isSubmitting">
+  <!-- Loader -->
+  <div *ngIf="isSubmitting" class="fixed inset-0 z-[60] flex items-center justify-center bg-black bg-opacity-50">
+    <div class="flex flex-col items-center">
+      <div class="h-12 w-12 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+      <p class="mt-4 text-white">Modification en cours...</p>
+    </div>
+  </div>
+  <div class="w-full max-w-md rounded-lg bg-white p-6">
+    <h2 class="mb-4 text-xl font-bold">Modifier votre don mensuel</h2>
+
+    <form [formGroup]="modifyForm" (ngSubmit)="onSubmit()">
+      <!-- Montant -->
+      <div class="mb-4">
+        <label for="amount" class="block text-sm font-medium text-gray-700">Montant mensuel</label>
+        <div class="mt-1 relative rounded-md shadow-sm">
+          <input type="number" 
+                 id="amount" 
+                 name="amount"
+                 formControlName="amount"
+                 class="block w-full rounded-md border-gray-300 pl-3 pr-12 focus:border-primary focus:ring-primary sm:text-sm"
+                 [ngClass]="{'border-red-300': modifyForm.get('amount')?.invalid && modifyForm.get('amount')?.touched}"
+                 required
+                 min="1">
+          <div *ngIf="modifyForm.get('amount')?.invalid && modifyForm.get('amount')?.touched" class="mt-1 text-sm text-red-600">
+            <span *ngIf="modifyForm.get('amount')?.errors?.['required']">Le montant est requis</span>
+            <span *ngIf="modifyForm.get('amount')?.errors?.['min']">Le montant doit être supérieur à 0</span>
+          </div>
+          <div class="absolute inset-y-0 right-0 flex items-center pr-3">
+            <span class="text-gray-500 sm:text-sm">€</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Jour de prélèvement -->
+      <div class="mb-4">
+        <label for="billingDay" class="block text-sm font-medium text-gray-700">Tous les</label>
+        <div class="mt-1 flex items-center space-x-2">
+          <input type="number" 
+                 id="billingDay" 
+                 name="billingDay"
+                 formControlName="billingDay"
+                 class="block w-20 rounded-md border-gray-300 focus:border-primary focus:ring-primary sm:text-sm"
+                 [ngClass]="{'border-red-300': modifyForm.get('billingDay')?.invalid && modifyForm.get('billingDay')?.touched}"
+                 required
+                 min="1"
+                 max="28">
+          <span class="text-sm text-gray-700">du mois</span>
+        </div>
+        <div *ngIf="modifyForm.get('billingDay')?.invalid && modifyForm.get('billingDay')?.touched" class="mt-1 text-sm text-red-600">
+          <span *ngIf="modifyForm.get('billingDay')?.errors?.['required']">Le jour de prélèvement est requis</span>
+          <span *ngIf="modifyForm.get('billingDay')?.errors?.['min'] || modifyForm.get('billingDay')?.errors?.['max']">Le jour doit être compris entre 1 et 28</span>
+        </div>
+      </div>
+
+      <!-- Moyen de paiement actuel -->
+      <div class="mb-4">
+        <!-- Visa -->
+        <div *ngIf="nft.moyen === 'CB' && nft.brand === 'visa'" class="flex items-center text-sm text-gray-500">
+          <fa-icon [icon]="faVisa" class="text-[#1434CB] text-2xl mr-2"></fa-icon>
+          Carte actuelle : •••• {{nft.last4}} (expire {{nft.expirationCB | date:'MM/yy'}})
+        </div>
+
+        <!-- Mastercard -->
+        <div *ngIf="nft.moyen === 'CB' && nft.brand === 'mastercard'" class="flex items-center text-sm text-gray-500">
+          <svg class="h-6 mr-2" viewBox="0 0 48 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="16" cy="16" r="12" fill="#EB001B"/>
+            <circle cx="32" cy="16" r="12" fill="#F79E1B" style="mix-blend-mode: multiply"/>
+          </svg>
+          Carte actuelle : •••• {{nft.last4}} (expire {{nft.expirationCB | date:'MM/yy'}})
+        </div>
+
+        <!-- American Express -->
+        <div *ngIf="nft.moyen === 'CB' && nft.brand === 'american-express'" class="flex items-center text-sm text-gray-500">
+          <fa-icon [icon]="faAmex" class="text-[#006FCF] text-2xl mr-2"></fa-icon>
+          Carte actuelle : •••• {{nft.last4}} (expire {{nft.expirationCB | date:'MM/yy'}})
+        </div>
+
+        <!-- Carte Bancaire générique -->
+        <div *ngIf="nft.moyen === 'CB' && (!nft.brand || nft.brand === 'carte-bancaire')" class="flex items-center text-sm text-gray-500">
+          <fa-icon [icon]="faCard" class="text-indigo-600 text-xl mr-2"></fa-icon>
+          Carte actuelle : •••• {{nft.last4}} (expire {{nft.expirationCB | date:'MM/yy'}})
+        </div>
+
+        <!-- IBAN -->
+        <div *ngIf="nft.moyen === 'IBAN' && nft.last4" class="flex items-center text-sm text-gray-500">
+          <fa-icon [icon]="faIban" class="text-blue-600 text-xl mr-2"></fa-icon>
+          IBAN actuel : FR...{{nft.last4}}
+        </div>
+      </div>
+
+      <!-- Message de transition -->
+      <div class="text-sm text-gray-700 mb-4">
+        Si vous souhaitez changer de moyen de paiement, choisissez ci-dessous :
+      </div>
+
+      <!-- Choix du moyen de paiement avec onglets -->
+      <div class="mb-6">
+        <div class="border-b border-gray-200">
+          <nav class="-mb-px flex" aria-label="Tabs">
+            <button type="button"
+                    (click)="setPaymentType('sepa')"
+                    class="w-1/2 py-4 px-1 text-center border-b-2 font-medium text-sm"
+                    [class.border-primary]="modifyForm.get('paymentType')?.value === 'sepa'"
+                    [class.text-primary]="modifyForm.get('paymentType')?.value === 'sepa'"
+                    [class.border-transparent]="modifyForm.get('paymentType')?.value !== 'sepa'"
+                    [class.text-gray-500]="modifyForm.get('paymentType')?.value !== 'sepa'"
+                    [class.hover:text-gray-700]="modifyForm.get('paymentType')?.value !== 'sepa'"
+                    [class.hover:border-gray-300]="modifyForm.get('paymentType')?.value !== 'sepa'"
+                    [disabled]="!isFormValid">
+              <span class="flex items-center justify-center">
+                <fa-icon [icon]="faIban" class="text-blue-600 text-xl mr-2"></fa-icon>
+                Prélèvement SEPA
+              </span>
+            </button>
+            <button type="button"
+                    (click)="setPaymentType('card')"
+                    class="w-1/2 py-4 px-1 text-center border-b-2 font-medium text-sm"
+                    [class.border-primary]="modifyForm.get('paymentType')?.value === 'card'"
+                    [class.text-primary]="modifyForm.get('paymentType')?.value === 'card'"
+                    [class.border-transparent]="modifyForm.get('paymentType')?.value !== 'card'"
+                    [class.text-gray-500]="modifyForm.get('paymentType')?.value !== 'card'"
+                    [class.hover:text-gray-700]="modifyForm.get('paymentType')?.value !== 'card'"
+                    [class.hover:border-gray-300]="modifyForm.get('paymentType')?.value !== 'card'"
+                    [disabled]="!isFormValid">
+              <span class="flex items-center justify-center">
+                <fa-icon [icon]="faCard" class="text-indigo-600 text-xl mr-2"></fa-icon>
+                Carte bancaire
+              </span>
+            </button>
+          </nav>
+        </div>
+
+        <!-- Message d'aide -->
+        <div *ngIf="!isFormValid" class="mt-4 text-sm text-orange-600">
+          Veuillez remplir tous les champs obligatoires avant de choisir un moyen de paiement.
+        </div>
+
+        <!-- Formulaires de paiement -->
+        <div class="mt-6">
+          <div [hidden]="modifyForm.get('paymentType')?.value !== 'card'" class="space-y-4">
+            <div #cardElement class="p-3 border rounded-md space-y-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Numéro de carte</label>
+                <div id="card-number" class="p-3 border rounded-md"></div>
+              </div>
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Date d'expiration</label>
+                  <div id="card-expiry" class="p-3 border rounded-md"></div>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">CVC</label>
+                  <div id="card-cvc" class="p-3 border rounded-md"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div [hidden]="modifyForm.get('paymentType')?.value !== 'sepa'">
+            <label class="block text-sm font-medium text-gray-700 mb-2">Informations bancaires SEPA</label>
+            <div #sepaElement class="p-3 border rounded-md"></div>
+            <p class="mt-2 text-xs text-gray-500">
+              En fournissant vos informations de paiement et en confirmant ce paiement, vous autorisez (A) {{formatAssoName(asso)}} et Stripe, notre prestataire de services de paiement, à envoyer des instructions à votre banque pour débiter votre compte et (B) votre banque à débiter votre compte conformément à ces instructions.
+            </p>
+          </div>
+          <div *ngIf="paymentError" class="mt-1 text-sm text-red-600">{{ paymentError }}</div>
+        </div>
+      </div>
+
+      <!-- Boutons -->
+      <div class="flex justify-end space-x-3">
+        <button type="button" 
+                (click)="onCancel()"
+                class="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2">
+          Annuler
+        </button>
+        <button type="submit"
+                [disabled]="modifyForm.invalid || isSubmitting"
+                class="rounded-md border border-transparent bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+                [ngClass]="{'opacity-50 cursor-not-allowed': modifyForm.invalid || isSubmitting}">
+          Confirmer les modifications
+        </button>
+      </div>
+    </form>
+  </div>
+</div>

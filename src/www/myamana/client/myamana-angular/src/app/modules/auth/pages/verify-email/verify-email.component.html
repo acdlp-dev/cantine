@@ -1,0 +1,35 @@
+<div class="flex flex-col items-center justify-center min-h-screen bg-gray-100 p-4">
+  <div class="w-full max-w-md bg-white rounded-lg shadow-md p-6 text-center">
+    <h1 class="text-2xl font-bold text-gray-800 mb-4">Vérification de l'email</h1>
+
+    <div class="mb-6">
+      <p class="text-gray-600">{{ message }}</p>
+    </div>
+
+    <div class="animate-spin h-10 w-10 border-4 border-blue-500 rounded-full border-t-transparent mx-auto"
+      *ngIf="loading"></div>
+
+    <!-- Bouton pour renvoyer un lien de vérification -->
+    <div *ngIf="showResendForm" class="mt-6">
+      <button (click)="resendVerificationLink()"
+        class="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+        [disabled]="resendLoading">
+        <span *ngIf="!resendLoading">Recevoir un nouveau lien</span>
+        <span *ngIf="resendLoading"
+          class="inline-block animate-spin h-5 w-5 border-2 border-white rounded-full border-t-transparent"></span>
+      </button>
+
+      <p *ngIf="resendMessage" class="mt-4 text-sm"
+        [ngClass]="{'text-green-600': resendSuccess, 'text-red-600': !resendSuccess}">
+        {{ resendMessage }}
+      </p>
+    </div>
+
+    <div *ngIf="verificationSuccess" class="mt-6">
+      <a [routerLink]="getRedirectLink()"
+        class="inline-block bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+        Se connecter
+      </a>      
+    </div>
+  </div>
+</div>

@@ -1,0 +1,57 @@
+:host {
+  display: contents;
+}
+
+// Animation d'entrée du widget
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+// Classe d'animation
+.animate-slideIn {
+  animation: slideIn 0.2s ease-out;
+}
+
+// Style du bouton flottant
+button.fixed.bottom-6 {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  
+  &:hover {
+    box-shadow: 0 10px 40px rgba(16, 185, 129, 0.4);
+  }
+  
+  &.rotate-45 {
+    lucide-icon {
+      transition: transform 0.3s ease;
+    }
+  }
+}
+
+// Scrollbar personnalisée
+.max-h-\[70vh\] {
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+  
+  &::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 3px;
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background: #c5c5c5;
+    border-radius: 3px;
+    
+    &:hover {
+      background: #a8a8a8;
+    }
+  }
+}
+

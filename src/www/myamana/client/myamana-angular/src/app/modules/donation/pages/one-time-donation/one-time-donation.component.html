@@ -1,0 +1,139 @@
+<div class="flex min-h-screen max-w-screen relative">
+  <!-- Left Panel - Branded Section with Quote -->
+  <div class="donation-left hidden flex-1 items-center justify-center lg:flex relative">
+    <!-- Decorative circle -->
+    <div class="donation-left-circle"></div>
+
+    <div class="quote-container max-w-2xl space-y-8 p-12 text-center">
+      <!-- Decorative line -->
+      <div class="decorative-line fade-in delay-1"></div>
+
+      <!-- Citation -->
+      <blockquote class="quote-text text-2xl md:text-3xl font-light leading-relaxed text-white italic fade-in delay-2">
+        {{ quote }}
+      </blockquote>
+
+      <p class="quote-reference text-white/80 text-lg font-medium fade-in delay-2">{{ quoteReference }}</p>
+
+      <!-- Decorative line -->
+      <div class="decorative-line fade-in delay-2"></div>
+    </div>
+
+    <!-- Texte en bas à gauche (desktop) -->
+    <div class="absolute bottom-8 left-8 fade-in delay-3">
+      <p class="text-sm font-medium">
+        <span class="text-white">❤️ MyAmana facilitateur pour les </span>
+        <span class="typewriter-text-small">{{ currentWord }}</span>
+        <span class="typewriter-cursor-small">|</span>
+      </p>
+    </div>
+  </div>
+
+  <!-- Mobile sticky footer -->
+  <div class="mobile-sticky-footer lg:hidden">
+    <p class="text-sm font-medium text-center">
+      <span class="text-white">❤️ MyAmana facilitateur pour les </span>
+      <span class="typewriter-text-small">{{ currentWord }}</span>
+      <span class="typewriter-cursor-small">|</span>
+    </p>
+  </div>
+  <!-- Right Panel - Form Section -->
+  <div class="flex flex-1 items-center justify-center bg-background pb-20 lg:pb-0 relative">
+    <!-- Logo association en filigrane -->
+    <div class="absolute top-4 right-4 md:top-8 md:right-8 pointer-events-none z-10">
+      <img
+        [src]="association?.logo_url"
+        alt="Association Logo"
+        class="w-24 h-24 md:w-36 md:h-36 opacity-20"
+      />
+    </div>
+  <div class="min-h-screen w-[100%] flex flex-col">
+    <div class="container mx-auto px-4 py-4 sm:py-8 max-w-2xl max-h-fit flex-grow">
+      @if (loading) {
+        <div class="text-center">
+          <p>Chargement...</p>
+        </div>
+        } @else if (error) {
+        <div class="text-center text-red-500">
+          <p>Une erreur est survenue lors du chargement des données.</p>
+        </div>
+        } @else {
+        <div class="mb-4 h-12">
+          @if (currentStep > 1) {
+          <button
+            (click)="goToPreviousStep()"
+            class="flex items-center text-gray-600 transition-colors duration-200 hover:text-gray-800"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="mr-2 h-5 w-5"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+            >
+              <path
+                fill-rule="evenodd"
+                d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L4.414 9H17a1 1 0 110 2H4.414l5.293 5.293a1 1 0 010 1.414z"
+                clip-rule="evenodd"
+              />
+            </svg>
+            <span>{{ getPreviousStepName() }}</span>
+          </button>
+          }
+        </div>
+
+        <h1 class="mb-4 text-center text-2xl font-bold sm:mb-8 sm:text-4xl">
+          Faire un don
+        </h1>
+        <h2 class="mb-4 text-center text-xl sm:mb-8 sm:text-2xl">
+          {{ association?.name_asso }}
+        </h2>
+
+        <app-step-indicator
+          [currentStep]="currentStep"
+          [totalSteps]="totalSteps"
+          [donationColor]="association?.code_couleur || '#d7192d'"
+        >
+        </app-step-indicator>
+
+        <div [ngSwitch]="currentStep">
+          <app-donation-form
+            *ngSwitchCase="1"
+            [selectedCampaignStep]="selectedCampaignStep"
+            [campaigns]="availableCampaigns"
+            [defaultCampaign]="campaignFromUrl"
+            [donationColor]="association?.code_couleur || '#d7192d'"
+            [isMonthly]="isMonthly"
+            [donationDetailsForm]="donationDetails"
+            [donationAmount]="donationAmount"
+            [showTaxReduction]="association?.recu_asso === 'true'"
+            (stepComplete)="onStepComplete(1, $event)"
+            (campaignTypeChange)="onCampaignTypeChange($event)">
+          </app-donation-form>
+
+          <app-personal-info-form
+            *ngSwitchCase="2"
+            [donationAmount]="donationAmount"
+            [selectedCampaign]="selectedCampaign"
+            [donationColor]="association?.code_couleur || '#d7192d'"
+            [display_pro]="association?.demande_pro"
+            [personalInfoForm]="personalInfo"
+            (stepComplete)="onStepComplete(2, $event)">
+          </app-personal-info-form>
+
+          <app-payment-form
+            *ngSwitchCase="3"
+            [donationAmount]="donationAmount"
+            [selectedCampaign]="selectedCampaign"
+            [donationColor]="association?.code_couleur || '#d7192d'"
+            [associationData]="association"
+            [isZakatCampaign]="isZakatCampaign"
+            [assoId]="assoId"
+            [donationFormData]="donationFormData"
+            [isMonthly]="isMonthly">
+          </app-payment-form>
+        </div>
+        }
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,305 @@
+<div class="max-w-7xl mx-auto p-4 sm:p-6 bg-gray-50/50 min-h-screen animate__animated animate__fadeIn animate__faster mt-8">
+    <!-- Notification de copie -->
+    <div *ngIf="copySuccess"
+        class="fixed bottom-6 right-6 z-50 bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-xl shadow-xl flex items-center transition-all duration-300 animate__animated animate__fadeIn animate__faster backdrop-blur-sm bg-opacity-90">
+        <i-lucide name="check-circle-2" class="w-5 h-5 mr-2 text-green-600"></i-lucide>
+        <span class="font-medium">Copié dans le presse-papiers</span>
+    </div>
+
+    <!-- Entête avec bouton retour -->
+    <div class="flex flex-wrap items-center justify-between gap-4 mb-8">
+        <button (click)="goBack()"
+            class="group inline-flex items-center gap-2 text-gray-600 hover:text-[#ff7443] transition-colors px-3 py-1.5 rounded-lg border border-gray-200 hover:border-[#ff7443]/20 hover:bg-white shadow-sm">
+            <i-lucide name="arrow-left"
+                class="w-5 h-5 group-hover:transform group-hover:-translate-x-0.5 transition-transform"></i-lucide>
+            <span class="font-medium">Retour aux abonnements</span>
+        </button>
+
+        <!-- Badge de statut -->
+        <span *ngIf="abonnement?.statut"
+            class="inline-flex items-center px-4 py-1.5 rounded-full text-sm font-medium shadow-md"
+            [ngClass]="getStatutClass(abonnement.statut).bg + ' ' + getStatutClass(abonnement.statut).text">
+            <span class="w-2.5 h-2.5 mr-2 rounded-full animate-pulse"
+                [ngClass]="getStatutClass(abonnement.statut).dot"></span>
+            {{ abonnement.statut }}
+        </span>
+    </div>
+
+    <!-- Titre principal -->
+    <h1 class="text-3xl sm:text-4xl font-bold text-gray-800 tracking-tight mb-8 flex flex-wrap items-baseline gap-2">
+        Détails de
+        <span class="relative text-[#ff7443]">
+            l'abonnement
+            <span class="absolute bottom-1 left-0 w-full h-1.5 bg-[#ff7443] opacity-20 rounded-full"></span>
+        </span>
+    </h1>
+
+    <!-- État de chargement -->
+    <div *ngIf="isLoading" class="bg-white rounded-2xl shadow-lg border border-gray-100 p-12 text-center">
+        <div class="flex justify-center">
+            <div class="animate-spin rounded-full h-16 w-16 border-4 border-[#ff7443]/30 border-t-[#ff7443]"></div>
+        </div>
+        <p class="mt-6 text-sm text-gray-500 font-medium">Chargement des détails...</p>
+    </div>
+
+    <!-- Message d'erreur -->
+    <div *ngIf="!isLoading && error" class="bg-white rounded-2xl shadow-lg border border-gray-100 p-10 text-center">
+        <div class="flex justify-center">
+            <div class="p-6 bg-red-50 rounded-full">
+                <i-lucide name="alert-circle" class="w-16 h-16 text-red-500"></i-lucide>
+            </div>
+        </div>
+        <h3 class="mt-6 text-xl font-semibold text-gray-900">Erreur</h3>
+        <p class="mt-3 text-base text-gray-600">{{ error }}</p>
+        <button (click)="goBack()"
+            class="mt-6 inline-flex items-center px-5 py-2.5 border border-transparent rounded-lg shadow-md text-sm font-medium text-white bg-[#ff7443] hover:bg-[#ff6234] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#ff7443] transition-all duration-200 ease-in-out transform hover:scale-105">
+            Retour à la liste
+        </button>
+    </div>
+
+    <!-- Détails de l'abonnement -->
+    <div *ngIf="!isLoading && !error && abonnement" class="space-y-8">
+        <!-- Carte d'informations principales -->
+        <div
+            class="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden transition-all hover:shadow-xl">
+            <div class="p-8 border-b border-gray-100">
+                <div class="flex flex-col md:flex-row justify-between gap-8">
+                    <!-- Informations sur le donateur -->
+                    <div class="flex-1">
+                        <h2 class="text-2xl font-bold text-gray-900 mb-3">{{ abonnement.prenom }} {{ abonnement.nom }}
+                        </h2>
+
+                        <!-- Email avec bouton de copie -->
+                        <div class="flex items-center gap-2 text-sm text-gray-500 mb-4">
+                            <i-lucide name="mail" class="w-4 h-4 text-gray-400"></i-lucide>
+                            <span>{{ abonnement.email }}</span>
+                            <button (click)="copyToClipboard(abonnement.email)"
+                                class="text-gray-400 hover:text-[#ff7443] p-1 rounded-full hover:bg-[#fff8f6] transition-all duration-200"
+                                title="Copier l'email">
+                                <i-lucide name="copy" class="w-4 h-4"></i-lucide>
+                            </button>
+                        </div>
+
+                        <!-- ID d'abonnement -->
+                        <div
+                            class="inline-flex items-center px-3 py-1.5 bg-gray-50 rounded-lg text-xs font-medium text-gray-700 border border-gray-100 shadow-sm">
+                            <i-lucide name="credit-card" class="w-3.5 h-3.5 mr-1.5 text-gray-500"></i-lucide>
+                            <span>ID: {{ abonnement.stripe_sub_id }}</span>
+                            <button (click)="copyToClipboard(abonnement.stripe_sub_id)"
+                                class="ml-2 text-gray-400 hover:text-[#ff7443] transition-colors" title="Copier l'ID">
+                                <i-lucide name="copy" class="w-3.5 h-3.5"></i-lucide>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Montant de l'abonnement -->
+                    <div
+                        class="bg-gradient-to-br from-[#fff8f6] to-white px-8 py-5 rounded-xl text-center shrink-0 shadow-lg border border-[#ff7443]/10 relative overflow-hidden">
+                        <div class="absolute top-0 right-0 w-16 h-16 -mt-8 -mr-8 bg-[#ff7443]/5 rounded-full"></div>
+                        <div class="absolute bottom-0 left-0 w-10 h-10 -mb-5 -ml-5 bg-[#ff7443]/5 rounded-full"></div>
+                        <p class="text-xs text-gray-600 uppercase font-medium mb-1 tracking-wider">Montant récurrent</p>
+                        <p class="text-3xl font-bold text-[#ff7443]">{{ formatMoney(abonnement.montant) }}</p>
+                        <p class="text-sm text-gray-500 mt-1">
+                            <span *ngIf="abonnement.occurence === 'mensuel'">par mois</span>
+                            <span *ngIf="abonnement.occurence === 'annuel'">par an</span>
+                            <span *ngIf="abonnement.occurence !== 'mensuel' && abonnement.occurence !== 'annuel'">{{
+                                abonnement.occurence }}</span>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Informations détaillées -->
+        <div
+            class="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden transition-all hover:shadow-xl">
+            <div class="p-8">
+                <h3 class="text-xl font-semibold text-gray-800 mb-8 flex items-center">
+                    <i-lucide name="info" class="w-5 h-5 mr-2 text-[#ff7443]"></i-lucide>
+                    Informations détaillées
+                </h3>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-8">
+                    <!-- Colonne gauche -->
+                    <div class="space-y-8">
+                        <div>
+                            <h4 class="text-sm font-semibold text-gray-600 mb-3 flex items-center">
+                                <i-lucide name="layout-dashboard" class="w-4 h-4 mr-2 text-[#ff7443]"></i-lucide>
+                                Détails de l'abonnement
+                            </h4>
+                            <div
+                                class="bg-gray-50 rounded-xl p-5 space-y-4 shadow-sm border border-gray-100 hover:border-gray-200 transition-colors">
+                                <div>
+                                    <p class="text-xs text-gray-500 mb-1">Type d'abonnement</p>
+                                    <div class="flex items-center">
+                                        <i-lucide name="repeat" class="w-4 h-4 mr-2 text-gray-400"></i-lucide>
+                                        <p class="font-medium text-gray-800">{{ abonnement.occurence }}</p>
+                                    </div>
+                                </div>
+                                <div>
+                                    <p class="text-xs text-gray-500 mb-1">Moyen de paiement</p>
+                                    <div class="flex items-center">
+                                        <i-lucide [name]="abonnement.moyen === 'CB' ? 'credit-card' : 'landmark'"
+                                            class="w-4 h-4 mr-2 text-gray-400"></i-lucide>
+                                        <p class="font-medium text-gray-800">{{ abonnement.moyen || 'Non spécifié' }}
+                                        </p>
+                                    </div>
+                                </div>
+                                <div>
+                                    <p class="text-xs text-gray-500 mb-1">Statut actuel</p>
+                                    <div class="inline-flex items-center mt-1 px-3 py-1.5 rounded-full text-xs font-medium shadow-sm"
+                                        [ngClass]="getStatutClass(abonnement.statut).bg + ' ' + getStatutClass(abonnement.statut).text">
+                                        <span class="w-2 h-2 mr-2 rounded-full animate-pulse"
+                                            [ngClass]="getStatutClass(abonnement.statut).dot"></span>
+                                        {{ abonnement.statut }}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <h4 class="text-sm font-semibold text-gray-600 mb-3 flex items-center">
+                                <i-lucide name="calendar" class="w-4 h-4 mr-2 text-[#ff7443]"></i-lucide>
+                                Dates importantes
+                            </h4>
+                            <div
+                                class="bg-gray-50 rounded-xl p-5 space-y-4 shadow-sm border border-gray-100 hover:border-gray-200 transition-colors">
+                                <div>
+                                    <p class="text-xs text-gray-500 mb-1">Dernier paiement</p>
+                                    <div class="flex items-center">
+                                        <i-lucide name="calendar-check" class="w-4 h-4 mr-2 text-gray-400"></i-lucide>
+                                        <p class="font-medium text-gray-800">{{ abonnement.dernierPaiementFormatted ||
+                                            'Non disponible' }}</p>
+                                    </div>
+                                </div>
+                                <div>
+                                    <p class="text-xs text-gray-500 mb-1">Date d'inscription</p>
+                                    <div class="flex items-center">
+                                        <i-lucide name="calendar-plus" class="w-4 h-4 mr-2 text-gray-400"></i-lucide>
+                                        <p class="font-medium text-gray-800">{{ abonnement.ajoutFormatted || 'Non
+                                            disponible' }}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Section pour les reçus fiscaux simplifiée -->
+                        <div>
+                            <h4 class="text-sm font-semibold text-gray-600 mb-3 flex items-center">
+                                <i-lucide name="receipt" class="w-4 h-4 mr-2 text-[#ff7443]"></i-lucide>
+                                Reçus fiscaux
+                            </h4>
+                            <div
+                                class="bg-gray-50 rounded-xl p-5 shadow-sm border border-gray-100 hover:border-gray-200 transition-colors">
+                                <!-- Container pour les boutons de téléchargement -->
+                                <div class="flex flex-col sm:flex-row gap-3">
+                                    <!-- Reçu fiscal 2023 -->
+                                    <a *ngIf="abonnement.recu_2023" [href]="abonnement.recu_2023" target="_blank"
+                                        class="inline-flex items-center justify-center px-4 py-2.5 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-[#ff7443] hover:bg-[#ff6234] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#ff7443] transition-all duration-200 ease-in-out transform hover:scale-105 hover:shadow-md group">
+                                        <i-lucide name="file-text"
+                                            class="w-4 h-4 mr-2 group-hover:animate-pulse"></i-lucide>
+                                        Reçu fiscal 2023
+                                    </a>
+
+                                    <!-- Reçu fiscal 2024 -->
+                                    <a *ngIf="abonnement.recu_2024" [href]="abonnement.recu_2024" target="_blank"
+                                        class="inline-flex items-center justify-center px-4 py-2.5 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-[#ff7443] hover:bg-[#ff6234] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#ff7443] transition-all duration-200 ease-in-out transform hover:scale-105 hover:shadow-md group">
+                                        <i-lucide name="file-text"
+                                            class="w-4 h-4 mr-2 group-hover:animate-pulse"></i-lucide>
+                                        Reçu fiscal 2024
+                                    </a>
+                                </div>
+
+                                <!-- Message si aucun reçu disponible -->
+                                <div *ngIf="!abonnement.recu_2023 && !abonnement.recu_2024"
+                                    class="flex items-center text-sm text-gray-600 p-4 bg-gray-100 rounded-lg mt-3 border border-gray-200">
+                                    <i-lucide name="info" class="w-4 h-4 mr-2 text-gray-400"></i-lucide>
+                                    Aucun reçu disponible pour téléchargement
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Colonne droite -->
+                <div class="space-y-8">
+                    <div>
+                        <h4 class="text-sm font-semibold text-gray-600 mb-3 flex items-center">
+                            <i-lucide name="user" class="w-4 h-4 mr-2 text-[#ff7443]"></i-lucide>
+                            Informations de contact
+                        </h4>
+                        <div
+                            class="bg-gray-50 rounded-xl p-5 space-y-4 shadow-sm border border-gray-100 hover:border-gray-200 transition-colors">
+                            <div>
+                                <p class="text-xs text-gray-500 mb-1">Nom complet</p>
+                                <div class="flex items-center">
+                                    <i-lucide name="user" class="w-4 h-4 mr-2 text-gray-400"></i-lucide>
+                                    <p class="font-medium text-gray-800">{{ abonnement.prenom }} {{ abonnement.nom }}
+                                    </p>
+                                </div>
+                            </div>
+                            <div>
+                                <p class="text-xs text-gray-500 mb-1">Email</p>
+                                <div class="flex items-center">
+                                    <i-lucide name="mail" class="w-4 h-4 mr-2 text-gray-400"></i-lucide>
+                                    <p class="font-medium text-gray-800">{{ abonnement.email }}</p>
+                                    <button (click)="copyToClipboard(abonnement.email)"
+                                        class="ml-2 text-gray-400 hover:text-[#ff7443] p-1.5 rounded-full hover:bg-white transition-all duration-200 hover:shadow-sm"
+                                        title="Copier l'email">
+                                        <i-lucide name="copy" class="w-4 h-4"></i-lucide>
+                                    </button>
+                                </div>
+                            </div>
+                            <div *ngIf="abonnement.telephone">
+                                <p class="text-xs text-gray-500 mb-1">Téléphone</p>
+                                <div class="flex items-center">
+                                    <i-lucide name="phone" class="w-4 h-4 mr-2 text-gray-400"></i-lucide>
+                                    <p class="font-medium text-gray-800">{{ abonnement.telephone }}</p>
+                                    <button (click)="copyToClipboard(abonnement.telephone)"
+                                        class="ml-2 text-gray-400 hover:text-[#ff7443] p-1.5 rounded-full hover:bg-white transition-all duration-200 hover:shadow-sm"
+                                        title="Copier le téléphone">
+                                        <i-lucide name="copy" class="w-4 h-4"></i-lucide>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div *ngIf="abonnement.adresse">
+                        <h4 class="text-sm font-semibold text-gray-600 mb-3 flex items-center">
+                            <i-lucide name="map-pin" class="w-4 h-4 mr-2 text-[#ff7443]"></i-lucide>
+                            Adresse
+                        </h4>
+                        <div
+                            class="bg-gray-50 rounded-xl p-5 shadow-sm border border-gray-100 hover:border-gray-200 transition-colors">
+                            <div class="flex mb-2">
+                                <i-lucide name="home" class="w-4 h-4 mr-2 text-gray-400 mt-1 shrink-0"></i-lucide>
+                                <div>
+                                    <p class="font-medium text-gray-800">{{ abonnement.adresse }}</p>
+                                    <p class="font-medium text-gray-800 mt-1">{{ abonnement.code_postal }} {{
+                                        abonnement.ville }}</p>
+                                    <p class="font-medium text-gray-800 mt-1">{{ abonnement.pays }}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Notes ou commentaires -->
+            <div *ngIf="abonnement.notes" class="mt-8 pt-8 border-t border-gray-100">
+                <h4 class="text-sm font-semibold text-gray-600 mb-3 flex items-center">
+                    <i-lucide name="message-square" class="w-4 h-4 mr-2 text-[#ff7443]"></i-lucide>
+                    Notes
+                </h4>
+                <div
+                    class="bg-gray-50 rounded-xl p-5 shadow-sm border border-gray-100 hover:border-gray-200 transition-colors">
+                    <div class="flex">
+                        <i-lucide name="quote" class="w-5 h-5 mr-2 text-gray-300 shrink-0 mt-1"></i-lucide>
+                        <p class="text-gray-700 italic">{{ abonnement.notes }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

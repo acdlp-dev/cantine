@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="myamana">
+  <head>
+    <meta charset="utf-8" />
+    <title>MyAmana</title>
+    <base href="/" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- Désactiver la mise en cache côté client -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
+    <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+    <link rel="alternate icon" type="image/png" href="favicon.ico" />
+    <link rel="apple-touch-icon" href="favicon.svg" />
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDfO213VhMrxxHZfJ5605toCAOKTWPHsyg&libraries=places"></script>
+    
+    <!-- Script correctif pour arrêter la boucle de rechargement -->
+    <script>
+      // Vérifie si le localStorage contient la clé 'appVersion' et la supprime
+      try {
+        // Supprime la clé appVersion qui cause la boucle
+        localStorage.removeItem('appVersion');
+        
+        // Ajoute un flag pour indiquer que le correctif a été appliqué
+        sessionStorage.setItem('fixApplied', 'true');
+        
+        console.log('Correctif appliqué pour arrêter la boucle de rechargement');
+      } catch (e) {
+        console.error('Erreur lors de l\'application du correctif:', e);
+      }
+    </script>
+  </head>
+
+  <body class="bg-background font-poppins selection:bg-primary selection:text-primary-foreground">
+    <app-root>
+      <div class="flex h-screen">
+        <div class="m-auto">
+          <button
+            type="button"
+            class="inline-flex cursor-not-allowed items-center rounded-md bg-primary px-4 py-2 text-sm font-semibold leading-6 text-primary-foreground shadow transition duration-150 ease-in-out"
+            disabled="">
+            <svg
+              class="-ml-1 mr-3 h-5 w-5 animate-spin"
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path
+                class="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            Loading...
+          </button>
+        </div>
+      </div>
+    </app-root>
+    
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  </body>
+</html>

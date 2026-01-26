@@ -1,0 +1,30 @@
+<div class="relative">
+  <!-- Popup pour dons en échec -->
+  <div *ngIf="shouldShowDialog" 
+       class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div class="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+      <div class="flex flex-col gap-4">
+        <div class="flex items-start">
+          <div class="flex-1">
+            <h3 class="text-lg font-semibold text-red-600">Dons en échec</h3>
+            <p class="mt-2 text-sm text-gray-600">
+              Nous avons détecté un problème avec 
+              {{ failedDonations.length === 1 ? 
+                'un de vos dons mensuels' : 
+                'certains de vos dons mensuels' }}.
+            </p>
+          </div>
+        </div>
+        <div class="flex justify-end gap-3 mt-4">
+          <button (click)="navigateToSubscriptions()"
+                  class="px-4 py-2 text-sm font-medium text-white bg-primary rounded-md hover:bg-primary-600">
+            Voir mes abonnements
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <router-outlet></router-outlet>
+  <ngx-sonner-toaster [theme]="'light'"></ngx-sonner-toaster>
+</div>

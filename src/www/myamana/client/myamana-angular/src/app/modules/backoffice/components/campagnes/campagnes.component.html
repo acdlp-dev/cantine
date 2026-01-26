@@ -1,0 +1,671 @@
+<div class="max-w-7xl mx-auto p-4 sm:p-6">
+  <div class="bg-gray-50/50 min-h-screen animate__animated animate__fadeIn animate__faster mt-8">
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8">
+      <h1 class="text-3xl sm:text-4xl font-bold text-gray-800 tracking-tight flex flex-wrap items-baseline gap-2">
+        Gestion des
+        <span class="relative text-[#ff7443]">
+          campagnes
+        </span>
+      </h1>
+      <button (click)="openNewCampaignModal()"
+        class="mt-4 sm:mt-0 inline-flex items-center justify-center px-4 py-2 bg-[#ff7443] text-white rounded-lg hover:bg-[#ff7443]/90 transition-colors">
+        <i-lucide name="plus-circle" class="w-4 h-4 mr-2"></i-lucide>
+        Nouvelle campagne
+      </button>
+    </div>
+
+    <!-- Statistiques avec 3 cartes au lieu de 4 -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-5 mb-8">
+      <div
+        class="bg-white p-5 rounded-xl shadow-sm border border-gray-100 flex items-center hover:shadow-md transition-all duration-200">
+        <div class="rounded-full bg-purple-100 p-3.5">
+          <i-lucide name="database" class="w-6 h-6 text-purple-600"></i-lucide>
+        </div>
+        <div class="ml-4">
+          <p class="text-sm font-medium text-gray-500">Total des campagnes</p>
+          <p class="text-xl font-bold">{{ getTotalCampaignsCount() }}</p>
+        </div>
+      </div>
+      <div
+        class="bg-white p-5 rounded-xl shadow-sm border border-gray-100 flex items-center hover:shadow-md transition-all duration-200">
+        <div class="rounded-full bg-green-100 p-3.5">
+          <i-lucide name="check-circle" class="w-6 h-6 text-green-600"></i-lucide>
+        </div>
+        <div class="ml-4">
+          <p class="text-sm font-medium text-gray-500">Campagnes actives</p>
+          <p class="text-xl font-bold">{{ getActiveCampaignsCount() }}</p>
+        </div>
+      </div>
+      <div
+        class="bg-white p-5 rounded-xl shadow-sm border border-gray-100 flex items-center hover:shadow-md transition-all duration-200">
+        <div class="rounded-full bg-amber-100 p-3.5">
+          <i-lucide name="euro" class="w-6 h-6 text-amber-600"></i-lucide>
+        </div>
+        <div class="ml-4">
+          <p class="text-sm font-medium text-gray-500">Ce mois-ci</p>
+          <p class="text-xl font-bold">{{ getCurrentMonthDonationsAmount() | currency:'EUR' }}</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Filtres -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-6">
+      <div class="flex flex-col md:flex-row gap-4">
+        <div class="flex-1">
+          <label class="block text-sm font-medium text-gray-700 mb-1">Recherche</label>
+          <div class="relative">
+            <i-lucide name="search"
+              class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4"></i-lucide>
+            <input type="text" [(ngModel)]="searchTerm" (input)="applyFilters()"
+              class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-[#ff7443] focus:border-[#ff7443]"
+              placeholder="Rechercher une campagne..." />
+          </div>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Type</label>
+          <select [(ngModel)]="typeFilter" (change)="applyFilters()"
+            class="block w-full pl-3 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-[#ff7443] focus:border-[#ff7443]">
+            <option value="all">Tous les types</option>
+            <option value="ponctuel">Ponctuel</option>
+            <option value="mensuel">Mensuel</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Statut</label>
+          <select [(ngModel)]="statusFilter" (change)="applyFilters()"
+            class="block w-full pl-3 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-[#ff7443] focus:border-[#ff7443]">
+            <option value="all">Tous les statuts</option>
+            <option value="actif">Actif</option>
+            <option value="inactif">Inactif</option>
+            <option value="marketing">Marketing</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- État de chargement -->
+    <div *ngIf="isLoading" class="bg-white rounded-2xl shadow-lg border border-gray-100 p-12 text-center">
+      <div class="flex justify-center">
+        <div class="animate-spin rounded-full h-16 w-16 border-4 border-[#ff7443]/30 border-t-[#ff7443]"></div>
+      </div>
+      <p class="mt-6 text-sm text-gray-500 font-medium">Chargement des campagnes...</p>
+    </div>
+
+    <!-- Message d'erreur -->
+    <div *ngIf="!isLoading && error" class="bg-white rounded-2xl shadow-lg border border-gray-100 p-10 text-center">
+      <div class="flex justify-center">
+        <div class="p-6 bg-red-50 rounded-full">
+          <i-lucide name="alert-circle" class="w-16 h-16 text-red-500"></i-lucide>
+        </div>
+      </div>
+      <h3 class="mt-6 text-xl font-semibold text-gray-900">Erreur</h3>
+      <p class="mt-3 text-base text-gray-600">{{ error }}</p>
+    </div>
+
+    <!-- Liste des campagnes -->
+    <div *ngIf="!isLoading && !error" class="space-y-8">
+      <!-- Message si aucune campagne -->
+      <div *ngIf="filteredCampaigns.length === 0"
+        class="bg-white rounded-2xl shadow-lg border border-gray-100 p-12 text-center">
+        <div class="flex justify-center">
+          <div class="p-6 bg-gray-50 rounded-full">
+            <i-lucide name="package" class="w-16 h-16 text-gray-400"></i-lucide>
+          </div>
+        </div>
+        <h3 class="mt-6 text-xl font-semibold text-gray-900">Aucune campagne trouvée</h3>
+        <p class="mt-3 text-base text-gray-600">Aucune campagne ne correspond à vos critères ou il n'y a pas encore de
+          campagnes.</p>
+      </div>
+
+      <!-- Tableau des campagnes -->
+      <div *ngIf="filteredCampaigns.length > 0"
+        class="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+              <tr>
+                <th scope="col" class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Nom
+                </th>
+                <th scope="col" class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Type
+                </th>
+                <th scope="col" class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Objectif
+                </th>
+                <th scope="col" class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Collecté
+                </th>
+                <th scope="col" class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Statut
+                </th>
+                <th scope="col" class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+              <tr
+                *ngFor="let campaign of filteredCampaigns | slice:(currentPage-1)*itemsPerPage:currentPage*itemsPerPage"
+                class="hover:bg-gray-50 transition-colors">
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                  {{ campaign.nom }}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <span
+                    [class]="'px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ' + getCampaignTypeClass(campaign.type)">
+                    {{ campaign.type }}
+                  </span>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  {{ campaign.objectif | currency:'EUR' }}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <div class="flex items-center">
+                    <span class="text-base font-medium text-gray-900">{{ getCampaignAmount(campaign.nom) |
+                      currency:'EUR' }}</span>
+                  </div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <span
+                    [class]="'px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ' + getStatusClass(campaign.statut)">
+                    <span [class]="'h-2 w-2 rounded-full mr-1.5 mt-1 ' + getStatusDotClass(campaign.statut)"></span>
+                    {{ campaign.statut }}
+                  </span>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium relative">
+                  <div class="inline-block text-gray-600">
+                    <button type="button" class="gear-button p-2 rounded-md hover:bg-gray-100"
+                            (click)="toggleActionMenu(campaign.id)"
+                            aria-haspopup="true" [attr.aria-expanded]="openActionMenuId === campaign.id">
+                      <i-lucide name="settings" class="w-5 h-5"></i-lucide>
+                    </button>
+                    <!-- Menu d'actions -->
+                    <div *ngIf="openActionMenuId === campaign.id"
+                         class="actions-menu absolute right-0 mt-2 w-44 bg-white border border-gray-200 rounded-md shadow-lg z-10">
+                      <button class="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 flex items-center"
+                              (click)="copyCampaignUrl(campaign); closeActionMenu();">
+                        <i-lucide name="link" class="w-4 h-4 mr-2"></i-lucide>
+                        Copier l'URL
+                      </button>
+                      <button class="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 flex items-center"
+                              (click)="generateQRCode(campaign)">
+                        <i-lucide name="qr-code" class="w-4 h-4 mr-2"></i-lucide>
+                        QR Code
+                      </button>
+                      <button class="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 flex items-center"
+                              (click)="updateExistingCampaign(campaign); closeActionMenu();">
+                        <i-lucide name="pencil" class="w-4 h-4 mr-2"></i-lucide>
+                        Modifier
+                      </button>
+                      <button class="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 flex items-center"
+                              (click)="toggleCampaignStatus(campaign); closeActionMenu();"
+                              [ngClass]="campaign.statut === 'actif' ? 'text-amber-700' : 'text-green-700'">
+                        <i-lucide [name]="campaign.statut === 'actif' ? 'pause' : 'play'" class="w-4 h-4 mr-2"></i-lucide>
+                        {{ campaign.statut === 'actif' ? 'Désactiver' : 'Activer' }}
+                      </button>
+                      <button class="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 flex items-center"
+                              (click)="exportCampaignData(campaign); closeActionMenu();">
+                        <i-lucide name="download" class="w-4 h-4 mr-2"></i-lucide>
+                        Exporter
+                      </button>
+                    </div>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Pagination -->
+        <div class="px-6 py-4 flex items-center justify-between border-t border-gray-200">
+          <div class="text-sm text-gray-500">
+            Affichage de <span class="font-medium">{{ getPaginationStart() }}</span> à
+            <span class="font-medium">{{ getPaginationEnd() }}</span> sur
+            <span class="font-medium">{{ filteredCampaigns.length }}</span> campagnes
+          </div>
+          <div class="flex space-x-2">
+            <button (click)="previousPage()" [disabled]="currentPage <= 1"
+              [class]="currentPage <= 1 ? 'cursor-not-allowed opacity-50' : ''"
+              class="inline-flex items-center px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+              <i-lucide name="chevron-left" class="w-4 h-4 mr-1"></i-lucide>
+              Précédent
+            </button>
+            <button (click)="nextPage()" [disabled]="isLastPage()"
+              [class]="isLastPage() ? 'cursor-not-allowed opacity-50' : ''"
+              class="inline-flex items-center px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+              Suivant
+              <i-lucide name="chevron-right" class="w-4 h-4 ml-1"></i-lucide>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal de création de nouvelle campagne -->
+    <div *ngIf="showCampaignModal && !editingCampaign" class="fixed inset-0 z-50 overflow-y-auto">
+      <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+        <div class="fixed inset-0 transition-opacity" aria-hidden="true">
+          <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
+        </div>
+        <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+        <div
+          class="inline-block align-bottom bg-white rounded-3xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+          <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+            <div class="sm:flex sm:items-start">
+              <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
+                <h3 class="text-xl leading-6 font-medium text-gray-900">
+                  Nouvelle campagne
+                </h3>
+                <div class="mt-6">
+                  <form [formGroup]="campaignForm" (ngSubmit)="createNewCampaign()" class="space-y-4">
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700 mb-1">Nom de la campagne</label>
+                      <input type="text" formControlName="nom"
+                        class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-[#ff7443] focus:border-[#ff7443]"
+                        placeholder="Nom de la campagne" />
+                      <p *ngIf="campaignForm.get('nom')?.invalid && campaignForm.get('nom')?.touched"
+                        class="mt-1 text-sm text-red-600">
+                        Nom requis (min. 3 caractères)
+                      </p>
+                    </div>
+                    <!-- <div> Plus Tard Insha Allah
+                      <label class="block text-sm font-medium text-gray-700 mb-1">Type</label>
+                      <select
+                        formControlName="type"
+                        class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-[#ff7443] focus:border-[#ff7443]"
+                      >
+                        <option value="ponctuel">Ponctuel</option>
+                        <option value="mensuel">Mensuel</option>
+                      </select>
+                    </div> -->
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700 mb-1">Objectif (€)</label>
+                      <input type="number" formControlName="objectif"
+                        class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-[#ff7443] focus:border-[#ff7443]"
+                        placeholder="Montant objectif" min="1" />
+                      <p *ngIf="campaignForm.get('objectif')?.invalid && campaignForm.get('objectif')?.touched"
+                        class="mt-1 text-sm text-red-600">
+                        Objectif requis (min. 1€)
+                      </p>
+                    </div>
+                    <div
+                      *ngIf="campaignForm.get('step1')?.value === 'calcul' || campaignForm.get('step1')?.value === 'selecteurNominatif'">
+                      <label class="block text-sm font-medium text-gray-700 mb-1">Prix unitaire (€)</label>
+                      <input type="number" formControlName="prix"
+                        class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-[#ff7443] focus:border-[#ff7443]"
+                        placeholder="Prix unitaire" min="1" />
+                      <p *ngIf="campaignForm.get('prix')?.invalid && campaignForm.get('prix')?.touched"
+                        class="mt-1 text-sm text-red-600">
+                        Prix unitaire requis (min. 1€)
+                      </p>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+            <button type="button" (click)="createNewCampaign()" [disabled]="campaignForm.invalid"
+              [class]="campaignForm.invalid ? 'opacity-50 cursor-not-allowed' : ''"
+              class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-[#ff7443] text-base font-medium text-white hover:bg-[#ff7443]/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#ff7443] sm:ml-3 sm:w-auto sm:text-sm">
+              Créer
+            </button>
+            <button type="button" (click)="closeCampaignModal()"
+              class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
+              Annuler
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal de modification de campagne -->
+    <div *ngIf="showCampaignModal && editingCampaign" class="fixed inset-0 z-50 overflow-y-auto">
+      <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+        <div class="fixed inset-0 transition-opacity" aria-hidden="true">
+          <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
+        </div>
+        <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+        <div
+          class="inline-block align-bottom bg-white rounded-3xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+          <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+            <div class="sm:flex sm:items-start">
+              <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
+                <h3 class="text-xl leading-6 font-medium text-gray-900">
+                  Modifier la campagne
+                </h3>
+                <div class="mt-6">
+                  <form [formGroup]="campaignForm" (ngSubmit)="saveCampaign()" class="space-y-4">
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700 mb-1">Nom de la campagne</label>
+                      <input type="text" formControlName="nom"
+                        class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-[#ff7443] focus:border-[#ff7443]"
+                        placeholder="Nom de la campagne" />
+                      <p *ngIf="campaignForm.get('nom')?.invalid && campaignForm.get('nom')?.touched"
+                        class="mt-1 text-sm text-red-600">
+                        Nom requis (min. 3 caractères)
+                      </p>
+                    </div>
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700 mb-1">Objectif (€)</label>
+                      <input type="number" formControlName="objectif"
+                        class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-[#ff7443] focus:border-[#ff7443]"
+                        placeholder="Montant objectif" min="1" />
+                      <p *ngIf="campaignForm.get('objectif')?.invalid && campaignForm.get('objectif')?.touched"
+                        class="mt-1 text-sm text-red-600">
+                        Objectif requis (min. 1€)
+                      </p>
+                    </div>
+                    <div
+                      *ngIf="campaignForm.get('step1')?.value === 'calcul' || campaignForm.get('step1')?.value === 'selecteurNominatif'">
+                      <label class="block text-sm font-medium text-gray-700 mb-1">Prix unitaire (€)</label>
+                      <input type="number" formControlName="prix"
+                        class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-[#ff7443] focus:border-[#ff7443]"
+                        placeholder="Prix unitaire" min="1" />
+                      <p *ngIf="campaignForm.get('prix')?.invalid && campaignForm.get('prix')?.touched"
+                        class="mt-1 text-sm text-red-600">
+                        Prix unitaire requis (min. 1€)
+                      </p>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+            <button type="button" (click)="saveCampaign()" [disabled]="campaignForm.invalid"
+              [class]="campaignForm.invalid ? 'opacity-50 cursor-not-allowed' : ''"
+              class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-[#ff7443] text-base font-medium text-white hover:bg-[#ff7443]/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#ff7443] sm:ml-3 sm:w-auto sm:text-sm">
+              Mettre à jour
+            </button>
+            <button type="button" (click)="closeCampaignModal()"
+              class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
+              Annuler
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal de détail de campagne -->
+    <div *ngIf="selectedCampaign" class="fixed inset-0 z-50 overflow-y-auto">
+      <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+        <div class="fixed inset-0 transition-opacity" aria-hidden="true">
+          <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
+        </div>
+        <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+        <div
+          class="inline-block align-bottom bg-white rounded-3xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-xl sm:w-full">
+          <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+            <div class="sm:flex sm:items-start">
+              <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
+                <h3 class="text-xl leading-6 font-medium text-gray-900 flex items-center">
+                  {{ selectedCampaign.nom }}
+                  <span
+                    [class]="'ml-2 px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ' + getStatusClass(selectedCampaign.statut)">
+                    <span
+                      [class]="'h-2 w-2 rounded-full mr-1.5 mt-1 ' + getStatusDotClass(selectedCampaign.statut)"></span>
+                    {{ selectedCampaign.statut }}
+                  </span>
+                </h3>
+                <div class="mt-4">
+                  <div class="grid grid-cols-2 gap-4">
+                    <div>
+                      <p class="text-sm font-medium text-gray-500">Type</p>
+                      <p class="mt-1">
+                        <span
+                          [class]="'px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ' + getCampaignTypeClass(selectedCampaign.type)">
+                          <i-lucide [name]="getCampaignTypeIcon(selectedCampaign.type)" class="w-3 h-3 mr-1"></i-lucide>
+                          {{ selectedCampaign.type }}
+                        </span>
+                      </p>
+                    </div>
+                    <div>
+                      <p class="text-sm font-medium text-gray-500">Méthode de don</p>
+                      <p class="mt-1 text-sm">{{ selectedCampaign.step1 || 'Libre' }}</p>
+                      <p *ngIf="selectedCampaign.prix" class="text-xs text-gray-500">
+                        Prix unitaire: {{ selectedCampaign.prix | currency:'EUR' }}
+                      </p>
+                    </div>
+                    <div>
+                      <p class="text-sm font-medium text-gray-500">Objectif</p>
+                      <p class="mt-1">{{ selectedCampaign.objectif | currency:'EUR' }}</p>
+                    </div>
+                    <div>
+                      <p class="text-sm font-medium text-gray-500">Collecté</p>
+                      <p class="mt-1">{{ selectedCampaign.montant | currency:'EUR' }}</p>
+                    </div>
+                  </div>
+
+                  <div class="mt-6">
+                    <h4 class="text-sm font-medium text-gray-700">Montant collecté</h4>
+                    <div class="mt-2 flex items-center justify-between">
+                      <div>
+                        <span class="text-2xl font-bold text-gray-900">{{ getCampaignAmount(selectedCampaign.nom) |
+                          currency:'EUR' }}</span>
+                        <span class="text-sm text-gray-500 ml-2">
+                          sur un objectif de {{ selectedCampaign.objectif | currency:'EUR' }}
+                        </span>
+                      </div>
+                      <div class="flex items-center bg-gray-50 px-3 py-1.5 rounded-lg">
+                        <i-lucide
+                          [name]="(getCampaignAmount(selectedCampaign.nom) / selectedCampaign.objectif) >= 1 ? 'check-circle' : 'trending-up'"
+                          [class]="(getCampaignAmount(selectedCampaign.nom) / selectedCampaign.objectif) >= 1 ? 'text-green-500 w-4 h-4 mr-1' : 'text-amber-500 w-4 h-4 mr-1'">
+                        </i-lucide>
+                        <span
+                          [class]="(getCampaignAmount(selectedCampaign.nom) / selectedCampaign.objectif) >= 1 ? 'text-green-600 text-sm font-medium' : 'text-amber-600 text-sm font-medium'">
+                          {{ (getCampaignAmount(selectedCampaign.nom) / selectedCampaign.objectif * 100) |
+                          number:'1.0-0' }}%
+                        </span>
+                      </div>
+                    </div>
+
+                    <!-- Statistiques additionnelles sur 2 colonnes -->
+                    <div class="grid grid-cols-2 gap-4 mt-4">
+                      <div class="bg-gray-50 p-3 rounded-lg">
+                        <p class="text-xs text-gray-500">Objectif</p>
+                        <p class="text-lg font-medium">{{ selectedCampaign.objectif | currency:'EUR' }}</p>
+                      </div>
+                      <div class="bg-gray-50 p-3 rounded-lg">
+                        <p class="text-xs text-gray-500">Restant à collecter</p>
+                        <p class="text-lg font-medium">{{ (selectedCampaign.objectif -
+                          getCampaignAmount(selectedCampaign.nom) > 0 ? selectedCampaign.objectif -
+                          getCampaignAmount(selectedCampaign.nom) : 0) | currency:'EUR' }}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="mt-6">
+                    <h4 class="text-sm font-medium text-gray-700">Progression</h4>
+                    <div class="w-full bg-gray-200 rounded-full h-2.5 mt-2">
+                      <div class="bg-[#ff7443] h-2.5 rounded-full"
+                        [style.width.%]="(selectedCampaign.montant / selectedCampaign.objectif * 100) > 100 ? 100 : (selectedCampaign.montant / selectedCampaign.objectif * 100)">
+                      </div>
+                    </div>
+                    <p class="text-right text-xs text-gray-500 mt-1">{{ (selectedCampaign.montant /
+                      selectedCampaign.objectif * 100) | number:'1.0-0' }}%</p>
+                  </div>
+
+                  <div class="mt-6">
+                    <h4 class="text-sm font-medium text-gray-700">Statistiques</h4>
+                    <div class="grid grid-cols-3 gap-4 mt-2">
+                      <div class="bg-gray-50 p-3 rounded-lg">
+                        <p class="text-xs text-gray-500">Donations</p>
+                        <p class="text-lg font-medium">{{ getCampaignDonationCount(selectedCampaign) }}</p>
+                      </div>
+                      <div class="bg-gray-50 p-3 rounded-lg">
+                        <p class="text-xs text-gray-500">Don moyen</p>
+                        <p class="text-lg font-medium">{{ getAverageDonation(selectedCampaign) | currency:'EUR' }}</p>
+                      </div>
+                      <div class="bg-gray-50 p-3 rounded-lg">
+                        <p class="text-xs text-gray-500">Dernier don</p>
+                        <p class="text-lg font-medium">
+                          <span *ngIf="getLastDonationDate(selectedCampaign)">
+                            {{ getLastDonationDate(selectedCampaign) | date:'dd/MM/yyyy' }}
+                          </span>
+                          <span *ngIf="!getLastDonationDate(selectedCampaign)">-</span>
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+            <button type="button" (click)="updateExistingCampaign(selectedCampaign)"
+              class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-[#ff7443] text-base font-medium text-white hover:bg-[#ff7443]/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#ff7443] sm:ml-3 sm:w-auto sm:text-sm">
+              Modifier
+            </button>
+            <button type="button" (click)="exportCampaignData(selectedCampaign)"
+              class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
+              Exporter
+            </button>
+            <button type="button" (click)="closeDetailsModal()"
+              class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
+              Fermer
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal de confirmation de changement de statut -->
+    <div *ngIf="showStatusConfirmModal"
+      class="fixed inset-0 z-50 overflow-y-auto animate__animated animate__fadeIn animate__faster">
+      <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+        <div class="fixed inset-0 transition-opacity bg-gray-800 bg-opacity-75" aria-hidden="true"></div>
+        <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+        <div
+          class="inline-block w-full align-bottom bg-white rounded-3xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-md sm:w-full animate__animated animate__fadeInUp animate__faster">
+          <div class="absolute top-0 right-0 pt-4 pr-4">
+            <button type="button" (click)="closeStatusConfirmModal()"
+              class="text-gray-400 hover:text-gray-500 transition-colors">
+              <span class="sr-only">Fermer</span>
+              <i-lucide name="x" class="w-6 h-6"></i-lucide>
+            </button>
+          </div>
+          <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+            <div class="sm:flex sm:items-start">
+              <div
+                class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full sm:mx-0 sm:h-10 sm:w-10"
+                [ngClass]="campaignToToggle?.statut === 'actif' ? 'bg-amber-100' : 'bg-green-100'">
+                <i-lucide [name]="campaignToToggle?.statut === 'actif' ? 'pause' : 'play'"
+                  [ngClass]="campaignToToggle?.statut === 'actif' ? 'text-amber-600' : 'text-green-600'"
+                  class="h-6 w-6"></i-lucide>
+              </div>
+              <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
+                <h3 class="text-lg leading-6 font-bold text-gray-900">
+                  {{ campaignToToggle?.statut === 'actif' ? 'Désactiver la campagne' : 'Activer la campagne' }}
+                </h3>
+                <div class="mt-2">
+                  <p class="text-sm text-gray-500">
+                    {{ campaignToToggle?.statut === 'actif' ?
+                    'Voulez-vous vraiment désactiver cette campagne ? Elle ne sera plus accessible par vos donateurs.' :
+                    'Voulez-vous vraiment activer cette campagne ? Elle deviendra accessible à vos donateurs.' }}
+                  </p>
+                  <div class="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-100">
+                    <p class="font-medium">{{ campaignToToggle?.nom }}</p>
+                    <div class="flex items-center justify-between mt-2">
+                      <span class="text-sm text-gray-500">Statut actuel:</span>
+                      <span
+                        [ngClass]="'px-2.5 py-0.5 rounded-full text-xs ' + 
+                       (campaignToToggle?.statut === 'actif' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800')">
+                        {{ campaignToToggle?.statut === 'actif' ? 'Actif' : 'Inactif' }}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+            <button type="button" [ngClass]="campaignToToggle?.statut === 'actif' ? 
+              'bg-amber-600 hover:bg-amber-700 focus:ring-amber-500' : 
+              'bg-green-600 hover:bg-green-700 focus:ring-green-500'"
+              class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 text-base font-medium text-white focus:outline-none focus:ring-2 focus:ring-offset-2 sm:ml-3 sm:w-auto sm:text-sm"
+              (click)="confirmStatusChange()">
+              {{ campaignToToggle?.statut === 'actif' ? 'Désactiver' : 'Activer' }}
+            </button>
+            <button type="button"
+              class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
+              (click)="closeStatusConfirmModal()">
+              Annuler
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal QR Code -->
+    <div *ngIf="showQRCodeModal" class="fixed inset-0 z-50 overflow-y-auto animate__animated animate__fadeIn animate__faster">
+      <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+        <div class="fixed inset-0 transition-opacity bg-gray-800 bg-opacity-75" aria-hidden="true" (click)="closeQRCodeModal()"></div>
+        <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+        <div class="inline-block w-full align-bottom bg-white rounded-3xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-md sm:w-full animate__animated animate__fadeInUp animate__faster">
+          <div class="absolute top-0 right-0 pt-4 pr-4">
+            <button type="button" (click)="closeQRCodeModal()" class="text-gray-400 hover:text-gray-500 transition-colors">
+              <span class="sr-only">Fermer</span>
+              <i-lucide name="x" class="w-6 h-6"></i-lucide>
+            </button>
+          </div>
+          <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+            <div class="text-center">
+              <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-[#ff7443]/10 mb-4">
+                <i-lucide name="qr-code" class="w-6 h-6 text-[#ff7443]"></i-lucide>
+              </div>
+              <h3 class="text-lg leading-6 font-bold text-gray-900 mb-2">
+                QR Code de la campagne
+              </h3>
+              <p class="text-sm text-gray-500 mb-6">
+                {{ selectedCampaignForQR?.nom }}
+              </p>
+              
+              <!-- QR Code -->
+              <div class="flex justify-center mb-6">
+                <div class="p-4 bg-white border-2 border-gray-200 rounded-xl shadow-sm">
+                  <img [src]="qrCodeDataUrl" alt="QR Code" class="w-64 h-64" />
+                </div>
+              </div>
+
+              <!-- Instructions -->
+              <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                <p class="text-sm text-blue-800">
+                  <i-lucide name="info" class="w-4 h-4 inline mr-1"></i-lucide>
+                  Scannez ce QR code pour accéder directement à la page de don de cette campagne
+                </p>
+              </div>
+            </div>
+          </div>
+          <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse gap-2">
+            <button type="button" (click)="downloadQRCode()"
+              class="w-full inline-flex justify-center items-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-[#ff7443] text-base font-medium text-white hover:bg-[#ff7443]/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#ff7443] sm:w-auto sm:text-sm">
+              <i-lucide name="download" class="w-4 h-4 mr-2"></i-lucide>
+              Télécharger
+            </button>
+            <button type="button" (click)="closeQRCodeModal()"
+              class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 sm:mt-0 sm:w-auto sm:text-sm">
+              Fermer
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Notification toast -->
+    <div *ngIf="notification"
+      [class]="'fixed bottom-4 right-4 z-50 p-4 rounded-lg shadow-lg ' + 
+        (notificationType === 'success' ? 'bg-green-50 border-l-4 border-green-500 text-green-700' : 'bg-red-50 border-l-4 border-red-500 text-red-700')">
+      <div class="flex">
+        <div class="flex-shrink-0">
+          <i-lucide [name]="notificationType === 'success' ? 'check-circle' : 'alert-circle'"
+            [class]="'w-5 h-5 ' + (notificationType === 'success' ? 'text-green-500' : 'text-red-500')"></i-lucide>
+        </div>
+        <div class="ml-3">
+          <p class="text-sm font-medium">{{ notification }}</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,295 @@
+<div class="mb-8">
+  <h3 class="text-6xl font-bold text-donation mb-4 text-center">{{ donationAmount }}€</h3>
+</div>
+
+<div class="mb-8">
+  <div class="flex border-b border-gray-200">
+    @for (tab of paymentTabs; track tab) {
+      <button 
+        (click)="setActiveTab(tab)"
+        [class]="'px-2 md:px-6 py-2 font-medium text-sm ' + (activeTab === tab ? 'text-donation border-b-2 border-donation' : 'text-gray-500 hover:text-gray-700')"
+        type="button"
+      >
+        {{ tab }}
+      </button>
+    }
+  </div>
+</div>
+
+<form [formGroup]="paymentForm" class="space-y-6">
+  <!-- Stripe Card Elements - Toujours présent dans le DOM mais caché si non actif -->
+  <div [hidden]="activeTab !== 'CB'" class="space-y-6">
+    <div #cardElement class="p-3 border rounded-md space-y-4">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Numéro de carte</label>
+        <div id="card-number" class="p-3 border rounded-md"></div>
+      </div>
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Date d'expiration</label>
+          <div id="card-expiry" class="p-3 border rounded-md"></div>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">CVC</label>
+          <div id="card-cvc" class="p-3 border rounded-md"></div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Error message -->
+    <div *ngIf="paymentError" class="mt-1 text-sm text-red-600">{{ paymentError }}</div>
+    
+    <!-- Terms acceptance -->
+    <div class="flex items-start space-x-2">
+      <input
+        type="checkbox"
+        formControlName="acceptTermsCard"
+        id="acceptTermsCard"
+        class="mt-1 h-4 w-4 text-donation rounded border-gray-300 focus:ring-donation"
+      />
+      <label for="acceptTermsCard" class="text-sm text-gray-700">
+        J'accepte les <a href="https://home.myamana.fr/cgu" target="_blank" class="text-donation hover:underline">Conditions Générales d'Utilisation</a> du service
+      </label>
+    </div>
+    
+    <!-- Submit button -->
+    <div class="text-center">
+      <button
+        type="button"
+        [disabled]="paymentForm.get('acceptTermsCard')?.invalid || isSubmitting"
+        (click)="onCardSubmit()"
+        class="btn-donation disabled:opacity-50 flex items-center justify-center mx-auto space-x-2"
+        [ngClass]="{'opacity-50 cursor-not-allowed': paymentForm.get('acceptTermsCard')?.invalid || isSubmitting}"
+      >
+        <span>Valider mon don</span>
+        <svg *ngIf="isSubmitting" class="animate-spin h-5 w-5 ml-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+      </button>
+    </div>
+    
+    <!-- Payment processing loader -->
+    <div *ngIf="isSubmitting" class="fixed inset-0 z-[60] flex items-center justify-center bg-black bg-opacity-50">
+      <div class="flex flex-col items-center">
+        <div class="h-12 w-12 animate-spin rounded-full border-4 border-donation border-t-transparent"></div>
+        <p class="mt-4 text-white">Traitement du paiement en cours...</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- PayPal -->
+  <div [hidden]="activeTab !== 'PAYPAL'" class="space-y-6">
+    <div class="flex items-start space-x-2">
+      <!-- Conteneur pour le bouton PayPal avec overlay -->
+      <div class="relative mt-4 w-full max-w-[520px] mx-auto h-[55px] max-h-[55px]"
+        [ngClass]="{'cursor-not-allowed': !paymentForm.get('acceptTermsPaypal')?.value}"
+        [style.transition]="'all 0.3s ease'">
+
+        <!-- Bouton PayPal (toujours rendu) avec blocage des clics -->
+        <div
+          id="paypal-button-container"
+          class="block w-full"
+          [hidden]="isPaypalLoading"
+          [style.transition]="'all 0.3s ease'">
+        </div>
+
+        <!-- Pellicule grise légère (visible si checkbox non cochée) -->
+        <div
+          *ngIf="!paymentForm.get('acceptTermsPaypal')?.value && !isPaypalLoading"
+          class="absolute inset-0 h-full bg-gray-500 bg-opacity-40 cursor-not-allowed"
+          title="Veuillez accepter les Conditions Générales d'utilisation pour activer PayPal"
+          style="z-index: 999; backdrop-filter: grayscale(70%);">
+        </div>
+      </div>
+    </div>
+
+    <div class="mt-4 flex items-start space-x-2">
+      <input
+        type="checkbox"
+        formControlName="acceptTermsPaypal"
+        id="acceptTermsPaypal"
+        class="mt-1 h-4 w-4 text-donation rounded border-gray-300 focus:ring-donation"
+      />
+      <label for="acceptTermsPaypal" class="text-sm text-gray-700">
+        J'accepte les <a href="https://home.myamana.fr/cgu" target="_blank" class="text-donation hover:underline">Conditions Générales d'Utilisation</a> du service
+      </label>
+    </div>
+    @if (paymentForm.get('acceptTermsPaypal')?.invalid && paymentForm.get('acceptTermsPaypal')?.touched) {
+      <p class="text-red-500 text-sm">Veuillez accepter les conditions générales d'utilisation</p>
+    }
+
+    <!-- Message d'erreur PayPal -->
+    <div *ngIf="paypalError" class="mt-2 text-sm text-red-600">{{ paypalError }}</div>
+
+    <!-- Loader pendant le chargement de PayPal -->
+    <div *ngIf="isPaypalLoading" class="flex justify-center items-center mt-4">
+      <div class="h-8 w-8 animate-spin rounded-full border-4 border-donation border-t-transparent"></div>
+      <span class="ml-2">Chargement de PayPal...</span>
+    </div>
+
+    <!-- Bouton de secours si le SDK PayPal ne se charge pas correctement -->
+    <div class="text-center" *ngIf="!paypalButtonRendered && !isPaypalLoading && paymentForm.get('acceptTermsPaypal')?.valid">
+      <button
+        type="button"
+        [disabled]="isSubmittingPaypal"
+        (click)="onPaypalSubmit()"
+        class="btn-donation disabled:opacity-50"
+      >
+        Valider mon don avec Paypal
+      </button>
+    </div>
+
+    <!-- Payment processing loader -->
+    <div *ngIf="isSubmittingPaypal" class="fixed inset-0 z-[60] flex items-center justify-center bg-black bg-opacity-50">
+      <div class="flex flex-col items-center">
+        <div class="h-12 w-12 animate-spin rounded-full border-4 border-donation border-t-transparent"></div>
+        <p class="mt-4 text-white">Traitement du paiement en cours...</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Chèques -->
+  <div [hidden]="activeTab !== 'CHEQUES'" class="space-y-6">
+    <div class="space-y-4">
+      <p class="font-medium">Chèque pour {{ selectedCampaign }} :</p>
+      <p>Veuillez nous faire parvenir votre chèque par voie postale à l'adresse suivante :</p>
+      <div class="bg-gray-50 p-4 rounded">
+        <p>{{ associationData?.name_asso }}</p>
+        <p>{{ associationData?.adresseCheque }}</p>
+        <p>{{ associationData?.code_postalCheque }} {{ associationData?.villeCheque }}</p>
+      </div>
+    </div>
+
+    <div class="flex items-start space-x-2">
+      <input
+        type="checkbox"
+        formControlName="acceptTermsCheque"
+        id="acceptTermsCheque"
+        class="mt-1 h-4 w-4 text-donation rounded border-gray-300 focus:ring-donation"
+      />
+      <label for="acceptTermsCheque" class="text-sm text-gray-700">
+        J'accepte les <a href="https://home.myamana.fr/cgu" target="_blank" class="text-donation hover:underline">Conditions Générales d'Utilisation</a> du service
+      </label>
+    </div>
+    @if (paymentForm.get('acceptTermsCheque')?.invalid && paymentForm.get('acceptTermsCheque')?.touched) {
+      <p class="text-red-500 text-sm">Veuillez accepter les conditions générales d'utilisation</p>
+    }
+    <div class="text-center">
+      <button
+        type="button"
+        [disabled]="paymentForm.get('acceptTermsCheque')?.invalid"
+        (click)="onChequeSubmit()"
+        class="btn-donation disabled:opacity-50 flex items-center justify-center mx-auto space-x-2"
+      >
+        <span>Valider ma promesse de don</span>
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+          <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd" />
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- SEPA -->
+  <div [hidden]="activeTab !== 'SEPA'" class="space-y-6">
+    <!-- Mode mensuel : Prélèvement SEPA automatique via Stripe -->
+    @if (isMonthly) {
+      <div class="space-y-4">
+        <p class="font-medium">Prélèvement SEPA pour {{ selectedCampaign }} :</p>
+        <p class="text-sm text-gray-600">Votre don sera prélevé automatiquement chaque mois sur votre compte bancaire.</p>
+
+        <!-- Formulaire IBAN Stripe -->
+        <div class="p-3 border rounded-md">
+          <label class="block text-sm font-medium text-gray-700 mb-1">IBAN</label>
+          <div id="iban-element" class="p-3 border rounded-md bg-white"></div>
+        </div>
+
+        <!-- Message d'erreur SEPA -->
+        <div *ngIf="sepaError" class="mt-1 text-sm text-red-600">{{ sepaError }}</div>
+
+        <!-- Mandat SEPA -->
+        <div class="bg-gray-50 p-4 rounded text-xs text-gray-600">
+          <p class="font-medium mb-2">Mandat de prélèvement SEPA</p>
+          <p>En fournissant vos informations bancaires et en confirmant ce paiement, vous autorisez {{ associationData?.name_asso }} et Stripe, notre prestataire de paiement, à envoyer des instructions à votre banque pour débiter votre compte conformément à ces instructions. Vous bénéficiez d'un droit à remboursement par votre banque selon les conditions décrites dans la convention que vous avez passée avec elle. Une demande de remboursement doit être présentée dans les 8 semaines suivant la date de débit de votre compte.</p>
+        </div>
+      </div>
+
+      <div class="flex items-start space-x-2">
+        <input
+          type="checkbox"
+          formControlName="acceptTermsSepa"
+          id="acceptTermsSepa"
+          class="mt-1 h-4 w-4 text-donation rounded border-gray-300 focus:ring-donation"
+        />
+        <label for="acceptTermsSepa" class="text-sm text-gray-700">
+          J'accepte les <a href="https://home.myamana.fr/cgu" target="_blank" class="text-donation hover:underline">Conditions Générales d'Utilisation</a> du service et j'autorise le prélèvement SEPA
+        </label>
+      </div>
+      @if (paymentForm.get('acceptTermsSepa')?.invalid && paymentForm.get('acceptTermsSepa')?.touched) {
+        <p class="text-red-500 text-sm">Veuillez accepter les conditions générales d'utilisation</p>
+      }
+      <div class="text-center">
+        <button
+          type="button"
+          [disabled]="paymentForm.get('acceptTermsSepa')?.invalid || isSubmittingSepa"
+          (click)="onSepaSubmit()"
+          class="btn-donation disabled:opacity-50 flex items-center justify-center mx-auto space-x-2"
+          [ngClass]="{'opacity-50 cursor-not-allowed': paymentForm.get('acceptTermsSepa')?.invalid || isSubmittingSepa}"
+        >
+          <span>Valider mon don mensuel</span>
+          <svg *ngIf="isSubmittingSepa" class="animate-spin h-5 w-5 ml-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Payment processing loader -->
+      <div *ngIf="isSubmittingSepa" class="fixed inset-0 z-[60] flex items-center justify-center bg-black bg-opacity-50">
+        <div class="flex flex-col items-center">
+          <div class="h-12 w-12 animate-spin rounded-full border-4 border-donation border-t-transparent"></div>
+          <p class="mt-4 text-white">Mise en place du prélèvement en cours...</p>
+        </div>
+      </div>
+    } @else {
+      <!-- Mode ponctuel : Affichage des coordonnées bancaires pour virement -->
+      <div class="space-y-4">
+        <p class="font-medium">Virement pour {{ selectedCampaign }} :</p>
+        <p>Vous trouverez ci-après nos coordonnées bancaires :</p>
+        <div class="bg-gray-50 p-4 rounded">
+          <p>{{ associationData?.name_asso }}</p>
+          <p>Code B.I.C: {{ getBankDetails().bic }}</p>
+          <p>IBAN: {{ getBankDetails().iban }}</p>
+        </div>
+      </div>
+
+      <div class="flex items-start space-x-2">
+        <input
+          type="checkbox"
+          formControlName="acceptTermsSepa"
+          id="acceptTermsSepaOneTime"
+          class="mt-1 h-4 w-4 text-donation rounded border-gray-300 focus:ring-donation"
+        />
+        <label for="acceptTermsSepaOneTime" class="text-sm text-gray-700">
+          J'accepte les <a href="https://home.myamana.fr/cgu" target="_blank" class="text-donation hover:underline">Conditions Générales d'Utilisation</a> du service
+        </label>
+      </div>
+      @if (paymentForm.get('acceptTermsSepa')?.invalid && paymentForm.get('acceptTermsSepa')?.touched) {
+        <p class="text-red-500 text-sm">Veuillez accepter les conditions générales d'utilisation</p>
+      }
+      <div class="text-center">
+        <button
+          type="button"
+          [disabled]="paymentForm.get('acceptTermsSepa')?.invalid"
+          (click)="onSepaSubmit()"
+          class="btn-donation disabled:opacity-50 flex items-center justify-center mx-auto space-x-2"
+        >
+          <span>Valider ma promesse de don</span>
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd" />
+          </svg>
+        </button>
+      </div>
+    }
+  </div>
+</form>

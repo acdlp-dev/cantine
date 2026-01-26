@@ -1,0 +1,134 @@
+<div class="mb-8">
+  <h3 class="text-6xl font-bold text-donation mb-4 text-center">{{ donationAmount }}€</h3>
+</div>
+
+<form [formGroup]="personalInfoForm" (ngSubmit)="onSubmit()" class="space-y-6">
+  <div>
+    <input
+      type="text"
+      formControlName="firstName"
+      [class]="'input-field ' + (showError('firstName') ? 'error' : '')"
+      placeholder="Votre prénom"
+    />
+    @if (showError('firstName')) {
+      <p class="text-red-500 text-sm mt-1">Ce champ est obligatoire</p>
+    }
+  </div>
+
+  <div>
+    <input
+      type="text"
+      formControlName="lastName"
+      [class]="'input-field ' + (showError('lastName') ? 'error' : '')"
+      placeholder="Votre nom"
+    />
+    @if (showError('lastName')) {
+      <p class="text-red-500 text-sm mt-1">Ce champ est obligatoire</p>
+    }
+  </div>
+
+  <div>
+    <input
+      type="email"
+      formControlName="email"
+      [class]="'input-field ' + (showError('email') ? 'error' : '')"
+      placeholder="Votre email"
+    />
+    @if (showError('email')) {
+      <p class="text-red-500 text-sm mt-1">{{ getEmailErrorMessage() }}</p>
+    }
+  </div>
+
+
+  <!-- Adresse avec autocomplétion Google -->
+  <div>
+    <label class="block text-sm font-medium text-gray-700 mb-1">Adresse</label>
+    <input
+      #addressInput
+      type="text"
+      formControlName="address"
+      [class]="'input-field ' + (showError('address') ? 'error' : '')"
+      placeholder="Commencez à saisir votre adresse..."
+    />
+    @if (showError('address')) {
+      <p class="text-red-500 text-sm mt-1">Ce champ est obligatoire</p>
+    }
+    <p class="text-xs text-gray-500 mt-1">Saisissez votre adresse pour l'autocomplétion</p>
+  </div>
+
+  <div class="grid grid-cols-2 gap-4">
+    <div>
+      <label class="block text-sm font-medium text-gray-700 mb-1">Code postal</label>
+      <input
+        type="text"
+        formControlName="postalCode"
+        [class]="'input-field ' + (showError('postalCode') ? 'error' : '')"
+        placeholder="Code postal"
+      />
+      @if (showError('postalCode')) {
+        <p class="text-red-500 text-sm mt-1">Ce champ est obligatoire</p>
+      }
+    </div>
+
+    <div>
+      <label class="block text-sm font-medium text-gray-700 mb-1">Ville</label>
+      <input
+        type="text"
+        formControlName="city"
+        [class]="'input-field ' + (showError('city') ? 'error' : '')"
+        placeholder="Ville"
+      />
+      @if (showError('city')) {
+        <p class="text-red-500 text-sm mt-1">Ce champ est obligatoire</p>
+      }
+    </div>
+  </div>
+
+  @if (display_pro === 'true') {
+    <div class="flex items-center space-x-2">
+      <input
+        type="checkbox"
+        formControlName="isProfessional"
+        id="isProfessional"
+        class="h-4 w-4 text-donation rounded border-gray-300 focus:ring-donation"
+      />
+      <label for="isProfessional" class="text-sm text-gray-700">
+        Je suis un professionnel
+      </label>
+    </div>
+  }
+
+  @if (personalInfoForm.get('isProfessional')?.value) {
+    <div class="space-y-4">
+      <div>
+        <input
+          type="text"
+          formControlName="siren"
+          [class]="'input-field ' + (showError('siren') ? 'error' : '')"
+          placeholder="SIREN"
+        />
+        @if (showError('siren')) {
+          <p class="text-red-500 text-sm mt-1">Ce champ est obligatoire</p>
+        }
+      </div>
+      <div>
+        <input
+          type="text"
+          formControlName="companyName"
+          [class]="'input-field ' + (showError('companyName') ? 'error' : '')"
+          placeholder="Raison Sociale"
+        />
+        @if (showError('companyName')) {
+          <p class="text-red-500 text-sm mt-1">Ce champ est obligatoire</p>
+        }
+      </div>
+    </div>
+  }
+
+
+  <div class="text-center">
+    <button type="submit" class="btn-donation">
+      SUIVANT
+    </button>
+  </div>
+</form>

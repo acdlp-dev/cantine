@@ -1,0 +1,347 @@
+<div class="min-h-screen bg-gray-50 p-6">
+  <!-- Header -->
+  <div class="mb-6">
+    <h1 class="text-2xl font-bold text-gray-900">Tickets Support</h1>
+    <p class="text-sm text-gray-600">Gérez les demandes de support des associations</p>
+  </div>
+
+  <!-- Erreur globale -->
+  <div *ngIf="errorMessage && !selectedTicket" class="mb-6 rounded-lg bg-red-50 border border-red-200 p-4">
+    <p class="text-sm text-red-700">{{ errorMessage }}</p>
+  </div>
+
+  <!-- Layout principal -->
+  <div class="flex gap-6">
+    <!-- Liste des tickets -->
+    <div class="w-full lg:w-1/2 xl:w-2/5">
+      <div class="rounded-xl bg-white shadow-sm border border-gray-200">
+        <!-- Header liste -->
+        <div class="flex items-center justify-between border-b border-gray-200 px-6 py-4">
+          <h2 class="font-semibold text-gray-900 flex items-center gap-2">
+            Tickets
+            <span class="rounded-full bg-orange-100 px-2 py-0.5 text-xs font-medium text-orange-700" title="Nouveaux tickets">
+              {{ newCount }} nouveau{{ newCount > 1 ? 'x' : '' }}
+            </span>
+            <span class="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600" title="Total">
+              {{ tickets.length }} total
+            </span>
+          </h2>
+          <button 
+            (click)="loadTickets()"
+            class="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700"
+          >
+            <lucide-icon name="refresh-cw" [size]="16" [class.animate-spin]="isLoading"></lucide-icon>
+            Actualiser
+          </button>
+        </div>
+
+        <!-- Loading -->
+        <div *ngIf="isLoading" class="flex items-center justify-center py-12">
+          <div class="h-8 w-8 animate-spin rounded-full border-4 border-emerald-500 border-t-transparent"></div>
+        </div>
+
+        <!-- Liste vide -->
+        <div *ngIf="!isLoading && tickets.length === 0" class="py-12 text-center">
+          <lucide-icon name="inbox" [size]="48" class="mx-auto mb-4 text-gray-300"></lucide-icon>
+          <p class="text-gray-500">Aucun ticket en attente</p>
+        </div>
+
+        <!-- Liste des tickets -->
+        <div *ngIf="!isLoading && tickets.length > 0" class="divide-y divide-gray-100">
+          <button
+            *ngFor="let ticket of tickets"
+            (click)="selectTicket(ticket)"
+            class="flex w-full items-start gap-4 px-6 py-4 text-left transition-colors hover:bg-gray-50"
+            [class.bg-emerald-50]="selectedTicket?.id === ticket.id"
+            [class.border-l-4]="selectedTicket?.id === ticket.id"
+            [class.border-emerald-500]="selectedTicket?.id === ticket.id"
+          >
+            <!-- Icône catégorie -->
+            <div 
+              class="mt-1 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg"
+              [ngClass]="getCategoryColor(ticket.category)"
+            >
+              <lucide-icon [name]="getCategoryIcon(ticket.category)" [size]="20"></lucide-icon>
+            </div>
+
+            <!-- Contenu -->
+            <div class="min-w-0 flex-1">
+              <div class="flex items-center gap-2">
+                <span class="font-medium text-gray-900 truncate">{{ ticket.asso || 'Association' }}</span>
+                <span 
+                  class="rounded-full px-2 py-0.5 text-xs font-medium"
+                  [ngClass]="getStatusColor(ticket.status)"
+                >
+                  {{ getStatusLabel(ticket.status) }}
+                </span>
+              </div>
+              <p class="text-sm text-gray-600 truncate">{{ getCategoryLabel(ticket.category) }}</p>
+              <div class="mt-1 flex items-center gap-2">
+                <span class="text-xs text-gray-400 truncate">{{ ticket.email }}</span>
+                <span class="text-xs text-gray-300">•</span>
+                <span class="text-xs text-gray-400">{{ getTimeAgo(ticket.lastActivity) }}</span>
+              </div>
+            </div>
+
+            <!-- Badges -->
+            <div class="flex flex-col items-end gap-1">
+              <span *ngIf="ticket.attachments" class="flex items-center gap-1 text-xs text-gray-400">
+                <lucide-icon name="paperclip" [size]="12"></lucide-icon>
+                1
+              </span>
+            </div>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Détail du ticket -->
+    <div class="hidden lg:block lg:w-1/2 xl:w-3/5">
+      <!-- Aucun ticket sélectionné -->
+      <div *ngIf="!selectedTicket" class="flex h-96 items-center justify-center rounded-xl bg-white border border-gray-200">
+        <div class="text-center">
+          <lucide-icon name="mouse-pointer-click" [size]="48" class="mx-auto mb-4 text-gray-300"></lucide-icon>
+          <p class="text-gray-500">Sélectionnez un ticket pour voir les détails</p>
+        </div>
+      </div>
+
+      <!-- Ticket sélectionné -->
+      <div *ngIf="selectedTicket" class="rounded-xl bg-white shadow-sm border border-gray-200">
+        <!-- Header -->
+        <div class="flex items-center justify-between border-b border-gray-200 px-6 py-4">
+          <div class="flex items-center gap-3">
+            <div 
+              class="flex h-10 w-10 items-center justify-center rounded-lg"
+              [ngClass]="getCategoryColor(selectedTicket.category)"
+            >
+              <lucide-icon [name]="getCategoryIcon(selectedTicket.category)" [size]="20"></lucide-icon>
+            </div>
+            <div>
+              <h2 class="font-semibold text-gray-900">{{ selectedTicket.asso || 'Association' }}</h2>
+              <p class="text-sm text-gray-500">{{ getCategoryLabel(selectedTicket.category) }}</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-2">
+            <button
+              (click)="openInTrello()"
+              class="flex items-center gap-1 rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-600 hover:bg-gray-50"
+            >
+              <lucide-icon name="external-link" [size]="16"></lucide-icon>
+              Trello
+            </button>
+            <button
+              (click)="closeDetail()"
+              class="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+            >
+              <lucide-icon name="x" [size]="20"></lucide-icon>
+            </button>
+          </div>
+        </div>
+
+        <!-- Contenu -->
+        <div class="p-6">
+          <!-- Infos contact -->
+          <div class="mb-6 rounded-lg bg-gray-50 p-4">
+            <div class="flex items-center gap-2 text-sm">
+              <lucide-icon name="mail" [size]="16" class="text-gray-400"></lucide-icon>
+              <a [href]="'mailto:' + selectedTicket.email" class="text-emerald-600 hover:underline">
+                {{ selectedTicket.email }}
+              </a>
+            </div>
+            <div class="mt-2 flex items-center gap-2 text-sm text-gray-500">
+              <lucide-icon name="clock" [size]="16" class="text-gray-400"></lucide-icon>
+              {{ getTimeAgo(selectedTicket.lastActivity) }}
+            </div>
+          </div>
+
+          <!-- Message -->
+          <div class="mb-6">
+            <h3 class="mb-2 text-sm font-medium text-gray-700">Message</h3>
+            <div class="rounded-lg border border-gray-200 bg-white p-4">
+              <p class="whitespace-pre-wrap text-gray-800">
+                {{ extractMessageFromDescription(selectedTicket.description) }}
+              </p>
+            </div>
+          </div>
+
+          <!-- Pièces jointes -->
+          <div *ngIf="hasAttachments(selectedTicket)" class="mb-6">
+            <h3 class="mb-2 text-sm font-medium text-gray-700 flex items-center gap-2">
+              <lucide-icon name="paperclip" [size]="16"></lucide-icon>
+              Pièces jointes
+            </h3>
+            <div class="grid grid-cols-2 gap-3">
+              <div *ngFor="let attachment of getAttachments(selectedTicket)" class="group">
+                <!-- Si c'est une image -->
+                <a 
+                  *ngIf="isImage(attachment.name)"
+                  [href]="attachment.url" 
+                  target="_blank"
+                  class="block overflow-hidden rounded-lg border border-gray-200 hover:border-emerald-400 transition-colors"
+                >
+                  <img 
+                    [src]="attachment.url" 
+                    [alt]="attachment.name"
+                    class="w-full h-32 object-cover group-hover:scale-105 transition-transform"
+                  >
+                  <div class="px-3 py-2 bg-gray-50">
+                    <p class="text-xs text-gray-600 truncate">{{ attachment.name }}</p>
+                  </div>
+                </a>
+                <!-- Si c'est un autre type de fichier -->
+                <a 
+                  *ngIf="!isImage(attachment.name)"
+                  [href]="attachment.url" 
+                  target="_blank"
+                  class="flex items-center gap-3 rounded-lg border border-gray-200 p-3 hover:border-emerald-400 hover:bg-emerald-50 transition-colors"
+                >
+                  <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-gray-100">
+                    <lucide-icon [name]="getFileIcon(attachment.name)" [size]="20" class="text-gray-500"></lucide-icon>
+                  </div>
+                  <div class="min-w-0 flex-1">
+                    <p class="text-sm font-medium text-gray-700 truncate">{{ attachment.name }}</p>
+                    <p class="text-xs text-gray-400">Cliquez pour télécharger</p>
+                  </div>
+                  <lucide-icon name="download" [size]="16" class="text-gray-400"></lucide-icon>
+                </a>
+              </div>
+            </div>
+          </div>
+
+          <!-- Fil de discussion -->
+          <div class="mb-6">
+            <h3 class="mb-3 flex items-center gap-2 text-sm font-medium text-gray-700">
+              <lucide-icon name="message-square" [size]="16"></lucide-icon>
+              Fil de discussion
+              <span *ngIf="selectedTicket.comments?.length" class="rounded-full bg-gray-200 px-2 py-0.5 text-xs">
+                {{ selectedTicket.comments?.length }}
+              </span>
+            </h3>
+
+            <!-- Loading commentaires -->
+            <div *ngIf="isLoadingDetail" class="flex items-center justify-center py-4">
+              <div class="h-5 w-5 animate-spin rounded-full border-2 border-emerald-500 border-t-transparent"></div>
+              <span class="ml-2 text-sm text-gray-500">Chargement...</span>
+            </div>
+
+            <!-- Liste des commentaires -->
+            <div *ngIf="!isLoadingDetail" class="space-y-3 max-h-64 overflow-y-auto">
+              <!-- Message initial -->
+              <div class="rounded-lg border border-gray-200 bg-gray-50 p-4">
+                <div class="mb-2 flex items-center justify-between">
+                  <span class="text-xs font-medium text-gray-600">
+                    📩 {{ selectedTicket.asso || 'Association' }}
+                  </span>
+                  <span class="text-xs text-gray-400">Message initial</span>
+                </div>
+                <p class="text-sm text-gray-800 whitespace-pre-wrap">
+                  {{ extractMessageFromDescription(selectedTicket.description) }}
+                </p>
+              </div>
+
+              <!-- Commentaires (réponses) -->
+              <div 
+                *ngFor="let comment of selectedTicket.comments"
+                class="rounded-lg border p-4"
+                [ngClass]="comment.author === 'Support MyAmana' ? 'border-emerald-200 bg-emerald-50' : 'border-gray-200 bg-white'"
+              >
+                <div class="mb-2 flex items-center justify-between">
+                  <span class="text-xs font-medium" [ngClass]="comment.author === 'Support MyAmana' ? 'text-emerald-700' : 'text-gray-600'">
+                    {{ comment.author === 'Support MyAmana' ? '👤 ' + comment.author : '📩 ' + comment.author }}
+                  </span>
+                  <span class="text-xs text-gray-400">{{ getTimeAgo(comment.date) }}</span>
+                </div>
+                <p class="text-sm text-gray-800 whitespace-pre-wrap">{{ comment.text }}</p>
+              </div>
+
+              <!-- Aucun échange -->
+              <div *ngIf="!selectedTicket.comments?.length" class="text-center py-4">
+                <p class="text-sm text-gray-400 italic">Aucune réponse pour le moment</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Message succès -->
+          <div *ngIf="successMessage" class="mb-6 rounded-lg bg-emerald-50 border border-emerald-200 p-4">
+            <div class="flex items-center gap-2">
+              <lucide-icon name="check-circle" [size]="18" class="text-emerald-600"></lucide-icon>
+              <p class="text-sm text-emerald-700">{{ successMessage }}</p>
+            </div>
+          </div>
+
+          <!-- Formulaire de réponse -->
+          <div *ngIf="isReplying" class="rounded-lg border border-gray-200 p-4">
+            <h3 class="mb-4 text-sm font-medium text-gray-700">Répondre au ticket</h3>
+
+            <!-- Sujet -->
+            <div class="mb-4">
+              <label class="mb-1.5 block text-sm text-gray-600">Sujet</label>
+              <input
+                type="text"
+                [(ngModel)]="replyForm.subject"
+                class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+              />
+            </div>
+
+            <!-- Message -->
+            <div class="mb-4">
+              <label class="mb-1.5 block text-sm text-gray-600">Message</label>
+              <textarea
+                [(ngModel)]="replyForm.message"
+                rows="6"
+                class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                placeholder="Rédigez votre réponse..."
+              ></textarea>
+            </div>
+
+            <!-- Erreur -->
+            <div *ngIf="errorMessage" class="mb-4 rounded-lg bg-red-50 border border-red-200 p-3">
+              <p class="text-sm text-red-700">{{ errorMessage }}</p>
+            </div>
+
+            <!-- Actions -->
+            <div class="flex justify-end gap-3">
+              <button
+                (click)="cancelReply()"
+                class="rounded-lg border border-gray-200 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50"
+                [disabled]="isSending"
+              >
+                Annuler
+              </button>
+              <button
+                (click)="sendReply()"
+                [disabled]="!replyForm.message.trim() || isSending"
+                class="flex items-center gap-2 rounded-lg bg-emerald-500 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <div *ngIf="isSending" class="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+                <lucide-icon *ngIf="!isSending" name="send" [size]="16"></lucide-icon>
+                {{ isSending ? 'Envoi...' : 'Envoyer' }}
+              </button>
+            </div>
+          </div>
+
+          <!-- Boutons d'action -->
+          <div *ngIf="!isReplying" class="flex justify-end gap-3">
+            <button
+              (click)="resolveTicket()"
+              [disabled]="isResolving"
+              class="flex items-center gap-2 rounded-lg border border-emerald-500 px-6 py-3 font-medium text-emerald-600 hover:bg-emerald-50 disabled:opacity-50"
+            >
+              <div *ngIf="isResolving" class="h-4 w-4 animate-spin rounded-full border-2 border-emerald-500 border-t-transparent"></div>
+              <lucide-icon *ngIf="!isResolving" name="check-circle" [size]="18"></lucide-icon>
+              {{ isResolving ? 'En cours...' : 'Résolu' }}
+            </button>
+            <button
+              (click)="startReply()"
+              class="flex items-center gap-2 rounded-lg bg-emerald-500 px-6 py-3 font-medium text-white hover:bg-emerald-600"
+            >
+              <lucide-icon name="reply" [size]="18"></lucide-icon>
+              Répondre
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
