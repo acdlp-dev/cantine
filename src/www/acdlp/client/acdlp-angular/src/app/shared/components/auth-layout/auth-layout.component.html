@@ -1,0 +1,21 @@
+<div class="auth-layout min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+  <div class="max-w-md w-full space-y-8">
+    <!-- Quote Section -->
+    <div *ngIf="quote" class="text-center mb-8">
+      <p class="text-lg italic text-gray-700 dark:text-gray-300">{{ quote }}</p>
+      <p *ngIf="quoteReference" class="text-sm text-gray-500 dark:text-gray-400 mt-2">{{ quoteReference }}</p>
+    </div>
+
+    <!-- Content Slot -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-8">
+      <ng-content></ng-content>
+    </div>
+
+    <!-- Typewriter Words (optional display) -->
+    <div *ngIf="typewriterWords.length > 0" class="text-center text-sm text-gray-500 dark:text-gray-400">
+      <span *ngFor="let word of typewriterWords; let i = index">
+        {{ word }}<span *ngIf="i < typewriterWords.length - 1"> • </span>
+      </span>
+    </div>
+  </div>
+</div>
