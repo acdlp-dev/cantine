@@ -1,18 +1,25 @@
-import { Injectable } from '@angular/core';
+import { Injectable, OnDestroy } from '@angular/core';
 import { TourService, TourStep } from '../../../shared/services/tour.service';
 import { Router, NavigationEnd } from '@angular/router';
-import { filter, take, switchMap } from 'rxjs/operators';
+import { filter, take, switchMap, catchError, takeUntil } from 'rxjs/operators';
 import { OnboardingService } from './onboarding.service';
+import { Subject, Subscription, of } from 'rxjs';
 
 @Injectable({
   providedIn: 'root'
 })
-export class AutoTourService {
+export class AutoTourService implements OnDestroy {
   private hasTriggeredTour = false;
   private readonly AUTO_TOUR_KEY = 'myamana_auto_tour_triggered';
   private readonly DASHBOARD_PATH = '/backoffice/accueil';
   private readonly CANTINE_PATH = '/backoffice/cantine';
   private readonly VEHICULE_PATH = '/backoffice/vehicule';
+
+  // Gestion des subscriptions pour éviter les fuites mémoire
+  private destroy$ = new Subject<void>();
+  private routerSubscription: Subscription | null = null;
+  private pendingTourCheckTimeout: ReturnType<typeof setTimeout> | null = null;
+  private isCheckingTour = false; // Empêche les appels API concurrents
 
   constructor(
     private tourService: TourService,
@@ -23,68 +30,93 @@ export class AutoTourService {
     const autoTourTriggered = localStorage.getItem(this.AUTO_TOUR_KEY);
     this.hasTriggeredTour = autoTourTriggered === 'true';
 
-    // S'abonner aux événements de navigation
-    // La visite sera déclenchée si hasTriggeredTour est false ET si isOnboarded est false en BDD
-    this.router.events.pipe(
-      filter(event => event instanceof NavigationEnd)
+    // S'abonner aux événements de navigation avec cleanup
+    this.routerSubscription = this.router.events.pipe(
+      filter(event => event instanceof NavigationEnd),
+      takeUntil(this.destroy$)
     ).subscribe((event: any) => {
-      if (!this.hasTriggeredTour) {
+      if (!this.hasTriggeredTour && !this.isCheckingTour) {
         this.checkAndStartTour(event.url);
       }
     });
+  }
+
+  ngOnDestroy(): void {
+    // Cleanup de toutes les subscriptions
+    this.destroy$.next();
+    this.destroy$.complete();
+    if (this.routerSubscription) {
+      this.routerSubscription.unsubscribe();
+      this.routerSubscription = null;
+    }
+    if (this.pendingTourCheckTimeout) {
+      clearTimeout(this.pendingTourCheckTimeout);
+      this.pendingTourCheckTimeout = null;
+    }
   }
 
   /**
    * Vérifie si l'utilisateur est sur une page principale du backoffice et démarre le tour si nécessaire
    */
   private checkAndStartTour(url: string): void {
-    if (this.hasTriggeredTour) {
+    if (this.hasTriggeredTour || this.isCheckingTour) {
       return;
     }
 
-    // Attendre un peu pour que la page se charge complètement
-    setTimeout(() => {
-      if (url === this.DASHBOARD_PATH || url === this.CANTINE_PATH || url === this.VEHICULE_PATH) {
-        // Vérifier si l'utilisateur a déjà vu la visite guidée
-        this.onboardingService.hasSeenGuidedTour().subscribe({
-          next: (tourResponse: any) => {
-            if (tourResponse && tourResponse.result && tourResponse.result.hasSeenTour) {
-              console.log('L\'utilisateur a déjà vu la visite guidée');
-              return;
-            }
-            
-            // Si l'utilisateur n'a pas encore vu la visite guidée, récupérer ses préférences
-            this.onboardingService.isOnboardingCompleted().subscribe({
-              next: (response: any) => {
-                if (!response || !response.result) {
-                  console.log('Aucune information d\'onboarding disponible');
-                  return;
-                }
+    // Annuler tout timeout en attente
+    if (this.pendingTourCheckTimeout) {
+      clearTimeout(this.pendingTourCheckTimeout);
+    }
 
-                try {
-                  // Nous savons déjà que l'utilisateur a complété l'onboarding mais n'a pas vu la visite guidée
-                  console.log('L\'utilisateur a complété l\'onboarding mais n\'a pas encore vu la visite guidée');
-                  
-                  // Utiliser la même méthode que celle utilisée par le bouton de visite guidée
-                  this.getCurrentPageSteps().then(steps => {
-                    this.tourService.startTour(steps);
-                    this.markTourAsTriggered();
-                  });
-                } catch (error) {
-                  console.error('Erreur lors du démarrage de la visite guidée:', error);
-                }
-              },
-              error: (error) => {
-                console.error('Erreur lors de la récupération des préférences:', error);
-              }
-            });
+    // Attendre un peu pour que la page se charge complètement
+    this.pendingTourCheckTimeout = setTimeout(() => {
+      if (url === this.DASHBOARD_PATH || url === this.CANTINE_PATH || url === this.VEHICULE_PATH) {
+        this.isCheckingTour = true;
+
+        // Utiliser switchMap au lieu de nested subscribes
+        this.onboardingService.hasSeenGuidedTour().pipe(
+          take(1),
+          switchMap((tourResponse: any) => {
+            if (tourResponse?.result?.hasSeenTour) {
+              console.log('L\'utilisateur a déjà vu la visite guidée');
+              return of(null); // Arrêter la chaîne
+            }
+            return this.onboardingService.isOnboardingCompleted().pipe(take(1));
+          }),
+          catchError(error => {
+            console.error('Erreur lors de la vérification du tour:', error);
+            return of(null);
+          })
+        ).subscribe({
+          next: (response: any) => {
+            this.isCheckingTour = false;
+            if (response?.result) {
+              console.log('L\'utilisateur a complété l\'onboarding mais n\'a pas encore vu la visite guidée');
+              this.startTourWithPreferences(response.result);
+            }
           },
-          error: (error) => {
-            console.error('Erreur lors de la vérification du statut de la visite guidée:', error);
+          error: () => {
+            this.isCheckingTour = false;
           }
         });
       }
     }, 1000);
+  }
+
+  /**
+   * Démarre le tour avec les préférences utilisateur
+   */
+  private startTourWithPreferences(onboardingResult: any): void {
+    const userPreferences = {
+      donations: onboardingResult.donations || false,
+      cantine: onboardingResult.cantine || false,
+      suiviVehicule: onboardingResult.suiviVehicule || false
+    };
+
+    const currentPath = this.router.url;
+    const steps = this.getStepsForPath(currentPath, userPreferences);
+    this.tourService.startTour(steps);
+    this.markTourAsTriggered();
   }
 
   /**
@@ -112,37 +144,39 @@ export class AutoTourService {
    * @returns Les étapes du tour adaptées à la page courante
    */
   getCurrentPageSteps(): Promise<TourStep[]> {
-    // Récupérer l'URL courante
     const currentPath = this.router.url;
-    
-    // Récupérer les préférences utilisateur
+
     return new Promise((resolve) => {
-      this.onboardingService.isOnboardingCompleted().subscribe({
+      // Utiliser les données en cache si disponibles
+      const cachedState = this.onboardingService.getOnboardingState();
+      if (cachedState?.result) {
+        const userPreferences = {
+          donations: cachedState.result.donations || false,
+          cantine: cachedState.result.cantine || false,
+          suiviVehicule: cachedState.result.suiviVehicule || false
+        };
+        resolve(this.getStepsForPath(currentPath, userPreferences));
+        return;
+      }
+
+      // Fallback: appel API si pas de cache
+      this.onboardingService.isOnboardingCompleted().pipe(take(1)).subscribe({
         next: (response: any) => {
-          console.log('Réponse API complète:', response);
-          
-          if (response && response.result) {
+          if (response?.result) {
             const userPreferences = {
               donations: response.result.donations || false,
               cantine: response.result.cantine || false,
               suiviVehicule: response.result.suiviVehicule || false
             };
-            
-            // Obtenir les étapes adaptées
-            const steps = this.getStepsForPath(currentPath, userPreferences);
-            console.log(`Nombre d'étapes générées: ${steps.length}`);
-            resolve(steps);
+            resolve(this.getStepsForPath(currentPath, userPreferences));
           } else {
             const debugPrefs = { donations: true, cantine: true, suiviVehicule: true };
-            const steps = this.getStepsForPath(currentPath, debugPrefs);
-            resolve(steps);
+            resolve(this.getStepsForPath(currentPath, debugPrefs));
           }
         },
-        error: (error) => {
-          // Pour le débogage, on force également toutes les préférences à true
+        error: () => {
           const debugPrefs = { donations: true, cantine: true, suiviVehicule: true };
-          const steps = this.getStepsForPath(currentPath, debugPrefs);
-          resolve(steps);
+          resolve(this.getStepsForPath(currentPath, debugPrefs));
         }
       });
     });

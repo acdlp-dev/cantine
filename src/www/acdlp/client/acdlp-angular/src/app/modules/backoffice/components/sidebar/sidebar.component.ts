@@ -1,4 +1,4 @@
-import { Component, OnInit, Input } from '@angular/core';
+import { Component, OnInit, OnDestroy, Input } from '@angular/core';
 import { BackofficeAuthService } from '../../../../modules/backoffice-auth/services/backoffice-auth.service';
 // TODO: Authentification cantine à implémenter plus tard
 // import { CantineAuthService } from '../../../../modules/cantine-auth/services/cantine-auth.service';
@@ -7,6 +7,8 @@ import { RouterLink, RouterLinkActive, Router } from '@angular/router';
 import { LucideIconsModule } from '../../../../shared/modules/lucide-icons.module';
 import { TourButtonComponent } from '../tour/tour-button.component';
 import { OnboardingService } from '../../services/onboarding.service';
+import { Subject, of } from 'rxjs';
+import { takeUntil, switchMap, catchError } from 'rxjs/operators';
 
 interface TabItem {
   key: string;
@@ -35,7 +37,7 @@ interface TabSection {
   templateUrl: './sidebar.component.html',
   styleUrls: ['./sidebar.component.scss']
 })
-export class SidebarComponent implements OnInit {
+export class SidebarComponent implements OnInit, OnDestroy {
   @Input() moduleType: 'backoffice' | 'cantine' = 'backoffice';
 
   isSidebarOpen: boolean = false;
@@ -65,6 +67,11 @@ export class SidebarComponent implements OnInit {
   openSections: { [key: string]: boolean } = {};
   // Flag pour l'association spéciale qui doit voir uniquement le flow Cantine admin
   isSpecialCantineAdmin: boolean = false;
+
+  // Gestion des subscriptions
+  private destroy$ = new Subject<void>();
+  private resizeHandler: (() => void) | null = null;
+
   constructor(
     private router: Router,
     private backofficeAuthService: BackofficeAuthService,
@@ -76,10 +83,11 @@ export class SidebarComponent implements OnInit {
   ngOnInit(): void {
     // Récupérer les préférences d'onboarding de l'utilisateur
     if (this.moduleType === 'backoffice') {
-      // Récupérer d'abord les préférences d'onboarding
-      this.onboardingService.isOnboardingCompleted().subscribe({
-        next: (response) => {
-          if (response && response.result) {
+      // Utiliser switchMap pour chaîner les appels proprement
+      this.onboardingService.isOnboardingCompleted().pipe(
+        takeUntil(this.destroy$),
+        switchMap((response) => {
+          if (response?.result) {
             this.userPreferences = {
               donations: !!response.result.donations,
               cantine: !!response.result.cantine,
@@ -88,43 +96,25 @@ export class SidebarComponent implements OnInit {
               isOnboarded: !!response.result.isOnboarded
             };
           }
-
-          // Ensuite récupérer les infos de l'association afin de conditionner la section "Cantine admin"
-          this.backofficeAuthService.getAssoData().subscribe({
-            next: (asso) => {
-              // Récupérer nom possible depuis diverses propriétés (nameAsso provient du signin)
-              const rawAssoName = asso?.nameAsso || '';
-              const target = 'Au Coeur De La Précarité';
-              // Si correspondance, activer le mode spécial Cantine admin
-              if (rawAssoName.includes(target)) {
-                this.isSpecialCantineAdmin = true;
-              }
-
-              // Construire les tabs en central (avec la connaissance du flag spécial)
-              this.setTabsForModule();
-            },
-            error: () => {
-              // Si on ne peut pas récupérer l'asso, construire les tabs normalement
-              this.setTabsForModule();
-            }
-          });
-        },
-        error: (error) => {
+          return this.backofficeAuthService.getAssoData().pipe(
+            catchError(() => of(null))
+          );
+        }),
+        catchError((error) => {
           console.error('Erreur lors de la récupération des préférences d\'onboarding:', error);
-          // Même si l'onboarding échoue, tenter de récupérer l'asso pour afficher la section si nécessaire
-          this.backofficeAuthService.getAssoData().subscribe({
-            next: (asso) => {
-              const assoName = asso?.nameAsso || '';
-              const target = 'Au Coeur De La Précarité';
-              if (assoName.includes(target)) {
-                this.addCantineAdminSection();
-              }
-              this.setTabsForModule();
-            },
-            error: () => {
-              this.setTabsForModule();
-            }
-          });
+          return this.backofficeAuthService.getAssoData().pipe(
+            catchError(() => of(null))
+          );
+        })
+      ).subscribe({
+        next: (asso) => {
+          if (asso?.nameAsso?.includes('Au Coeur De La Précarité')) {
+            this.isSpecialCantineAdmin = true;
+          }
+          this.setTabsForModule();
+        },
+        error: () => {
+          this.setTabsForModule();
         }
       });
     } else {
@@ -135,15 +125,21 @@ export class SidebarComponent implements OnInit {
     // Initialiser la sidebar ouverte sur desktop, fermée sur mobile
     this.isSidebarOpen = window.innerWidth >= 768;
 
-    // Écouter les changements de taille d'écran
-    window.addEventListener('resize', () => {
+    // Écouter les changements de taille d'écran avec cleanup
+    this.resizeHandler = () => {
       if (window.innerWidth >= 768) {
         this.isSidebarOpen = true;
       }
-    });
+    };
+    window.addEventListener('resize', this.resizeHandler);
+  }
 
-    // Initialiser openSections par défaut à ouvert pour chaque section clé
-    // (sera rempli après setTabsForModule)
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+    if (this.resizeHandler) {
+      window.removeEventListener('resize', this.resizeHandler);
+    }
   }
 
   private addCantineAdminSection(): void {

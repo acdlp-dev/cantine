@@ -31,21 +31,21 @@ export class FeatureAccessGuard implements CanActivate {
           const isFeatureEnabled = !!response.result[requiredFeature];
                     
           if (!isFeatureEnabled) {
-            // Si la fonctionnalité n'est pas activée, rediriger vers le tableau de bord
-            return this.router.parseUrl('/backoffice');
+            // Si la fonctionnalité n'est pas activée, rediriger vers infos (évite boucle de redirection)
+            return this.router.parseUrl('/backoffice/infos');
           }
-          
+
           // Autoriser l'accès si la fonctionnalité est activée
           return true;
         }
-        
-        // En cas de réponse invalide, rediriger vers le tableau de bord
-        return this.router.parseUrl('/backoffice');
+
+        // En cas de réponse invalide, rediriger vers infos
+        return this.router.parseUrl('/backoffice/infos');
       }),
       catchError(error => {
         console.error('Erreur lors de la vérification des préférences d\'onboarding:', error);
-        // En cas d'erreur, rediriger vers le tableau de bord
-        return of(this.router.parseUrl('/backoffice'));
+        // En cas d'erreur, rediriger vers infos
+        return of(this.router.parseUrl('/backoffice/infos'));
       })
     );
   }

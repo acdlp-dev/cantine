@@ -20,9 +20,12 @@ const routes: Routes = [
   {
     path: '',
     component: BackofficeComponent,
-    canActivate: [OnboardingGuard],
     children: [
-      { path: '', redirectTo: 'benevolat/benevoles', pathMatch: 'full' },
+      { 
+        path: '', 
+        redirectTo: 'benevolat/benevoles', 
+        pathMatch: 'full'
+      },
 
       // Routes pour les informations générales et paramètres
       { path: 'infos', component: InfosComponent },

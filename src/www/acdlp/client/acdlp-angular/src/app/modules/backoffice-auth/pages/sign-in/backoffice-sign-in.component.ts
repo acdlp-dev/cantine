@@ -51,59 +51,20 @@ export class BackofficeSignInComponent implements OnInit {
         const { email, password } = this.loginForm.value;
 
         if (this.loginForm.invalid) {
-            this.isLoading = false; // Arrêter le chargement si le formulaire est invalide
+            this.isLoading = false;
             return;
         }
 
         this.backofficeAuthService.signIn(email, password).subscribe({
             next: () => {
-                // En cas de succès, vérifier les dons en échec avant la redirection
-                console.log('Connexion réussie, récupération des données de l\'association...');
+                console.log('✅ Connexion réussie, redirection vers /backoffice');
                 this.errorMessage = '';
-                this.backofficeAuthService.getAssoData().subscribe({
-                    next: (response) => {                        
-                        // Vérifier si l'utilisateur a complété l'onboarding
-                        this.onboardingService.isOnboardingCompleted().subscribe({
-                            next: (onboardingResponse) => {
-                                this.isLoading = false;
-                                // If onboarding info present, check statut to block associations with non-ok statut
-                                if (onboardingResponse && onboardingResponse.result) {
-                                    const statut = onboardingResponse.result.statut;
-                                    if (statut && statut !== 'ok') {
-                                        // Block the association: prevent navigation and show message
-                                        this.errorMessage = 'Votre compte est bloqué : amende';
-                                        return;
-                                    }
-                                }
-                                // Si l'onboarding n'est pas complété, rediriger vers la page d'onboarding
-                                if (onboardingResponse && onboardingResponse.result && 
-                                    (!onboardingResponse.result.isOnboarded || onboardingResponse.result.isOnboarded === 0)) {
-                                    console.log('Onboarding non complété, redirection vers onboarding');
-                                    this._router.navigate(['/backoffice/onboarding']);
-                                } else {
-                                    // Sinon, rediriger vers le tableau de bord
-                                    this._router.navigate(['/backoffice']);
-                                }
-                            },
-                            error: (onboardingErr) => {
-                                console.error('Erreur lors de la vérification de l\'onboarding:', onboardingErr);
-                                this.isLoading = false;
-                                // En cas d'erreur, rediriger vers le backoffice
-                                this._router.navigate(['/backoffice']);
-                            }
-                        });
-                    },
-                    error: (err) => {
-                        this.isLoading = false; // Arrêter le chargement en cas d'erreur
-                        console.error('Erreur lors de la récupération des données utilisateur:', err);
-                        this._router.navigate(['/backoffice']);
-                    }
-                });
+                // Redirection directe vers le backoffice
+                this._router.navigate(['/backoffice']);
             },
             error: (err) => {
-                this.isLoading = false; // Arrêter le chargement en cas d'erreur
-                console.error('Erreur lors de la connexion :', err);
-                // Si le serveur renvoie 403 avec message (compte bloqué), afficher le message exact
+                this.isLoading = false;
+                console.error('❌ Erreur lors de la connexion:', err);
                 if (err && err.status === 403 && err.error && err.error.message) {
                     this.errorMessage = err.error.message;
                 } else if (err && err.status === 401) {
@@ -111,7 +72,7 @@ export class BackofficeSignInComponent implements OnInit {
                 } else {
                     this.errorMessage = 'Une erreur est survenue. Veuillez réessayer.';
                 }
-                this.submitted = false; // Réinitialiser le statut de soumission
+                this.submitted = false;
             },
         });
     }

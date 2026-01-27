@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
-import { Observable, of } from 'rxjs';
+import { Observable, of, BehaviorSubject } from 'rxjs';
 import { tap, catchError, map } from 'rxjs/operators';
 import { environment } from 'src/environments/environment';
 import { throwError } from 'rxjs';
@@ -15,13 +15,67 @@ export class OnboardingService {
     private readonly ONBOARDING_KEY = 'myamana_onboarding_completed';
     private readonly TOUR_KEY = 'myamana_tour_completed';
 
+    // BehaviorSubject pour stocker l'état d'onboarding et éviter les appels multiples
+    private onboardingState$ = new BehaviorSubject<any>(null);
+    private isFetching = false;
+
+    // Cache pour hasSeenGuidedTour
+    private tourState$ = new BehaviorSubject<any>(null);
+    private isFetchingTour = false;
+
     constructor(private http: HttpClient) { }
 
     /**
-     * Vérifie si l'utilisateur a déjà complété l'onboarding
+     * Réinitialise l'état d'onboarding et tour (à appeler lors du logout)
      */
+    clearOnboardingState(): void {
+        this.onboardingState$.next(null);
+        this.isFetching = false;
+        this.tourState$.next(null);
+        this.isFetchingTour = false;
+    }
 
+    /**
+     * Retourne l'état actuel de l'onboarding sans faire d'appel API
+     */
+    getOnboardingState(): any {
+        return this.onboardingState$.getValue();
+    }
+
+    /**
+     * Vérifie si l'utilisateur a déjà complété l'onboarding
+     * Utilise un état partagé pour éviter les appels API multiples
+     */
     isOnboardingCompleted(): Observable<any> {
+        // Si on a déjà les données, les retourner directement
+        const currentState = this.onboardingState$.getValue();
+        if (currentState !== null) {
+            return of(currentState);
+        }
+
+        // Si un appel est déjà en cours, retourner l'observable du BehaviorSubject
+        if (this.isFetching) {
+            return this.onboardingState$.asObservable().pipe(
+                // Filtrer les valeurs null (en attente)
+                map(state => {
+                    if (state === null) {
+                        throw new Error('waiting');
+                    }
+                    return state;
+                }),
+                catchError(() => this.fetchOnboardingFromApi())
+            );
+        }
+
+        return this.fetchOnboardingFromApi();
+    }
+
+    /**
+     * Effectue l'appel API pour récupérer l'état d'onboarding
+     */
+    private fetchOnboardingFromApi(): Observable<any> {
+        this.isFetching = true;
+
         const headers = new HttpHeaders({
             'Content-Type': 'application/json'
         });
@@ -36,10 +90,14 @@ export class OnboardingService {
                 } else {
                     localStorage.removeItem(this.ONBOARDING_KEY);
                 }
+                // Stocker la réponse dans le BehaviorSubject
+                this.onboardingState$.next(response);
+                this.isFetching = false;
                 return response;
             }),
             catchError((error) => {
                 console.error('Erreur lors de la récupération des statistiques:', error);
+                this.isFetching = false;
                 return throwError(() => error);
             })
         );
@@ -103,8 +161,37 @@ export class OnboardingService {
     
     /**
      * Vérifie si l'utilisateur a déjà vu la visite guidée
+     * Utilise un cache pour éviter les appels API multiples
      */
     hasSeenGuidedTour(): Observable<any> {
+        // Si on a déjà les données en cache, les retourner
+        const currentState = this.tourState$.getValue();
+        if (currentState !== null) {
+            return of(currentState);
+        }
+
+        // Si un appel est déjà en cours, attendre
+        if (this.isFetchingTour) {
+            return this.tourState$.asObservable().pipe(
+                map(state => {
+                    if (state === null) {
+                        throw new Error('waiting');
+                    }
+                    return state;
+                }),
+                catchError(() => this.fetchTourStatusFromApi())
+            );
+        }
+
+        return this.fetchTourStatusFromApi();
+    }
+
+    /**
+     * Effectue l'appel API pour récupérer le statut du tour
+     */
+    private fetchTourStatusFromApi(): Observable<any> {
+        this.isFetchingTour = true;
+
         const headers = new HttpHeaders({
             'Content-Type': 'application/json'
         });
@@ -113,16 +200,18 @@ export class OnboardingService {
             headers,
             withCredentials: true
         }).pipe(
-            map(response => {
-                if (response.result && response.result.hasSeenTour) {
+            tap(response => {
+                if (response.result?.hasSeenTour) {
                     localStorage.setItem(this.TOUR_KEY, 'true');
                 } else {
                     localStorage.removeItem(this.TOUR_KEY);
                 }
-                return response;
+                this.tourState$.next(response);
+                this.isFetchingTour = false;
             }),
             catchError((error) => {
                 console.error('Erreur lors de la vérification du statut de la visite guidée:', error);
+                this.isFetchingTour = false;
                 return throwError(() => error);
             })
         );
@@ -135,7 +224,7 @@ export class OnboardingService {
         const headers = new HttpHeaders({
             'Content-Type': 'application/json'
         });
-        
+
         return this.http.post<any>(`${this.apiUrl}/markGuidedTourAsSeen`, {}, {
             headers,
             withCredentials: true
@@ -143,6 +232,8 @@ export class OnboardingService {
             map(response => {
                 console.log('Visite guidée marquée comme vue:', response);
                 localStorage.setItem(this.TOUR_KEY, 'true');
+                // Mettre à jour le cache
+                this.tourState$.next({ result: { hasSeenTour: true } });
                 return true;
             }),
             catchError((error) => {

@@ -1,9 +1,10 @@
-import { Injectable } from '@angular/core';
+import { Injectable, Inject, forwardRef } from '@angular/core';
 import { Router } from '@angular/router';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable, throwError, of } from 'rxjs';
 import { catchError, tap, map } from 'rxjs/operators';
 import { environment } from 'src/environments/environment';
+import { OnboardingService } from '../../backoffice/services/onboarding.service';
 
 @Injectable({
   providedIn: 'root',
@@ -13,12 +14,13 @@ export class BackofficeAuthService {
   // L'URL de base de votre API (par exemple : http://localhost:4242/api)
   private apiUrl = environment.apiUrl;
 
-  // Flag qu’on peut utiliser pour stocker temporairement l’état «auth»
+  // Flag qu'on peut utiliser pour stocker temporairement l'état «auth»
   private _isLoggedIn = false;
 
   constructor(
     private http: HttpClient,
-    private router: Router
+    private router: Router,
+    @Inject(forwardRef(() => OnboardingService)) private onboardingService: OnboardingService
   ) { }
 
   /**
@@ -30,16 +32,17 @@ export class BackofficeAuthService {
     const body = { email, password };
     const headers = new HttpHeaders({ 'Content-Type': 'application/json' });
 
+    // Réinitialiser l'état d'onboarding avant une nouvelle connexion
+    this.onboardingService.clearOnboardingState();
+
     // withCredentials: true => inclure les cookies cross-site
     return this.http.post<any>(`${this.apiUrl}/backoffice/signin`, body, {
       headers,
       withCredentials: true
     }).pipe(
       tap(() => {
-        // Si on arrive ici, c’est que le backend n’a pas renvoyé d’erreur
+        // Si on arrive ici, c'est que le backend n'a pas renvoyé d'erreur
         this._isLoggedIn = true;
-        // Redirection vers le dashboard
-        this.router.navigate(['/backoffice']);
       }),
       catchError((error) => {
         console.error('Error during sign in backoffice:', error);
@@ -55,15 +58,12 @@ export class BackofficeAuthService {
   signUp(email: string, password: string, firstName: string, lastName: string, siren: string, documentFile: File)
     : Observable<{ message: string }> {
     console.log("backoffice signup " + email + " " + siren);
-    const cantineUrl = window.location.href.includes('cantineOk') ? true : false;
-
     const formData = new FormData();
     formData.append('email', email);
     formData.append('password', password);
     formData.append('firstName', firstName);
     formData.append('lastName', lastName);
     formData.append('siren', siren);
-    formData.append('cantineUrl', String(cantineUrl));
     formData.append('document', documentFile);
 
     return this.http.post<{ message: string }>(
@@ -124,10 +124,13 @@ export class BackofficeAuthService {
    * Appelle l'endpoint /logout côté serveur, qui supprime le cookie.
    */
   logout(): void {
+    // Réinitialiser les états
+    this.onboardingService.clearOnboardingState();
+    this._isLoggedIn = false;
+
     this.http.post(`${this.apiUrl}/logout`, {}, { withCredentials: true })
       .subscribe({
         next: () => {
-          this._isLoggedIn = false;
           this.router.navigate(['/backoffice-auth/sign-in']);
         },
         error: (error) => {

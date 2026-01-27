@@ -9,7 +9,7 @@ const routes: Routes = [
     path: '',
     component: BackofficeAuthComponent,
     children: [
-      { path: '', redirectTo: 'backoffice/sign-in', pathMatch: 'full' },
+      { path: '', redirectTo: 'sign-in', pathMatch: 'full' },
       { path: 'sign-in', component: BackofficeSignInComponent, data: { returnUrl: window.location.pathname } },
       { path: 'sign-up', component: BackofficeSignUpComponent },
       // { path: 'forgot-password', component: ForgotPasswordComponent },

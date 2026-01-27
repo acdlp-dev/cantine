@@ -125,90 +125,13 @@ router.get('/backoffice/protected-route', authMiddleware, (req, res) => {
 // ----------------------------------------------------
 // AUTHENTIFICATION BACKOFFICE (ASSOCIATIONS)
 // ----------------------------------------------------
+// Note: La route POST /backoffice/signin est définie plus bas dans le fichier
 
-// Signin spécifique pour le backoffice
-router.post('/backoffice/signin', async(req, res) => {
-    const { email } = req.body;
+// ----------------------------------------------------
+// ROUTES DONATEURS LEGACY (désactivées - système dons supprimé)
+// ----------------------------------------------------
 
-    if (!email) {
-        return res.status(400).json({ message: 'Email is required.' });
-    }
-    if (!validateEmail(email)) {
-        return res.status(400).json({ message: 'Invalid email format.' });
-    }
-
-    try {
-        const existingUser = await db.select('SELECT * FROM users WHERE email = ?', [email]);
-        if (existingUser.length > 0) {
-            // Vérifier si l'utilisateur a déjà vérifié son email
-            if (existingUser[0].is_verified) {
-                // Si l'email est déjà vérifié, envoyer un lien de réinitialisation de mot de passe
-                const resetToken = generateResetToken();
-                const tokenExpiry = Date.now() + 3600000;
-
-                await db.update('users', { reset_token: resetToken, token_expiry: tokenExpiry }, 'email = ?', [email]);
-
-                const resetUrl = `${urlOrigin}/app/auth/new-password/token/${resetToken}`;
-                const templateId = 5536948; // ID du template Mailjet
-                const variables = { prenom: existingUser[0].firstName || 'Donateur', lien_reinit_password: resetUrl };
-
-                await sendTemplateEmail(email, templateId, variables, "Espace Donateur : Réinitialisez votre mot de passe");
-                return res.status(200).json({
-                    message: 'Email already exists. Reset password link sent.',
-                    requiresPasswordReset: true
-                });
-            } else {
-                // Si l'email existe mais n'est pas vérifié, envoyer un nouveau lien de vérification
-                const verificationToken = generateResetToken();
-                const verificationTokenExpiry = Date.now() + 3600000;
-
-                await db.update('users', {
-                        verification_token: verificationToken,
-                        verification_token_expiry: verificationTokenExpiry
-                    },
-                    'email = ?', [email]
-                );
-
-                const confirmationUrl = `${urlOrigin}/app/auth/verify-email/token/${verificationToken}`;
-                const templateId = 5536946; // ID du template Mailjet pour confirmation
-                const variables = { prenom: existingUser[0].firstName || 'Donateur', lien_finalisation: confirmationUrl };
-
-                await sendTemplateEmail(email, templateId, variables, 'Espace Donateur : Finalisez la création de votre compte');
-                return res.status(200).json({
-                    message: 'Un nouveau lien de vérification a été envoyé.',
-                    requiresVerification: true
-                });
-            }
-        }
-
-        // Nouveau comportement : créer l'utilisateur avec uniquement l'email
-        const verificationToken = generateResetToken();
-        const verificationTokenExpiry = Date.now() + 3600000;
-
-        await db.insert('users', {
-            email,
-            verification_token: verificationToken,
-            verification_token_expiry: verificationTokenExpiry,
-            is_verified: 0
-            // Pas de champ password, firstName ou lastName
-        });
-
-        const confirmationUrl = `${urlOrigin}/app/auth/verify-email/token/${verificationToken}`;
-        const templateId = 5536946; // ID du template Mailjet pour confirmation
-        const variables = { prenom: 'Donateur', lien_finalisation: confirmationUrl };
-
-        await sendTemplateEmail(email, templateId, variables, 'Espace Donateur : Finalisez la création de votre compte');
-        return res.status(201).json({
-            message: 'Lien de vérification envoyé',
-            nextStep: 'email-verification'
-        });
-    } catch (err) {
-        console.error(`[Signup Error]: ${err.message}`, err);
-        return res.status(500).json({ message: 'Internal server error.' });
-    }
-});
-
-// Signin
+// Signin donateurs (legacy - désactivé)
 router.post('/signin', async(req, res) => {
     const { email, password } = req.body;
     console.log("Demande de signin recue de " + email);
@@ -623,15 +546,24 @@ router.post('/backoffice/signin', async(req, res) => {
 
         // Vérifier le statut onboarding_backoffice et bloquer si doubleChecked = false
         try {
-            const ob = await db.select('SELECT statut, amende, doubleChecked FROM onboarding_backoffice WHERE user_id = ? LIMIT 1', [user.id], 'remote');
+            const ob = await db.select('SELECT statut, amende, doubleChecked, cantine FROM onboarding_backoffice WHERE user_id = ? LIMIT 1', [user.id], 'remote');
             if (ob && ob.length > 0) {
                 const statut = ob[0].statut;
                 const amende = ob[0].amende;
                 const doubleChecked = ob[0].doubleChecked;
+                const cantine = ob[0].cantine;
+
+                // Bloquer si l'utilisateur n'a pas la cantine activée (utilisateur non-ACDLP)
+                if (!cantine) {
+                    return res.status(403).json({
+                        message: 'Verifiez vos identifiants'
+                    });
+                }
+
                 // Bloquer si le compte n'est pas encore validé manuellement
                 if (doubleChecked === 0 || doubleChecked === false) {
-                    return res.status(403).json({ 
-                        message: 'Votre compte est en cours de traitement par nos équipes. Nous reviendrons vers vous dès que votre compte sera activé.' 
+                    return res.status(403).json({
+                        message: 'Votre compte est en cours de traitement par nos équipes. Nous reviendrons vers vous dès que votre compte sera activé.'
                     });
                 }
 
@@ -798,7 +730,7 @@ const uploadSignup = multer({
 
 // Signup Backoffice (multipart: champs + document)
 router.post('/backoffice/signup', uploadSignup.single('document'), async(req, res) => {
-    const { email, password, firstName, lastName, siren, cantineUrl } = req.body;
+    const { email, password, firstName, lastName, siren } = req.body;
     console.log("Demande de signup backoffice reçue de " + email);
     
     if (!email || !password || !siren) {
@@ -945,7 +877,7 @@ router.post('/backoffice/signup', uploadSignup.single('document'), async(req, re
                 user_id: newUserId,
                 asso_id: assoId,
                 donations: false,
-                cantine: cantineUrl,
+                cantine: true,
                 suiviVehicule: false,
                 doubleChecked: false,
                 isOnboarded: false,

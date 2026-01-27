@@ -1,8 +1,7 @@
 const express = require('express');
-// Middleware d'authentification 
+// Middleware d'authentification
 const { authMiddleware } = require('./auth');
 const db = require('../services/bdd');
-const pdfService = require('../services/pdfService');
 const { sendTemplateEmail } = require('../services/mailService');
 
 const router = express.Router();

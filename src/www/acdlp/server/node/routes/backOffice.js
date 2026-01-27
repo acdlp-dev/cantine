@@ -2,7 +2,6 @@ const express = require('express');
 // Middleware d'authentification commenté comme vous le souhaitez
 const { authMiddleware } = require('./auth');
 const db = require('../services/bdd');
-const pdfService = require('../services/pdfService');
 const { sendTemplateEmail } = require('../services/mailService');
 const logger = require('../config/logger');
 
