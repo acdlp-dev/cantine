@@ -1,13 +1,13 @@
 -- ============================================================
--- MIGRATION MYAMANA → ACDLP
+-- MIGRATION acdlp → ACDLP
 -- Suppression de toutes les données et tables liées aux dons
 -- ============================================================
 
 -- Date: 2026-01-26
--- Base de données: myamana
+-- Base de données: acdlp
 -- ATTENTION: Ce script supprime définitivement des données !
 
-USE myamana;
+USE acdlp;
 
 -- ============================================================
 -- ÉTAPE 1: BACKUP DES TABLES AVANT SUPPRESSION (optionnel)
@@ -97,7 +97,7 @@ SELECT
     'Tables restantes' AS check_type,
     COUNT(*) AS count
 FROM information_schema.tables
-WHERE table_schema = 'myamana' AND table_type = 'BASE TABLE';
+WHERE table_schema = 'acdlp' AND table_type = 'BASE TABLE';
 
 -- Vérifier qu'il n'y a plus de donateurs
 SELECT
@@ -111,7 +111,7 @@ SELECT
     'Tables dons restantes' AS check_type,
     COUNT(*) AS count
 FROM information_schema.tables
-WHERE table_schema = 'myamana'
+WHERE table_schema = 'acdlp'
   AND table_name IN ('Dons_Ponctuels', 'Personnes', 'Prices', 'Campagnes', 'Assos_Campagnes');
 
 -- Vérifier les tables conservées (ACDLP)
@@ -119,7 +119,7 @@ SELECT
     table_name,
     table_rows
 FROM information_schema.tables
-WHERE table_schema = 'myamana'
+WHERE table_schema = 'acdlp'
   AND table_name IN (
     'benevoles',
     'actions',

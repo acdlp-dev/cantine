@@ -173,7 +173,7 @@ router.post('/signin', async(req, res) => {
 
         res.cookie('auth_token', token, {
             httpOnly: true,
-            secure: process.env.URL_ORIGIN === 'https://v2.myamana.fr/',
+            secure: process.env.URL_ORIGIN === 'https://acdlp.com/',
             sameSite: 'strict',
             maxAge: 3600000,
         });
@@ -349,7 +349,7 @@ router.post('/resend-verification-link', async(req, res) => {
         const templateId = 5536946; // ID du template Mailjet pour confirmation
         const variables = { prenom: user.firstName, lien_finalisation: confirmationUrl };
 
-        await sendTemplateEmail(user.email, templateId, variables, 'Espace Donateur : Finalisez la création de votre compte Myamana');
+        await sendTemplateEmail(user.email, templateId, variables, 'Espace Donateur : Finalisez la création de votre compte ACDLP');
 
         return res.status(200).json({ message: 'Un nouveau lien de vérification a été envoyé à votre adresse email.' });
     } catch (err) {
@@ -597,7 +597,7 @@ router.post('/backoffice/signin', async(req, res) => {
 
         res.cookie('auth_token', token, {
             httpOnly: true,
-            secure: process.env.URL_ORIGIN === 'https://v2.myamana.fr/',
+            secure: process.env.URL_ORIGIN === 'https://acdlp.com/',
             sameSite: 'strict',
             maxAge: 3600000,
         });
@@ -788,7 +788,7 @@ router.post('/backoffice/signup', uploadSignup.single('document'), async(req, re
                 const templateId = 5536948; // ID du template Mailjet
                 const variables = { prenom: firstName || existingUser[0].firstName, lien_reinit_password: resetUrl };
 
-                await sendTemplateEmail(email, templateId, variables, "Backoffice : Oups, vous avez déjà un compte Myamana :)");
+                await sendTemplateEmail(email, templateId, variables, "Backoffice : Oups, vous avez déjà un compte ACDLP :)");
                 return res.status(200).json({ message: 'Email already exists. Reset password link sent.' });
             } else {
                 // Si l'email existe mais n'est pas vérifié, envoyer un nouveau lien de vérification
@@ -811,7 +811,7 @@ router.post('/backoffice/signup', uploadSignup.single('document'), async(req, re
                 const templateId = 5536946; // ID du template Mailjet pour confirmation
                 const variables = { prenom: firstName || existingUser[0].firstName, lien_finalisation: confirmationUrl };
 
-                await sendTemplateEmail(email, templateId, variables, 'Espace Donateur : Finalisez la création de votre compte Myamana');
+                await sendTemplateEmail(email, templateId, variables, 'Espace Donateur : Finalisez la création de votre compte ACDLP');
                 return res.status(200).json({ message: 'Un nouveau lien de vérification a été envoyé à votre adresse email.' });
             }
         }
@@ -894,7 +894,7 @@ router.post('/backoffice/signup', uploadSignup.single('document'), async(req, re
         const templateId = 5536946; // ID du template Mailjet pour confirmation
         const variables = { prenom: firstName, lien_finalisation: confirmationUrl };
 
-        await sendTemplateEmail(email, templateId, variables, 'Backoffice : Finalisez la création de votre compte Myamana');
+        await sendTemplateEmail(email, templateId, variables, 'Backoffice : Finalisez la création de votre compte ACDLP');
         return res.status(201).json({ message: 'Email de vérification envoyé' });
     } catch (err) {
         console.error(`[Signup Error]: ${err.message}`, err);
@@ -956,7 +956,7 @@ router.post('/benevolat/request-otp', async(req, res) => {
                             const assoResults = await db.select(assoQuery, [associationName], 'remote');
                             if (assoResults && assoResults.length > 0) {
                                 if (assoResults[0].logoUrl) {
-                                    logoUrl = `https://v2.myamana.fr/${assoResults[0].logoUrl}`;
+                                    logoUrl = `https://acdlp.com/${assoResults[0].logoUrl}`;
                                 }
                                 nomAsso = assoResults[0].nom;
                             }
@@ -1033,7 +1033,7 @@ router.post('/benevolat/request-otp', async(req, res) => {
                         const assoQuery = 'SELECT nom, logoUrl FROM Assos WHERE uri = ?';
                         const assoResults = await db.select(assoQuery, [associationName], 'remote');
                         if (assoResults && assoResults.length > 0 && assoResults[0].logoUrl) {
-                            logoUrl = `https://v2.myamana.fr/${assoResults[0].logoUrl}`;
+                            logoUrl = `https://acdlp.com/${assoResults[0].logoUrl}`;
                             nomAsso = assoResults[0].nom;
                         }
                     } catch (assoErr) {
@@ -1248,7 +1248,7 @@ router.post('/benevolat/complete-signup', async(req, res) => {
                 const assoQuery = 'SELECT nom, logoUrl FROM Assos WHERE uri = ?';
                 const assoResults = await db.select(assoQuery, [volunteerData.association_nom], 'remote');
                 if (assoResults && assoResults.length > 0 && assoResults[0].logoUrl) {
-                    logoUrl = `https://v2.myamana.fr/${assoResults[0].logoUrl}`;
+                    logoUrl = `https://acdlp.com/${assoResults[0].logoUrl}`;
                     nomAsso = assoResults[0].nom;
                 }
             } catch (assoErr) {
@@ -1329,7 +1329,7 @@ router.post('/benevolat/signin', async(req, res) => {
 
         res.cookie('auth_token', token, {
             httpOnly: true,
-            secure: process.env.URL_ORIGIN === 'https://v2.myamana.fr/',
+            secure: process.env.URL_ORIGIN === 'https://acdlp.com/',
             sameSite: 'strict',
             maxAge: 3600000,
         });
@@ -1603,7 +1603,7 @@ router.get('/benevolat/verify-email/:token', async(req, res) => {
 
                     // Récupérer le logo
                     if (assoResults[0].logoUrl) {
-                        logoUrl = `https://v2.myamana.fr/${assoResults[0].logoUrl}`;
+                        logoUrl = `https://acdlp.com/${assoResults[0].logoUrl}`;
                     }
                 }
             } catch (assoErr) {
@@ -1624,7 +1624,7 @@ router.get('/benevolat/verify-email/:token', async(req, res) => {
                 volunteerData.email,
                 templateId,
                 variables,
-                'MyAmana : Bienvenue dans l\'équipe bénévole'
+                'ACDLP : Bienvenue dans l\'équipe bénévole'
             );
 
             console.log(`📧 [BENEVOLAT WELCOME] Email de bienvenue envoyé à: ${volunteerData.email}`);

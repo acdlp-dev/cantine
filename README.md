@@ -330,8 +330,8 @@ DB_NAME=acdlp
 JWT_SECRET=your_jwt_secret_here
 
 # Mailjet
-MAILJET_KEY_MYAMANA=your_mailjet_api_key
-MAILJET_SECRET_MYAMANA=your_mailjet_secret_key
+MAILJET_KEY_ACDLP=your_mailjet_api_key
+MAILJET_SECRET_ACDLP=your_mailjet_secret_key
 
 # Google Sheets
 GOOGLE_SHEET_ID=your_google_sheet_id

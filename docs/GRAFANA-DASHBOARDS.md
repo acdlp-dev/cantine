@@ -100,7 +100,7 @@ Affichage en temps réel des 50 dernières erreurs.
 
 ### URL
 - **Dev** : http://localhost:3001
-- **Prod** : https://v2.myamana.fr/grafana
+- **Prod** : https://acdlp.com/grafana
 
 ### Connexion
 1. Cliquer sur "Sign in with GitHub"

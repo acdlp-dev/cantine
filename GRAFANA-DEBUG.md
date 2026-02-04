@@ -13,7 +13,7 @@
 ## Étape 3: Faire une requête simple
 Dans le champ de requête, entrez:
 ```
-{job="myamana-api"}
+{job="acdlp-api"}
 ```
 
 Puis cliquez sur "Run query" (bouton bleu en haut à droite)
@@ -39,7 +39,7 @@ Vous devriez voir: `{"status":"success","data":["filename","job","level","servic
 for i in {1..10}; do curl -s http://localhost:4242/api/test > /dev/null; done
 
 # Vérifier les logs
-docker exec node tail -20 /var/log/myamana/application-*.log
+docker exec node tail -20 /var/log/acdlp/application-*.log
 ```
 
 ### Test 3: Vérifier Promtail
@@ -55,22 +55,22 @@ Vous devriez voir des lignes comme:
 
 1. **Tous les logs**:
    ```
-   {job="myamana-api"}
+   {job="acdlp-api"}
    ```
 
 2. **Seulement les logs d'info**:
    ```
-   {job="myamana-api"} | json | level="info"
+   {job="acdlp-api"} | json | level="info"
    ```
 
 3. **Logs avec le mot "test"**:
    ```
-   {job="myamana-api"} |= "test"
+   {job="acdlp-api"} |= "test"
    ```
 
 4. **Compter les logs**:
    ```
-   count_over_time({job="myamana-api"}[5m])
+   count_over_time({job="acdlp-api"}[5m])
    ```
 
 ## Si le dashboard ne fonctionne pas:
@@ -80,7 +80,7 @@ Le dashboard provisionné pourrait ne pas se charger. Créez un nouveau dashboar
 1. Dans Grafana, cliquez sur "+" → "Dashboard"
 2. Cliquez sur "Add visualization"
 3. Sélectionnez "Loki" comme datasource
-4. Dans le champ de requête, entrez: `{job="myamana-api"}`
+4. Dans le champ de requête, entrez: `{job="acdlp-api"}`
 5. Changez le type de visualisation en "Logs" (en haut à droite)
 6. Cliquez sur "Apply"
 

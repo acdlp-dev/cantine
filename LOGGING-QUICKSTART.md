@@ -33,7 +33,7 @@
 ### 1. Installer les dépendances Node.js
 
 ```bash
-cd src/www/myamana/server/node
+cd src/www/acdlp/server/node
 npm install
 ```
 
@@ -74,7 +74,7 @@ Ouvrir http://localhost:3001
 curl http://localhost:4242/api/test
 
 # Voir les logs
-docker exec node ls -lh /var/log/myamana/
+docker exec node ls -lh /var/log/acdlp/
 ```
 
 ### 5. Dans Grafana
@@ -83,7 +83,7 @@ docker exec node ls -lh /var/log/myamana/
 2. **Sélectionner "Loki"** comme datasource
 3. **Taper cette requête** :
    ```
-   {service="myamana-api"}
+   {service="acdlp-api"}
    ```
 4. **Cliquer sur "Run Query"**
 
@@ -93,22 +93,22 @@ Vous devriez voir vos logs apparaître ! 🎉
 
 ### Voir tous les logs
 ```
-{service="myamana-api"}
+{service="acdlp-api"}
 ```
 
 ### Voir uniquement les erreurs
 ```
-{service="myamana-api"} |= "error"
+{service="acdlp-api"} |= "error"
 ```
 
 ### Voir les requêtes HTTP
 ```
-{service="myamana-api"} | json | method != ""
+{service="acdlp-api"} | json | method != ""
 ```
 
 ### Compter les logs par minute
 ```
-sum(count_over_time({service="myamana-api"}[1m]))
+sum(count_over_time({service="acdlp-api"}[1m]))
 ```
 
 ## 🔧 Migration des console.log existants
@@ -138,7 +138,7 @@ Pour plus de détails, consultez : **docs/LOGGING-MONITORING.md**
 
 ## ⚠️ Important
 
-1. **Les logs Winston sont dans le container** : `/var/log/myamana/`
+1. **Les logs Winston sont dans le container** : `/var/log/acdlp/`
 2. **Rétention** : 30 jours automatiquement
 3. **Rotation** : 20 MB par fichier max
 4. **Ne PAS logger** : mots de passe, tokens, données bancaires
@@ -163,7 +163,7 @@ Pour plus de détails, consultez : **docs/LOGGING-MONITORING.md**
 
 2. Vérifier que les fichiers de logs existent :
    ```bash
-   docker exec node ls -lh /var/log/myamana/
+   docker exec node ls -lh /var/log/acdlp/
    ```
 
 3. Redémarrer Promtail :

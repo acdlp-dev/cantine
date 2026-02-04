@@ -5,11 +5,11 @@ let mailjet = null;
 
 function getMailjetClient() {
   if (!mailjet) {
-    const apiKey = process.env.MAILJET_KEY_MYAMANA;
-    const apiSecret = process.env.MAILJET_SECRET_MYAMANA;
-    
+    const apiKey = process.env.MAILJET_KEY_ACDLP;
+    const apiSecret = process.env.MAILJET_SECRET_ACDLP;
+
     if (!apiKey || !apiSecret) {
-      throw new Error('MAILJET_KEY_MYAMANA and MAILJET_SECRET_MYAMANA must be defined in environment variables');
+      throw new Error('MAILJET_KEY_ACDLP and MAILJET_SECRET_ACDLP must be defined in environment variables');
     }
     
     mailjet = nodeMailjet.connect(apiKey, apiSecret);
@@ -45,7 +45,7 @@ const sendTemplateEmail = async (to, templateId, variables, subject, replyTo, fr
       Messages: [
         {
           From: {
-            Email: from || 'noreply@myamana.fr', // Remplace uniquement l'email si "from" est fourni
+            Email: from || 'noreply@acdlp.com', // Remplace uniquement l'email si "from" est fourni
             Name: 'My Amana',
           },
           To: [
@@ -97,8 +97,8 @@ const sendEmail = async ({ to, subject, html, text }) => {
       Messages: [
         {
           From: {
-            Email: 'noreply@myamana.fr',
-            Name: 'Support MyAmana',
+            Email: 'noreply@acdlp.com',
+            Name: 'Support ACDLP',
           },
           To: [
             {
@@ -106,7 +106,7 @@ const sendEmail = async ({ to, subject, html, text }) => {
               Name: to.split('@')[0],
             },
           ],
-          Subject: subject || 'Message de MyAmana',
+          Subject: subject || 'Message de ACDLP',
           HTMLPart: html,
           TextPart: text || '',
         },

@@ -30,18 +30,7 @@ const routes: Routes = [
       // Routes pour les informations générales et paramètres
       { path: 'infos', component: InfosComponent },
       
-      // Support tickets (admin MyAmana)
-      {
-        path: 'support',
-        loadComponent: () => import('./components/support-tickets/support-tickets.component').then(c => c.SupportTicketsComponent)
-      },
       { path: 'parametres', component: ParametresComponent },
-      
-      // Assistance (page de suivi des tickets pour les associations)
-      {
-        path: 'assistance',
-        loadComponent: () => import('./components/assistance/assistance.component').then(c => c.AssistanceComponent)
-      },
       
       // Routes pour la cantine intégrée au backoffice
       { 

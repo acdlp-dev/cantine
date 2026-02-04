@@ -5,8 +5,8 @@
 J'ai ajouté la configuration Nginx pour router `/grafana/` vers le conteneur Grafana dans tous les environnements :
 
 ### 1. nginx.dev.conf (développement local)
-### 2. nginx.staging.conf (v2.myamana.fr)
-### 3. nginx.conf (www.myamana.fr)
+### 2. nginx.staging.conf (acdlp.com)
+### 3. nginx.conf (www.acdlp.com)
 
 ## Configuration ajoutée
 
@@ -67,11 +67,11 @@ Une fois Nginx redémarré, vérifiez que Grafana est accessible :
 - Login: `admin` / `admin`
 
 ### Staging
-- URL: https://v2.myamana.fr/grafana
+- URL: https://acdlp.com/grafana
 - Login: `admin` / `admin` (ou votre mot de passe configuré)
 
 ### Production
-- URL: https://www.myamana.fr/grafana
+- URL: https://www.acdlp.com/grafana
 - Login: Utilise GitHub OAuth (voir docs/GRAFANA-GITHUB-OAUTH.md)
 
 ## Dépannage
@@ -127,7 +127,7 @@ docker logs loki --tail 50
 
 ## Notes importantes
 
-1. **GitHub OAuth** : En production (www.myamana.fr), l'authentification par mot de passe admin est désactivée. Utilisez GitHub OAuth pour vous connecter. Voir `docs/GRAFANA-GITHUB-OAUTH.md` pour la configuration.
+1. **GitHub OAuth** : En production (www.acdlp.com), l'authentification par mot de passe admin est désactivée. Utilisez GitHub OAuth pour vous connecter. Voir `docs/GRAFANA-GITHUB-OAUTH.md` pour la configuration.
 
 2. **Certificats SSL** : Les certificats Let's Encrypt doivent être valides pour que HTTPS fonctionne correctement.
 

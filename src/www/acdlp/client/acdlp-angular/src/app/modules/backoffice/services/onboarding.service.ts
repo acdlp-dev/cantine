@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable, of, BehaviorSubject } from 'rxjs';
-import { tap, catchError, map } from 'rxjs/operators';
+import { catchError, map } from 'rxjs/operators';
 import { environment } from 'src/environments/environment';
 import { throwError } from 'rxjs';
 
@@ -13,26 +13,19 @@ export class OnboardingService {
     private apiUrl = environment.apiUrl;
 
     private readonly ONBOARDING_KEY = 'myamana_onboarding_completed';
-    private readonly TOUR_KEY = 'myamana_tour_completed';
 
     // BehaviorSubject pour stocker l'état d'onboarding et éviter les appels multiples
     private onboardingState$ = new BehaviorSubject<any>(null);
     private isFetching = false;
 
-    // Cache pour hasSeenGuidedTour
-    private tourState$ = new BehaviorSubject<any>(null);
-    private isFetchingTour = false;
-
     constructor(private http: HttpClient) { }
 
     /**
-     * Réinitialise l'état d'onboarding et tour (à appeler lors du logout)
+     * Réinitialise l'état d'onboarding (à appeler lors du logout)
      */
     clearOnboardingState(): void {
         this.onboardingState$.next(null);
         this.isFetching = false;
-        this.tourState$.next(null);
-        this.isFetchingTour = false;
     }
 
     /**
@@ -138,11 +131,6 @@ export class OnboardingService {
                 console.log('Onboarding complété avec succès:', response);
                 localStorage.setItem(this.ONBOARDING_KEY, 'true');
                 
-                // Si le tutoriel est marqué comme terminé, le sauvegarder aussi en local
-                if (markTutorialDone) {
-                    localStorage.setItem(this.TOUR_KEY, 'true');
-                }
-                
                 return true;
             }),
             catchError((error) => {
@@ -159,111 +147,4 @@ export class OnboardingService {
         localStorage.removeItem(this.ONBOARDING_KEY);
     }
     
-    /**
-     * Vérifie si l'utilisateur a déjà vu la visite guidée
-     * Utilise un cache pour éviter les appels API multiples
-     */
-    hasSeenGuidedTour(): Observable<any> {
-        // Si on a déjà les données en cache, les retourner
-        const currentState = this.tourState$.getValue();
-        if (currentState !== null) {
-            return of(currentState);
-        }
-
-        // Si un appel est déjà en cours, attendre
-        if (this.isFetchingTour) {
-            return this.tourState$.asObservable().pipe(
-                map(state => {
-                    if (state === null) {
-                        throw new Error('waiting');
-                    }
-                    return state;
-                }),
-                catchError(() => this.fetchTourStatusFromApi())
-            );
-        }
-
-        return this.fetchTourStatusFromApi();
-    }
-
-    /**
-     * Effectue l'appel API pour récupérer le statut du tour
-     */
-    private fetchTourStatusFromApi(): Observable<any> {
-        this.isFetchingTour = true;
-
-        const headers = new HttpHeaders({
-            'Content-Type': 'application/json'
-        });
-
-        return this.http.get<any>(`${this.apiUrl}/hasSeenGuidedTour`, {
-            headers,
-            withCredentials: true
-        }).pipe(
-            tap(response => {
-                if (response.result?.hasSeenTour) {
-                    localStorage.setItem(this.TOUR_KEY, 'true');
-                } else {
-                    localStorage.removeItem(this.TOUR_KEY);
-                }
-                this.tourState$.next(response);
-                this.isFetchingTour = false;
-            }),
-            catchError((error) => {
-                console.error('Erreur lors de la vérification du statut de la visite guidée:', error);
-                this.isFetchingTour = false;
-                return throwError(() => error);
-            })
-        );
-    }
-    
-    /**
-     * Marque la visite guidée comme vue
-     */
-    markGuidedTourAsSeen(): Observable<boolean> {
-        const headers = new HttpHeaders({
-            'Content-Type': 'application/json'
-        });
-
-        return this.http.post<any>(`${this.apiUrl}/markGuidedTourAsSeen`, {}, {
-            headers,
-            withCredentials: true
-        }).pipe(
-            map(response => {
-                console.log('Visite guidée marquée comme vue:', response);
-                localStorage.setItem(this.TOUR_KEY, 'true');
-                // Mettre à jour le cache
-                this.tourState$.next({ result: { hasSeenTour: true } });
-                return true;
-            }),
-            catchError((error) => {
-                console.error('Erreur lors de la mise à jour du statut de la visite guidée:', error);
-                return of(false);
-            })
-        );
-    }
-    
-    /**
-     * Réinitialise l'état de la visite guidée
-     */
-    resetGuidedTour(): Observable<boolean> {
-        const headers = new HttpHeaders({
-            'Content-Type': 'application/json'
-        });
-        
-        return this.http.post<any>(`${this.apiUrl}/resetGuidedTour`, {}, {
-            headers,
-            withCredentials: true
-        }).pipe(
-            map(response => {
-                console.log('Visite guidée réinitialisée:', response);
-                localStorage.removeItem(this.TOUR_KEY);
-                return true;
-            }),
-            catchError((error) => {
-                console.error('Erreur lors de la réinitialisation de la visite guidée:', error);
-                return of(false);
-            })
-        );
-    }
 }

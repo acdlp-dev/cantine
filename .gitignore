@@ -10,16 +10,16 @@ auth/.DS_Store
 auth/providers/.DS_Store
 
 src/www/acdlp-mensuel/server/php/log/*.log
-certbot/conf/live/www.myamana.fr-0001/cert.pem
-certbot/conf/live/www.myamana.fr-0001/chain.pem
-certbot/conf/live/www.myamana.fr-0001/fullchain.pem
-certbot/conf/live/www.myamana.fr-0001/privkey.pem
+certbot/conf/live/www.acdlp.com/cert.pem
+certbot/conf/live/www.acdlp.com-0001/chain.pem
+certbot/conf/live/www.acdlp.com-0001/fullchain.pem
+certbot/conf/live/www.acdlp.com-0001/privkey.pem
 src/www/acdlp-mensuel/server/php/log/bdd_errors.log
 
-certbot/conf/live/www.dev.myamana.fr-0001/cert.pem
-certbot/conf/live/www.dev.myamana.fr-0001/chain.pem
-certbot/conf/live/www.dev.myamana.fr-0001/fullchain.pem
-certbot/conf/live/www.dev.myamana.fr-0001/privkey.pem
+certbot/conf/live/www.dev.acdlp.com-0001/cert.pem
+certbot/conf/live/www.dev.acdlp.com-0001/chain.pem
+certbot/conf/live/www.dev.acdlp.com-0001/fullchain.pem
+certbot/conf/live/www.dev.acdlp.com-0001/privkey.pem
 
 .env
 .htpasswd
@@ -27,8 +27,8 @@ certbot/conf/live/www.dev.myamana.fr-0001/privkey.pem
 mysql/bkp/*
 
 # Ignorer le contenu du répertoire des reçus fiscaux
-src/www/myamana/server/node/pdf/**
-!src/www/myamana/server/node/pdf/.gitkeep
+src/www/acdlp/server/node/pdf/**
+!src/www/acdlp/server/node/pdf/.gitkeep
 
 
 node_modules/

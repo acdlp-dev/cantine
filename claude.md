@@ -56,7 +56,7 @@ acdlp/
 │       ├── config/                      # Configuration logger
 │       ├── middleware/                  # Middleware HTTP logging
 │       ├── routes/                      # Routes API (7 modules)
-│       ├── services/                    # Services métier (6 services)
+│       ├── services/                    # Services métier (5 services)
 │       ├── credentials/                 # Credentials API (gitignored)
 │       ├── assets/                      # Assets statiques
 │       └── crons/                       # Tâches planifiées
@@ -105,7 +105,7 @@ L'application gère **2 types d'utilisateurs distincts** avec des flux d'authent
 
 ## 📡 Architecture API
 
-### Routes Backend (7 Modules)
+### Routes Backend (6 Modules)
 
 | Fichier Route | Endpoints | Fonction |
 |--------------|-----------|----------|
@@ -115,7 +115,6 @@ L'application gère **2 types d'utilisateurs distincts** avec des flux d'authent
 | `benevoles.js` | 30+ | Gestion bénévoles, actions, QR codes |
 | `cantine.js` | 15+ | Distribution repas, commandes, quotas |
 | `database.js` | 2 | Utilitaires DB |
-| `support.js` | 6 | Système tickets support (Trello) |
 
 **Préfixe**: Toutes les routes API sont préfixées par `/api`
 
@@ -192,7 +191,7 @@ L'application gère **2 types d'utilisateurs distincts** avec des flux d'authent
 
 ---
 
-## 🔧 Services Backend (6 Services Core)
+## 🔧 Services Backend (5 Services Core)
 
 ### 1. Database Service (`bdd.js`)
 - **Fonction**: Abstraction MySQL avec connection pooling
@@ -216,10 +215,6 @@ L'application gère **2 types d'utilisateurs distincts** avec des flux d'authent
 - **API**: INSEE Sirene V3.11
 - **Features**: Lookup infos entreprise, validation adresse association
 
-### 6. Trello Service (`trelloService.js`)
-- **Fonction**: Intégration système tickets support
-- **Features**: Création cards, assignation départements, tracking statuts
-
 ---
 
 ## 🎨 Architecture Frontend
@@ -229,7 +224,7 @@ L'application gère **2 types d'utilisateurs distincts** avec des flux d'authent
 #### 1. Backoffice Module (`/backoffice`)
 - **Fonction**: Panel administration ACDLP
 - **Composants**: BenevolatList, BenevolatActions, BenevolatCalendrier, CantineCommandes, CantineQuotas, BeneficiairesCartes, Vehicule, Infos
-- **Services**: `OnboardingService`, `AutoTourService`, `BenevolatAdminService`
+- **Services**: `OnboardingService`, `BenevolatAdminService`
 
 #### 2. Backoffice Auth Module (`/backoffice-auth`)
 - **Fonction**: Authentification admin
@@ -341,14 +336,7 @@ L'application gère **2 types d'utilisateurs distincts** avec des flux d'authent
 - Admin bénévoles (liste, filtres, modification statuts)
 - Admin cantine (commandes, quotas, cartes repas)
 - Configuration association (SIREN, logo, infos contact)
-- Onboarding avec tours guidés (Driver.js)
-- Support tickets (Trello)
-
-### 4. Système Support
-- Widget support flottant
-- Intégration Trello
-- Catégories: Technique, Admin, Compta, Juridique, Formation
-- Statuts: Nouveau → En attente → Résolu
+- Onboarding
 
 ---
 
@@ -453,7 +441,6 @@ Documentation complète dans `/docs/`:
 3. BACKOFFICE.md - Documentation panel admin
 4. ESPACE-BENEVOLE.md - Documentation espace bénévole
 5. LOGGING-MONITORING.md - Setup logging & monitoring
-6. SYSTEME-SUPPORT-TICKETS.md - Système tickets support
 
 ---
 
@@ -467,7 +454,7 @@ Documentation complète dans `/docs/`:
 - **Dark Mode**: Supporté (ThemeService)
 - **Notifications**: Toast (ngx-sonner)
 - **Charts**: ApexCharts
-- **Onboarding**: Driver.js
+- **Onboarding**: Custom
 
 ### Patterns Composants
 - Standalone components (Angular 18)
@@ -528,8 +515,8 @@ LOCAL_DB_NAME=acdlp
 JWT_SECRET=Sourate76Verset9
 
 # Mailjet
-MAILJET_KEY_MYAMANA=***
-MAILJET_SECRET_MYAMANA=***
+MAILJET_KEY_ACDLP=***
+MAILJET_SECRET_ACDLP=***
 
 # Google Sheets
 GOOGLE_SHEET_ID=***
@@ -538,11 +525,6 @@ GOOGLE_CREDENTIALS_PATH=./credentials/metal-zodiac-290317-cddf3d3d5bbb.json
 # GitHub OAuth (Grafana)
 GITHUB_CLIENT_ID=***
 GITHUB_CLIENT_SECRET=***
-
-# Trello
-TRELLO_API_KEY=***
-TRELLO_TOKEN=***
-TRELLO_BOARD_ID=***
 
 # INSEE API
 SIRENE_API_KEY=***
@@ -553,8 +535,8 @@ SIRENE_API_KEY=***
 ## 📊 Statistiques Projet
 
 - **Modules Frontend**: 7 modules
-- **Routes Backend**: 7 fichiers routes
-- **Services Backend**: 6 services core
+- **Routes Backend**: 6 fichiers routes
+- **Services Backend**: 5 services core
 - **Tables DB**: 15+ tables
 - **Endpoints API**: 80+ endpoints
 - **Services Docker**: 9 containers

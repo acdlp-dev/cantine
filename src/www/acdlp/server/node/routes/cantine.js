@@ -17,7 +17,7 @@ router.get('/geocode', async (req, res) => {
         url.searchParams.set('format', 'json');
         url.searchParams.set('limit', '1');
 
-        const resp = await fetch(url.toString(), { headers: { 'User-Agent': 'myamana/1.0 (contact@myamana.fr)' } });
+        const resp = await fetch(url.toString(), { headers: { 'User-Agent': 'acdlp/1.0 (contact@macdlp.com)' } });
         const json = await resp.json();
         return res.status(200).json(json);
     } catch (err) {
@@ -501,7 +501,7 @@ router.post('/addCommandeCantine', authMiddleware, async (req, res) => {
         // Envoi de l'email de confirmation
         const nameAsso = req.user.nameAsso || asso; // Récupération du nom de l'association
         const templateId = 5088966; // ID du template Mailjet
-        const baseUrl = process.env.URL_ORIGIN || 'https://myamana.fr';
+        const baseUrl = process.env.URL_ORIGIN || 'https://acdlp.com';
         jourRecup = dateCommande;
         creneau = 'avant 20h00';
         nbRepas = String(quantitePlats);

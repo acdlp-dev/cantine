@@ -1,8 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { TourService } from '../../../../shared/services/tour.service';
-import { AutoTourService } from '../../services/auto-tour.service';
 import { OnboardingService } from '../../services/onboarding.service';
 import { LucideIconsModule } from '../../../../shared/modules/lucide-icons.module';
 
@@ -28,8 +26,6 @@ export class ParametresComponent implements OnInit {
   };
   
   constructor(
-    private tourService: TourService,
-    private autoTourService: AutoTourService,
     private onboardingService: OnboardingService
   ) {}
 

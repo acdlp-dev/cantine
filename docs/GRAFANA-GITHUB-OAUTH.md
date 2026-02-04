@@ -17,7 +17,7 @@ Grafana est configuré pour utiliser **GitHub OAuth2** comme méthode d'authenti
 
 1. **Accéder à Grafana**
    - Dev : http://localhost:3001
-   - Prod : https://v2.myamana.fr/grafana
+   - Prod : https://acdlp.com/grafana
 
 2. **Page de connexion**
    
@@ -50,11 +50,11 @@ Après la première autorisation :
 
 **Nom** : Grafana Myamana
 
-**Homepage URL** : `https://v2.myamana.fr`
+**Homepage URL** : `https://acdlp.com`
 
 **Callback URLs** :
 - `http://localhost:3001/login/github` (dev)
-- `https://v2.myamana.fr/grafana/login/github` (prod)
+- `https://acdlp.com/grafana/login/github` (prod)
 
 ### Variables d'environnement (.env)
 
@@ -86,7 +86,7 @@ grafana:
 ```yaml
 grafana:
   environment:
-    - GF_SERVER_ROOT_URL=https://v2.myamana.fr/grafana
+    - GF_SERVER_ROOT_URL=https://acdlp.com/grafana
     - GF_AUTH_GITHUB_ENABLED=true
     - GF_AUTH_GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID}
     - GF_AUTH_GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET}
@@ -173,7 +173,7 @@ Dans Grafana (admin) :
 2. Éditer l'OAuth App "Grafana Myamana"
 3. Vérifier les URLs de callback :
    - `http://localhost:3001/login/github`
-   - `https://v2.myamana.fr/grafana/login/github`
+   - `https://acdlp.com/grafana/login/github`
 4. **Pas de trailing slash !**
 
 ### "Ce site est inaccessible" après autorisation
@@ -183,7 +183,7 @@ Dans Grafana (admin) :
 **Solution** :
 1. Vérifier que `GF_SERVER_ROOT_URL` est défini dans docker-compose :
    - Dev : `http://localhost:3001`
-   - Prod : `https://v2.myamana.fr/grafana`
+   - Prod : `https://acdlp.com/grafana`
 2. Redémarrer Grafana : `docker restart grafana`
 
 ### Utiliser le login classique

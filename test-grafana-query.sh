@@ -14,5 +14,5 @@ curl -s -u admin:admin -G http://localhost:3001/api/datasources/proxy/1/loki/api
 
 echo -e "\n=== Test 5: Query logs depuis Grafana ==="
 curl -s -u admin:admin -G http://localhost:3001/api/datasources/proxy/1/loki/api/v1/query \
-  --data-urlencode 'query={job="myamana-api"}' \
+  --data-urlencode 'query={job="acdlp-api"}' \
   --data-urlencode 'limit=5' | jq '.data.result[0:2]'

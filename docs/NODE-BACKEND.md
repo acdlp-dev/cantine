@@ -117,8 +117,8 @@ JWT_SECRET=Sourate76Verset9
 URL_ORIGIN=https://acdlp.fr
 
 # Mailjet
-MAILJET_KEY_MYAMANA=***
-MAILJET_SECRET_MYAMANA=***
+MAILJET_KEY_ACDLP=***
+MAILJET_SECRET_ACDLP=***
 
 # Google Sheets
 GOOGLE_SHEET_ID=***
@@ -533,8 +533,8 @@ deleteRow(table, where, whereParams, pool)     // DELETE
 ```javascript
 async function sendTemplateEmail(to, templateId, variables, subject, attachments = []) {
     const mailjet = require('node-mailjet').connect(
-        process.env.MAILJET_KEY_MYAMANA,
-        process.env.MAILJET_SECRET_MYAMANA
+        process.env.MAILJET_KEY_ACDLP,
+        process.env.MAILJET_SECRET_ACDLP
     );
 
     const request = mailjet.post("send", {'version': 'v3.1'}).request({

@@ -5,7 +5,6 @@ import { BackofficeAuthService } from '../../../../modules/backoffice-auth/servi
 import { CommonModule } from '@angular/common';
 import { RouterLink, RouterLinkActive, Router } from '@angular/router';
 import { LucideIconsModule } from '../../../../shared/modules/lucide-icons.module';
-import { TourButtonComponent } from '../tour/tour-button.component';
 import { OnboardingService } from '../../services/onboarding.service';
 import { Subject, of } from 'rxjs';
 import { takeUntil, switchMap, catchError } from 'rxjs/operators';
@@ -31,8 +30,7 @@ interface TabSection {
     CommonModule,
     RouterLink,
     RouterLinkActive,
-    LucideIconsModule,
-    TourButtonComponent
+    LucideIconsModule
   ],
   templateUrl: './sidebar.component.html',
   styleUrls: ['./sidebar.component.scss']
@@ -177,12 +175,6 @@ export class SidebarComponent implements OnInit, OnDestroy {
 
       this.sections.push({ key: 'cantine', label: 'Cantine', items: cantineItems });
 
-  // Section Assistance
-  const assistanceItems: TabItem[] = [
-    { key: 'assistance', label: 'Mes demandes', icon: 'message-square', route: '/backoffice/assistance' }
-  ];
-  this.sections.push({ key: 'assistance', label: '🎧 Assistance', items: assistanceItems });
-
   // Compte: Mes infos / Paramètres / Déconnexion
   const accountItems: TabItem[] = [];
   accountItems.push({ key: 'infos', label: 'Mes infos', icon: 'id-card', route: '/backoffice/infos' });
@@ -256,18 +248,6 @@ export class SidebarComponent implements OnInit, OnDestroy {
       ];
       this.sections.push({ key: 'beneficiaires', label: 'Bénéficiaires', items: beneficiariesItems });
     }
-
-    // Section Assistance - visible pour toutes les associations
-    const assistanceItems: TabItem[] = [
-      { key: 'assistance', label: 'Mes demandes', icon: 'message-square', route: '/backoffice/assistance' }
-    ];
-    
-    // Pour l'admin ACDLP : ajouter aussi le lien vers la gestion des tickets
-    if (this.isSpecialCantineAdmin) {
-      assistanceItems.push({ key: 'support-tickets', label: 'Gérer les tickets', icon: 'headphones', route: '/backoffice/support' });
-    }
-    
-    this.sections.push({ key: 'assistance', label: '🎧 Assistance', items: assistanceItems });
 
     // Account / Logout section at the end
     const accountItems: TabItem[] = [];

@@ -30,10 +30,6 @@ console.log('  - Loading cantine...');
 const cantineRoute = require('./routes/cantine');
 console.log('  - Loading benevoles...');
 const benevolesRoute = require('./routes/benevoles');
-console.log('  - Loading test-dashboard...');
-const testDashboardRoute = require('./routes/test-dashboard');
-console.log('  - Loading support...');
-const supportRoute = require('./routes/support');
 console.log('✅ Routes loaded');
 
 
@@ -64,8 +60,7 @@ app.use('/api', assosRoute);
 app.use('/api', donsBackoffice);
 app.use('/api', cantineRoute);
 app.use('/api', benevolesRoute);
-app.use('/api/test-dashboard', testDashboardRoute);
-app.use('/api', supportRoute);
+
 
 
 // Health check endpoint (pour Docker healthcheck)

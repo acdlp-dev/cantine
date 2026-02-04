@@ -337,7 +337,7 @@ router.post('/benevolat/inscription', authMiddleware, async (req, res) => {
                         const assoResults = await db.select(assoQuery, [action.association_nom], 'remote');
                         if (assoResults && assoResults.length > 0 && assoResults[0].logoUrl) {
                             // Préfixer le logo avec l'URL de base
-                            logoUrl = `https://v2.myamana.fr/${assoResults[0].logoUrl}`;
+                            logoUrl = `https://acdlp.com/${assoResults[0].logoUrl}`;
                         }
                     } catch (assoErr) {
                         console.warn(`[BENEVOLAT INSCRIPTION] Impossible de récupérer le logo de l'association:`, assoErr);
@@ -988,7 +988,7 @@ router.delete('/benevolat/desinscription/:inscriptionId/future-occurrences', aut
                         const assoQuery = 'SELECT logoUrl FROM Assos WHERE uri = ?';
                         const assoResults = await db.select(assoQuery, [inscription.association_nom], 'remote');
                         if (assoResults && assoResults.length > 0 && assoResults[0].logoUrl) {
-                            logoUrl = `https://v2.myamana.fr/${assoResults[0].logoUrl}`;
+                            logoUrl = `https://acdlp.com/${assoResults[0].logoUrl}`;
                         }
                     } catch (assoErr) {
                         console.warn(`[BENEVOLAT DESINSCRIPTION GROUPEE] Logo introuvable:`, assoErr);
@@ -1151,7 +1151,7 @@ router.delete('/benevolat/desinscription/:inscriptionId', authMiddleware, async 
                         const assoQuery = 'SELECT nom, logoUrl FROM Assos WHERE uri = ?';
                         const assoResults = await db.select(assoQuery, [inscription.association_nom], 'remote');
                         if (assoResults && assoResults.length > 0 && assoResults[0].logoUrl) {
-                            logoUrl = `https://v2.myamana.fr/${assoResults[0].logoUrl}`;
+                            logoUrl = `https://acdlp.com/${assoResults[0].logoUrl}`;
                         }
                     } catch (assoErr) {
                         console.warn(`[BENEVOLAT DESINSCRIPTION] Impossible de récupérer le logo de l'association:`, assoErr);
@@ -2217,7 +2217,7 @@ router.get('/benevolat/cron/send-reminders', async (req, res) => {
             const assoQuery = 'SELECT logoUrl FROM Assos WHERE uri = ?';
             const assoResults = await db.select(assoQuery, [inscription.association_nom], 'remote');
             if (assoResults && assoResults.length > 0 && assoResults[0].logoUrl) {
-              logoUrl = `https://v2.myamana.fr/${assoResults[0].logoUrl}`;
+              logoUrl = `https://acdlp.com/${assoResults[0].logoUrl}`;
             }
           } catch (assoErr) {
             console.warn(`[CRON REMINDERS] Impossible de récupérer le logo pour ${inscription.association_nom}:`, assoErr);
@@ -2382,7 +2382,7 @@ router.get('/benevolat/cron/sync-to-sheets', async (req, res) => {
   router.post('/benevolat/qrcode/generate', authMiddleware, async (req, res) => {
     try {
       const { nom, prenom, nombre_beneficiaires, frontend_url } = req.body;
-      const associationNom = req.user.associationName || req.user.uri || req.user.nameAsso || 'MyAmana';
+      const associationNom = req.user.associationName || req.user.uri || req.user.nameAsso || 'ACDLP';
       const createdBy = req.user.id;
 
       // Validation des champs obligatoires
@@ -2417,7 +2417,7 @@ router.get('/benevolat/cron/sync-to-sheets', async (req, res) => {
 
       // Créer l'URL de validation
       const requestedBaseUrl = typeof frontend_url === 'string' ? frontend_url.trim() : '';
-      const baseUrl = (requestedBaseUrl || process.env.FRONTEND_URL || 'https://myamana.fr').replace(/\/$/, '');
+      const baseUrl = (requestedBaseUrl || process.env.FRONTEND_URL || 'https://acdlp.fr').replace(/\/$/, '');
       const validationUrl = `${baseUrl}/benevolat/qrcode/validate/${qrCodeId}`;
 
       // Stocker dans la base de données avec l'URL de validation
@@ -2428,7 +2428,7 @@ router.get('/benevolat/cron/sync-to-sheets', async (req, res) => {
         qrcode_data: JSON.stringify(qrCodeData),
         validation_url: validationUrl,
         created_by: createdBy,
-        association_nom: associationNom || 'MyAmana', // Valeur par défaut si undefined
+        association_nom: associationNom || 'acdlp', // Valeur par défaut si undefined
         statut: 'active'
       }, 'remote');
 
@@ -2450,7 +2450,7 @@ router.get('/benevolat/cron/sync-to-sheets', async (req, res) => {
           nom,
           prenom,
           nombre_beneficiaires: parseInt(nombre_beneficiaires),
-          association_nom: associationNom || 'MyAmana',
+          association_nom: associationNom || 'acdlp',
           validation_url: validationUrl,
           created_at: new Date().toISOString(),
           qr_code_image: qrCodeImage,
@@ -2486,7 +2486,7 @@ router.get('/benevolat/qrcode/pickups', authMiddleware, async (req, res) => {
       }
     }
     if (associationNames.length === 0) {
-      associationNames.push('MyAmana');
+      associationNames.push('acdlp');
     }
     const { limit = 100, offset = 0, date_from, date_to } = req.query;
 
@@ -2585,7 +2585,7 @@ router.get('/benevolat/qrcode/cards', authMiddleware, async (req, res) => {
       }
     }
     if (associationNames.length === 0) {
-      associationNames.push('MyAmana');
+      associationNames.push('acdlp');
     }
     const { limit = 100, offset = 0, statut } = req.query;
 
@@ -2676,7 +2676,7 @@ router.get('/benevolat/qrcode/cards/:id/qr-image', authMiddleware, async (req, r
       }
     }
     if (associationNames.length === 0) {
-      associationNames.push('MyAmana');
+      associationNames.push('acdlp');
     }
 
     const query = `
@@ -2797,7 +2797,7 @@ router.get('/benevolat/qrcode/validate/:qrCodeId', async (req, res) => {
         <head>
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>Validation réussie - MyAmana</title>
+            <title>Validation réussie - acdlp</title>
             <style>
                 body {
                     font-family: Arial, sans-serif;
@@ -2851,7 +2851,7 @@ router.get('/benevolat/qrcode/validate/:qrCodeId', async (req, res) => {
                 </div>
 
                 <div class="footer">
-                    <p>Merci d'utiliser le système de carte repas MyAmana.</p>
+                    <p>Merci d'utiliser le système de carte repas acdlp.</p>
                     <p>Cette validation est valable pour aujourd'hui uniquement.</p>
                 </div>
             </div>
