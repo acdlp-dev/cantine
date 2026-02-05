@@ -9,13 +9,13 @@ clients:
   - url: http://loki:3100/loki/api/v1/push
 
 scrape_configs:
-  - job_name: myamana-logs
+  - job_name: cantine-logs
     static_configs:
       - targets:
           - localhost
         labels:
-          job: acdlp-api
-          __path__: /var/log/acdlp/*.log
+          job: cantine-api
+          __path__: /var/log/cantine/*.log
     
     pipeline_stages:
       - json:
