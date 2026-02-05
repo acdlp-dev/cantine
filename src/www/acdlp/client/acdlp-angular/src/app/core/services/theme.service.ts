@@ -6,7 +6,7 @@ import { effect } from '@angular/core';
   providedIn: 'root',
 })
 export class ThemeService {
-  private readonly theme = { mode: 'light', color: 'myamana' }; // Thème fixé
+  private readonly theme = { mode: 'light', color: 'acdlp' }; // Thème fixé
 
   constructor() {
     this.setTheme();

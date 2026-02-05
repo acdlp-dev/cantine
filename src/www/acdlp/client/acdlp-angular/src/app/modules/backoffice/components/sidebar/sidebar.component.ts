@@ -5,9 +5,8 @@ import { BackofficeAuthService } from '../../../../modules/backoffice-auth/servi
 import { CommonModule } from '@angular/common';
 import { RouterLink, RouterLinkActive, Router } from '@angular/router';
 import { LucideIconsModule } from '../../../../shared/modules/lucide-icons.module';
-import { OnboardingService } from '../../services/onboarding.service';
 import { Subject, of } from 'rxjs';
-import { takeUntil, switchMap, catchError } from 'rxjs/operators';
+import { takeUntil, catchError } from 'rxjs/operators';
 
 interface TabItem {
   key: string;
@@ -45,21 +44,6 @@ export class SidebarComponent implements OnInit, OnDestroy {
   // Sections regroupées pour l'affichage (Backoffice, Cantine, Suivi Véhicule)
   sections: TabSection[] = [];
 
-  // Préférences d'onboarding
-  userPreferences: {
-    donations: boolean;
-    cantine: boolean;
-    suiviVehicule: boolean;
-    benevolat: boolean;
-    isOnboarded: boolean;
-  } = {
-      donations: false,
-      cantine: false,
-      suiviVehicule: false,
-      benevolat: false,
-      isOnboarded: false
-    };
-
   activeTab: string = 'backoffice'; // Onglet actif par défaut
   // État d'ouverture des sections (par défaut toutes ouvertes)
   openSections: { [key: string]: boolean } = {};
@@ -73,37 +57,15 @@ export class SidebarComponent implements OnInit, OnDestroy {
   constructor(
     private router: Router,
     private backofficeAuthService: BackofficeAuthService,
-    private onboardingService: OnboardingService
     // TODO: Authentification cantine à implémenter plus tard
     // private cantineAuthService: CantineAuthService
   ) { }
 
   ngOnInit(): void {
-    // Récupérer les préférences d'onboarding de l'utilisateur
     if (this.moduleType === 'backoffice') {
-      // Utiliser switchMap pour chaîner les appels proprement
-      this.onboardingService.isOnboardingCompleted().pipe(
+      this.backofficeAuthService.getAssoData().pipe(
         takeUntil(this.destroy$),
-        switchMap((response) => {
-          if (response?.result) {
-            this.userPreferences = {
-              donations: !!response.result.donations,
-              cantine: !!response.result.cantine,
-              suiviVehicule: !!response.result.suiviVehicule,
-              benevolat: !!response.result.benevolat,
-              isOnboarded: !!response.result.isOnboarded
-            };
-          }
-          return this.backofficeAuthService.getAssoData().pipe(
-            catchError(() => of(null))
-          );
-        }),
-        catchError((error) => {
-          console.error('Erreur lors de la récupération des préférences d\'onboarding:', error);
-          return this.backofficeAuthService.getAssoData().pipe(
-            catchError(() => of(null))
-          );
-        })
+        catchError(() => of(null))
       ).subscribe({
         next: (asso) => {
           if (asso?.nameAsso?.includes('Au Coeur De La Précarité')) {
@@ -116,7 +78,6 @@ export class SidebarComponent implements OnInit, OnDestroy {
         }
       });
     } else {
-      // Pour la cantine, pas besoin de vérifier les préférences
       this.setTabsForModule();
     }
 
@@ -184,25 +145,7 @@ export class SidebarComponent implements OnInit, OnDestroy {
       return;
     }
 
-    // Backoffice grouped sections
-    // Backoffice / Dons section
-    const backofficeItems: TabItem[] = [];
-    if (this.userPreferences.donations) {
-      backofficeItems.push({ key: 'dashboard', label: 'Accueil', icon: 'layout-dashboard', route: '/backoffice/accueil' });
-      backofficeItems.push({ key: 'dons', label: 'Mes Dons', icon: 'heart-handshake', route: '/backoffice/dons' });
-      backofficeItems.push({ key: 'abonnements', label: 'Mes abonnements', icon: 'clipboard-check', route: '/backoffice/abonnements' });
-      backofficeItems.push({ key: 'campagnes', label: 'Mes Campagnes', icon: 'link', route: '/backoffice/campagnes' });
-      backofficeItems.push({ key: 'don-hors-ligne', label: 'Don hors ligne', icon: 'hand-coins', route: '/backoffice/don-hors-ligne' });
-      backofficeItems.push({ key: 'recus', label: 'Gestion des reçus fiscaux', icon: 'receipt', route: '/backoffice/recus' });
-      backofficeItems.push({ key: 'configuration', label: 'Configuration', icon: 'settings-2', route: '/backoffice/configuration' });
-    }
-
-    // Backoffice items (donation-related) - infos/parametres moved to account section
-    if (backofficeItems.length) {
-      this.sections.push({ key: 'backoffice', label: 'Backoffice', items: backofficeItems });
-    }
-
-    // Cantine integrated section (if enabled)
+    // Cantine integrated section
     if (this.isSpecialCantineAdmin) {
       // Pour l'association spéciale, n'afficher que le flow Cantine admin
       const cantineAdminItems: TabItem[] = [
@@ -213,7 +156,7 @@ export class SidebarComponent implements OnInit, OnDestroy {
         { key: 'cantine-admin-menus', label: 'Renseigner les Menus', icon: 'square-menu', route: '/backoffice/cantine-admin/menus' }
       ];
       this.sections.push({ key: 'cantine-admin', label: 'Cantine admin', items: cantineAdminItems });
-    } else if (this.userPreferences.cantine) {
+    } else {
       const cantineItems: TabItem[] = [
         { key: 'cantine', label: 'Commandes Cantine', icon: 'shopping-cart', route: '/backoffice/cantine' },
         { key: 'cantine/commande', label: 'Nouvelle Commande', icon: 'plus-circle', route: '/backoffice/cantine/commande' },
@@ -223,31 +166,25 @@ export class SidebarComponent implements OnInit, OnDestroy {
     }
 
     // Suivi véhicule section
-    if (this.userPreferences.suiviVehicule) {
-      this.sections.push({ key: 'vehicule', label: 'Suivi Véhicule', items: [{ key: 'vehicule', label: 'Suivi Véhicule', icon: 'car', route: '/backoffice/vehicule' }] });
-    }
+    this.sections.push({ key: 'vehicule', label: 'Suivi Véhicule', items: [{ key: 'vehicule', label: 'Suivi Véhicule', icon: 'car', route: '/backoffice/vehicule' }] });
 
     // Bénévolat section
-    if (this.userPreferences.benevolat) {
-      const benevolatItems: TabItem[] = [
-        { key: 'benevolat-benevoles', label: 'Bénévoles', icon: 'users', route: '/backoffice/benevolat/benevoles' },
-        { key: 'benevolat-actions', label: 'Créer une action', icon: 'plus-circle', route: '/backoffice/benevolat/actions' },
-        { key: 'benevolat-actions-list', label: 'Liste des actions', icon: 'list', route: '/backoffice/benevolat/actions-list' },
-        { key: 'benevolat-calendar', label: 'Calendrier', icon: 'calendar', route: '/backoffice/benevolat/calendar' },
-        { key: 'benevolat-attestations', label: 'Attestations', icon: 'file-text', route: '/backoffice/benevolat/attestations' }
-      ];
-      this.sections.push({ key: 'benevolat', label: 'Bénévolat', items: benevolatItems });
-    }
+    const benevolatItems: TabItem[] = [
+      { key: 'benevolat-benevoles', label: 'Bénévoles', icon: 'users', route: '/backoffice/benevolat/benevoles' },
+      { key: 'benevolat-actions', label: 'Créer une action', icon: 'plus-circle', route: '/backoffice/benevolat/actions' },
+      { key: 'benevolat-actions-list', label: 'Liste des actions', icon: 'list', route: '/backoffice/benevolat/actions-list' },
+      { key: 'benevolat-calendar', label: 'Calendrier', icon: 'calendar', route: '/backoffice/benevolat/calendar' },
+      { key: 'benevolat-attestations', label: 'Attestations', icon: 'file-text', route: '/backoffice/benevolat/attestations' }
+    ];
+    this.sections.push({ key: 'benevolat', label: 'Bénévolat', items: benevolatItems });
 
     // Bénéficiaires section
-    if (this.userPreferences.benevolat) {
-      const beneficiariesItems: TabItem[] = [
-        { key: 'beneficiaires/cartes-repas', label: 'Cartes Repas', icon: 'qr-code', route: '/backoffice/beneficiaires/cartes-repas' },
-        { key: 'beneficiaires/cartes-liste', label: 'Cartes générées', icon: 'list', route: '/backoffice/beneficiaires/cartes-liste' },
-        { key: 'beneficiaires/recuperations', label: 'Récupérations', icon: 'list', route: '/backoffice/beneficiaires/recuperations' }
-      ];
-      this.sections.push({ key: 'beneficiaires', label: 'Bénéficiaires', items: beneficiariesItems });
-    }
+    const beneficiariesItems: TabItem[] = [
+      { key: 'beneficiaires/cartes-repas', label: 'Cartes Repas', icon: 'qr-code', route: '/backoffice/beneficiaires/cartes-repas' },
+      { key: 'beneficiaires/cartes-liste', label: 'Cartes générées', icon: 'list', route: '/backoffice/beneficiaires/cartes-liste' },
+      { key: 'beneficiaires/recuperations', label: 'Récupérations', icon: 'list', route: '/backoffice/beneficiaires/recuperations' }
+    ];
+    this.sections.push({ key: 'beneficiaires', label: 'Bénéficiaires', items: beneficiariesItems });
 
     // Account / Logout section at the end
     const accountItems: TabItem[] = [];

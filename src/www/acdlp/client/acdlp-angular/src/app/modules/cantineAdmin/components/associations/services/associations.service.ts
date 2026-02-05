@@ -30,7 +30,7 @@ export class AssociationsService {
   }
 
   /**
-   * Met à jour le statut d'onboarding d'une association (ex: 'blocked' | 'ok').
+   * Met à jour le statut d'une association (ex: 'blocked' | 'ok').
    * Utilise une route PATCH similaire aux autres services du projet.
    */
   updateAssociationStatus(id: number, statut: 'blocked' | 'ok', amende?: number): Observable<any> {

@@ -6,11 +6,11 @@ Ce dossier doit contenir le fichier de credentials JSON du Service Account Googl
 
 1. **Téléchargez votre fichier de credentials JSON** depuis Google Cloud Console
    - Ce fichier a été créé lors de la configuration du Service Account
-   - Il se nomme généralement quelque chose comme `myamana-sheets-sync-xxxxxxx.json`
+   - Il se nomme généralement quelque chose comme `acdlp-sheets-sync-xxxxxxx.json`
 
 2. **Renommez-le en `google-credentials.json`**
 
-3. **Placez-le dans ce dossier** : `src/www/myamana/server/node/credentials/`
+3. **Placez-le dans ce dossier** : `src/www/acdlp/server/node/credentials/`
 
 ## 🔒 Sécurité
 
@@ -19,7 +19,7 @@ Ce dossier doit contenir le fichier de credentials JSON du Service Account Googl
 Le fichier `.gitignore` du projet devrait déjà ignorer ce dossier, mais vérifiez que la ligne suivante est présente :
 
 ```
-src/www/myamana/server/node/credentials/*.json
+src/www/acdlp/server/node/credentials/*.json
 ```
 
 ## ✅ Vérification
@@ -27,7 +27,7 @@ src/www/myamana/server/node/credentials/*.json
 Une fois le fichier placé, votre arborescence devrait ressembler à :
 
 ```
-src/www/myamana/server/node/
+src/www/acdlp/server/node/
 ├── credentials/
 │   ├── google-credentials.json  ← Votre fichier de credentials
 │   └── README.md
@@ -43,7 +43,7 @@ Pour tester que tout fonctionne, vous pouvez :
 
 1. Installer les dépendances :
    ```bash
-   cd src/www/myamana/server/node
+   cd src/www/acdlp/server/node
    npm install
    ```
 

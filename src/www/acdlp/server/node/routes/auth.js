@@ -859,10 +859,9 @@ router.post('/backoffice/signup', uploadSignup.single('document'), async(req, re
             console.log(`[Signup Backoffice] Association existante trouvée pour ${email}, pas de création.`);
         }
 
-        // Créer une ligne d'onboarding par défaut pour ce nouvel utilisateur (backoffice)
+        // Créer une ligne dans onboarding_backoffice pour ce nouvel utilisateur
         try {
             const newUserId = insertResult.insertId;
-            // Essayer de récupérer l'asso correspondante à l'email
             let assoId = null;
             try {
                 const assoRow = await db.select('SELECT id FROM Assos WHERE email = ?', [email], 'remote');
@@ -870,7 +869,7 @@ router.post('/backoffice/signup', uploadSignup.single('document'), async(req, re
                     assoId = assoRow[0].id;
                 }
             } catch (lookupErr) {
-                console.warn('[Onboarding] Impossible de lookup Assos by email:', lookupErr);
+                console.warn('[Signup] Impossible de lookup Assos by email:', lookupErr);
             }
 
             await db.insert('onboarding_backoffice', {
@@ -878,15 +877,16 @@ router.post('/backoffice/signup', uploadSignup.single('document'), async(req, re
                 asso_id: assoId,
                 donations: false,
                 cantine: true,
-                suiviVehicule: false,
+                suiviVehicule: true,
+                benevolat: true,
                 doubleChecked: false,
-                isOnboarded: false,
-                tutorielDone: false,
+                isOnboarded: true,
+                tutorielDone: true,
                 document_justificatif: documentJustificatifFilename
             }, 'remote');
 
         } catch (e) {
-            console.error('[Onboarding Insert Error]:', e);
+            console.error('[Signup onboarding_backoffice Insert Error]:', e);
             // On ignore l'erreur pour ne pas bloquer le signup
         }
 

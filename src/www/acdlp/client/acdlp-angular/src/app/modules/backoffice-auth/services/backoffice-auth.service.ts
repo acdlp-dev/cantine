@@ -1,10 +1,9 @@
-import { Injectable, Inject, forwardRef } from '@angular/core';
+import { Injectable } from '@angular/core';
 import { Router } from '@angular/router';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable, throwError, of } from 'rxjs';
 import { catchError, tap, map } from 'rxjs/operators';
 import { environment } from 'src/environments/environment';
-import { OnboardingService } from '../../backoffice/services/onboarding.service';
 
 @Injectable({
   providedIn: 'root',
@@ -20,7 +19,6 @@ export class BackofficeAuthService {
   constructor(
     private http: HttpClient,
     private router: Router,
-    @Inject(forwardRef(() => OnboardingService)) private onboardingService: OnboardingService
   ) { }
 
   /**
@@ -31,9 +29,6 @@ export class BackofficeAuthService {
   signIn(email: string, password: string): Observable<any> {
     const body = { email, password };
     const headers = new HttpHeaders({ 'Content-Type': 'application/json' });
-
-    // Réinitialiser l'état d'onboarding avant une nouvelle connexion
-    this.onboardingService.clearOnboardingState();
 
     // withCredentials: true => inclure les cookies cross-site
     return this.http.post<any>(`${this.apiUrl}/backoffice/signin`, body, {
@@ -124,8 +119,6 @@ export class BackofficeAuthService {
    * Appelle l'endpoint /logout côté serveur, qui supprime le cookie.
    */
   logout(): void {
-    // Réinitialiser les états
-    this.onboardingService.clearOnboardingState();
     this._isLoggedIn = false;
 
     this.http.post(`${this.apiUrl}/logout`, {}, { withCredentials: true })

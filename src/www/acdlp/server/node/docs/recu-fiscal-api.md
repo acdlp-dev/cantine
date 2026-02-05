@@ -4,7 +4,7 @@ Cette documentation décrit les API permettant de générer et récupérer des r
 
 ## Authentification
 
-Toutes les routes de cette API nécessitent une authentification. L'utilisateur doit être connecté à son compte MyAmana pour pouvoir générer et récupérer des reçus fiscaux.
+Toutes les routes de cette API nécessitent une authentification. L'utilisateur doit être connecté à son compte ACDLP pour pouvoir générer et récupérer des reçus fiscaux.
 
 L'authentification se fait via un cookie HTTP-only nommé `auth_token` qui contient un token JWT. Ce cookie est automatiquement géré par le navigateur et envoyé avec chaque requête.
 
@@ -188,7 +188,7 @@ axios.get('http://localhost:4242/api/getRecuFiscal/12345', config)
 1. Les informations de l'association (nom, adresse, signataire, etc.) sont récupérées automatiquement à partir de la base de données en utilisant l'identifiant de l'association fourni.
 2. Le reçu fiscal généré est stocké dans le répertoire `/server/node/pdf/recuFiscal/`.
 3. Le nom du fichier PDF généré est au format `{asso}_{prenom}_{nom}_{timestamp}-{initiales}.pdf`.
-4. Toutes les routes nécessitent une authentification. L'utilisateur doit être connecté à son compte MyAmana.
+4. Toutes les routes nécessitent une authentification. L'utilisateur doit être connecté à son compte ACDLP.
 5. Les reçus fiscaux sont liés à l'utilisateur qui les a générés et ne sont accessibles que par cet utilisateur.
 6. Si le paramètre `id_don` est fourni, l'API mettra à jour la colonne `lien_recu` de la table `Dons_Ponctuels` pour le don correspondant à cet ID, au lieu de créer un nouvel enregistrement dans la table `Recus_Fiscaux`. Dans ce cas, l'URL complète (commençant par "http") est stockée dans la colonne `lien_recu`.
 

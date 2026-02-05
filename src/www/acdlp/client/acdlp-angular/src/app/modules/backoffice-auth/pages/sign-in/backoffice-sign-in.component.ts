@@ -5,7 +5,6 @@ import { NgClass, NgIf } from '@angular/common';
 import { AngularSvgIconModule } from 'angular-svg-icon';
 import { ButtonComponent } from '../../../../shared/components/button/button.component';
 import { BackofficeAuthService } from '../../services/backoffice-auth.service';
-import { OnboardingService } from '../../../backoffice/services/onboarding.service';
 
 @Component({
     selector: 'app-backoffice-sign-in',
@@ -27,7 +26,6 @@ export class BackofficeSignInComponent implements OnInit {
         private readonly _formBuilder: FormBuilder,
         private readonly _router: Router,
         private backofficeAuthService: BackofficeAuthService,
-        private onboardingService: OnboardingService
     ) { }
 
     ngOnInit(): void {

@@ -2,7 +2,6 @@ import { Component, OnInit, ViewChild, ElementRef, AfterViewInit } from '@angula
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { InfosResponse, InfosService } from './services/infos.service';
-import { OnboardingService } from '../../services/onboarding.service';
 
 declare var google: any;
 
@@ -24,35 +23,11 @@ export class InfosComponent implements OnInit, AfterViewInit {
     fetchingCity = false;
     submitted = false;
 
-    // Flags provenant de l'onboarding pour afficher/masquer des blocs
-    isOnboarded = false;
-    hasCantine = false;
-    hasDonations = false;
-    hasSuiviVehicule = false;
-
-    constructor(private fb: FormBuilder, private infosService: InfosService, private onboardingService: OnboardingService) { }
+    constructor(private fb: FormBuilder, private infosService: InfosService) { }
 
     ngOnInit(): void {
         this.initForm();
         this.loadAssociationData();
-
-        // Charger les flags d'onboarding
-        this.onboardingService.isOnboardingCompleted().subscribe({
-            next: (res) => {
-                const r = res && res.result ? res.result : {};
-                this.isOnboarded = r.isOnboarded === 1 || r.isOnboarded === true;
-                this.hasCantine = r.cantine === 1 || r.cantine === true;
-                this.hasDonations = r.donations === 1 || r.donations === true;
-                this.hasSuiviVehicule = r.suiviVehicule === 1 || r.suiviVehicule === true;
-            },
-            error: () => {
-                this.isOnboarded = false;
-                this.hasCantine = false;
-                this.hasDonations = false;
-                this.hasSuiviVehicule = false;
-            }
-        });
-        // Ce formulaire ne gère que l'identité et le contact (pas de moyens de paiement ici)
     }
 
     ngAfterViewInit(): void {
