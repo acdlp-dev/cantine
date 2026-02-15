@@ -159,6 +159,18 @@ export class BackofficeAuthService {
     return this._isLoggedIn;
   }
 
+  verifyEmail(token: string): Observable<{ message: string; nextStep: string }> {
+    return this.http.get<{ message: string; nextStep: string }>(
+      `${this.apiUrl}/verify-email/${token}`,
+      { withCredentials: true }
+    ).pipe(
+      catchError((error) => {
+        console.error('Error during email verification:', error);
+        return throwError(() => error);
+      })
+    );
+  }
+
   getAssoData(): Observable<any> {
     return this.http.get<any>(`${this.apiUrl}/backoffice/me`, { withCredentials: true });
   }

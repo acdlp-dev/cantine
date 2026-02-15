@@ -5,8 +5,6 @@ import { BackofficeAuthService } from '../../../../modules/backoffice-auth/servi
 import { CommonModule } from '@angular/common';
 import { RouterLink, RouterLinkActive, Router } from '@angular/router';
 import { LucideIconsModule } from '../../../../shared/modules/lucide-icons.module';
-import { Subject, of } from 'rxjs';
-import { takeUntil, catchError } from 'rxjs/operators';
 
 interface TabItem {
   key: string;
@@ -47,11 +45,7 @@ export class SidebarComponent implements OnInit, OnDestroy {
   activeTab: string = 'backoffice'; // Onglet actif par défaut
   // État d'ouverture des sections (par défaut toutes ouvertes)
   openSections: { [key: string]: boolean } = {};
-  // Flag pour l'association spéciale qui doit voir uniquement le flow Cantine admin
-  isSpecialCantineAdmin: boolean = false;
 
-  // Gestion des subscriptions
-  private destroy$ = new Subject<void>();
   private resizeHandler: (() => void) | null = null;
 
   constructor(
@@ -62,24 +56,7 @@ export class SidebarComponent implements OnInit, OnDestroy {
   ) { }
 
   ngOnInit(): void {
-    if (this.moduleType === 'backoffice') {
-      this.backofficeAuthService.getAssoData().pipe(
-        takeUntil(this.destroy$),
-        catchError(() => of(null))
-      ).subscribe({
-        next: (asso) => {
-          if (asso?.nameAsso?.includes('Au Coeur De La Précarité')) {
-            this.isSpecialCantineAdmin = true;
-          }
-          this.setTabsForModule();
-        },
-        error: () => {
-          this.setTabsForModule();
-        }
-      });
-    } else {
-      this.setTabsForModule();
-    }
+    this.setTabsForModule();
 
     // Initialiser la sidebar ouverte sur desktop, fermée sur mobile
     this.isSidebarOpen = window.innerWidth >= 768;
@@ -94,27 +71,9 @@ export class SidebarComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
-    this.destroy$.next();
-    this.destroy$.complete();
     if (this.resizeHandler) {
       window.removeEventListener('resize', this.resizeHandler);
     }
-  }
-
-  private addCantineAdminSection(): void {
-    // Ajoute une section dédiée "Cantine admin" réservée à l'association ciblée
-    const cantineAdminItems: TabItem[] = [
-      { key: 'cantine-admin-voir-commandes', label: 'Voir les commandes', icon: 'shopping-cart', route: '/backoffice/cantine-admin/commandes' },
-      { key: 'cantine-admin-zone-distribution', label: 'Zone de distribution', icon: 'map-pin', route: '/backoffice/cantine-admin/zones' },
-      { key: 'cantine-admin-quotas', label: 'Quotas', icon: 'bar-chart-2', route: '/backoffice/cantine-admin/quotas' },
-      { key: 'cantine-admin-associations', label: 'Associations', icon: 'users', route: '/backoffice/cantine-admin/associations' },
-      { key: 'cantine-admin-menus', label: 'Renseigner les Menus', icon: 'square-menu', route: '/backoffice/cantine-admin/menus' }
-    ];
-
-    this.sections.push({ key: 'cantine-admin', label: 'Cantine admin', items: cantineAdminItems });
-
-    // Marquer la section comme ouverte par défaut
-    this.openSections['cantine-admin'] = true;
   }
 
   toggleSection(key: string): void {
@@ -145,25 +104,13 @@ export class SidebarComponent implements OnInit, OnDestroy {
       return;
     }
 
-    // Cantine integrated section
-    if (this.isSpecialCantineAdmin) {
-      // Pour l'association spéciale, n'afficher que le flow Cantine admin
-      const cantineAdminItems: TabItem[] = [
-        { key: 'cantine-admin-voir-commandes', label: 'Voir les commandes', icon: 'shopping-cart', route: '/backoffice/cantine-admin/commandes' },
-        { key: 'cantine-admin-zone-distribution', label: 'Zone de distribution', icon: 'map-pin', route: '/backoffice/cantine-admin/zones' },
-        { key: 'cantine-admin-quotas', label: 'Quotas', icon: 'bar-chart-2', route: '/backoffice/cantine-admin/quotas' },
-        { key: 'cantine-admin-associations', label: 'Associations', icon: 'users', route: '/backoffice/cantine-admin/associations' },
-        { key: 'cantine-admin-menus', label: 'Renseigner les Menus', icon: 'square-menu', route: '/backoffice/cantine-admin/menus' }
-      ];
-      this.sections.push({ key: 'cantine-admin', label: 'Cantine admin', items: cantineAdminItems });
-    } else {
-      const cantineItems: TabItem[] = [
-        { key: 'cantine', label: 'Commandes Cantine', icon: 'shopping-cart', route: '/backoffice/cantine' },
-        { key: 'cantine/commande', label: 'Nouvelle Commande', icon: 'plus-circle', route: '/backoffice/cantine/commande' },
-        { key: 'cantine/menu', label: 'Menu Cantine', icon: 'square-menu', route: '/backoffice/cantine/menu' }
-      ];
-      this.sections.push({ key: 'cantine', label: 'Cantine', items: cantineItems });
-    }
+    // Cantine section
+    const cantineItems: TabItem[] = [
+      { key: 'cantine', label: 'Commandes Cantine', icon: 'shopping-cart', route: '/backoffice/cantine' },
+      { key: 'cantine/commande', label: 'Nouvelle Commande', icon: 'plus-circle', route: '/backoffice/cantine/commande' },
+      { key: 'cantine/menu', label: 'Menu Cantine', icon: 'square-menu', route: '/backoffice/cantine/menu' }
+    ];
+    this.sections.push({ key: 'cantine', label: 'Cantine', items: cantineItems });
 
     // Account / Logout section at the end
     const accountItems: TabItem[] = [];

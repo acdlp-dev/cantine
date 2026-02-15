@@ -274,9 +274,16 @@ export class BackofficeSignUpComponent implements OnInit {
 
   // L'upload se fera lors de la soumission du formulaire
 
+  debugClick(): void {
+    console.log('>>> BUTTON CLICK EVENT fired');
+  }
+
   onSubmit(): void {
+    console.log('>>> onSubmit() CALLED');
+    console.log('>>> form valid:', this.form.valid);
+    console.log('>>> selectedFile:', this.selectedFile);
     this.submitted = true;
-    
+
     // Valider le SIREN explicitement avant la soumission
     this.validateSiren();
 

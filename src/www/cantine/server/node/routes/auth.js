@@ -345,11 +345,11 @@ router.post('/resend-verification-link', async(req, res) => {
         );
 
         // Envoyer l'email avec le nouveau lien
-        const confirmationUrl = `${urlOrigin}/app/auth/verify-email/token/${verificationToken}`;
-        const templateId = 5536946; // ID du template Mailjet pour confirmation
+        const confirmationUrl = `${urlOrigin}/app/backoffice-auth/verify-email/token/${verificationToken}`;
+        const templateId = 7755507; // ID du template Mailjet pour confirmation
         const variables = { prenom: user.firstName, lien_finalisation: confirmationUrl };
 
-        await sendTemplateEmail(user.email, templateId, variables, 'Espace Donateur : Finalisez la création de votre compte ACDLP');
+        await sendTemplateEmail(user.email, templateId, variables, 'Finalisez la création de votre compte Cantine ACDLP');
 
         return res.status(200).json({ message: 'Un nouveau lien de vérification a été envoyé à votre adresse email.' });
     } catch (err) {
@@ -398,9 +398,9 @@ router.post('/request-password-reset', async(req, res) => {
                 verification_token_expiry: verificationTokenExpiry
             }, 'email = ?', [email]);
 
-            const confirmationUrl = `${urlOrigin}/app/auth/verify-email/token/${verificationToken}`;
+            const confirmationUrl = `${urlOrigin}/app/backoffice-auth/verify-email/token/${verificationToken}`;
 
-            await sendTemplateEmail(email, 5536946, {
+            await sendTemplateEmail(email, 7755507, {
                 prenom: user.firstName,
                 lien_finalisation: confirmationUrl
             }, 'Espace Donateur : Finalisez la création de votre compte');
@@ -807,11 +807,11 @@ router.post('/backoffice/signup', uploadSignup.single('document'), async(req, re
                     'email = ?', [email]
                 );
 
-                const confirmationUrl = `${urlOrigin}/app/auth/verify-email/token/${verificationToken}`;
-                const templateId = 5536946; // ID du template Mailjet pour confirmation
+                const confirmationUrl = `${urlOrigin}/app/backoffice-auth/verify-email/token/${verificationToken}`;
+                const templateId = 7755507; // ID du template Mailjet pour confirmation
                 const variables = { prenom: firstName || existingUser[0].firstName, lien_finalisation: confirmationUrl };
 
-                await sendTemplateEmail(email, templateId, variables, 'Espace Donateur : Finalisez la création de votre compte ACDLP');
+                await sendTemplateEmail(email, templateId, variables, 'Finalisez la création de votre compte cantine ACDLP');
                 return res.status(200).json({ message: 'Un nouveau lien de vérification a été envoyé à votre adresse email.' });
             }
         }
@@ -888,8 +888,8 @@ router.post('/backoffice/signup', uploadSignup.single('document'), async(req, re
             // On ignore l'erreur pour ne pas bloquer le signup
         }
 
-        const confirmationUrl = `${urlOrigin}/app/auth/verify-email/token/${verificationToken}`;
-        const templateId = 5536946; // ID du template Mailjet pour confirmation
+        const confirmationUrl = `${urlOrigin}/app/backoffice-auth/verify-email/token/${verificationToken}`;
+        const templateId = 7755507; // ID du template Mailjet pour confirmation
         const variables = { prenom: firstName, lien_finalisation: confirmationUrl };
 
         await sendTemplateEmail(email, templateId, variables, 'Backoffice : Finalisez la création de votre compte ACDLP');

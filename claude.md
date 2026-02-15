@@ -1,30 +1,34 @@
-# ACDLP - Context for Claude AI
+# ACDLP Cantine - Context for Claude AI
 
-## 🎯 Vue d'ensemble du projet
+## Vue d'ensemble du projet
 
-**ACDLP** (Au Cœur de la Précarité) est une plateforme web de gestion associative dédiée à l'aide aux personnes en situation de précarité. Elle permet de gérer le bénévolat, la distribution de repas (cantine solidaire) et le suivi de véhicules.
+**ACDLP Cantine** est une plateforme web de **distribution de repas solidaires** pour l'association **Au Coeur de la Precarite**. Elle permet a des associations partenaires de commander des repas en gros, avec un systeme de quotas journaliers, de menus hebdomadaires et de suivi des commandes.
+
+L'application a evolue depuis un systeme multi-fonctions (dons, benevolat, vehicules) vers une **plateforme specialisee cantine uniquement**. Les anciens modules (benevolat, QR codes, dons Stripe/PayPal, suivi vehicules) ont ete supprimes via migrations.
 
 ---
 
-## 📚 Stack Technique
+## Stack Technique
 
 ### Frontend
-- **Framework**: Angular 18.1.0 (Architecture Standalone Components)
+- **Framework**: Angular 18.1.0 (Standalone Components)
 - **Langage**: TypeScript 5.4.5
 - **Style**: Tailwind CSS 3.1.6
-- **UI**: Lucide Icons, FontAwesome, ApexCharts, Quill
-- **Charts**: ng-apexcharts 1.7.1
+- **UI**: Lucide Icons, FontAwesome, ApexCharts
+- **Adresses**: Google Places Autocomplete
 
 ### Backend
 - **Runtime**: Node.js 20
 - **Framework**: Express.js 4.18.2
-- **Base de données**: MySQL 8.0
-- **ORM**: mysql2 3.3.2 (connection pooling)
+- **Base de donnees**: MySQL 8.0 (dual pool local + remote)
+- **Driver DB**: mysql2 3.3.2 (connection pooling)
 - **Auth**: JWT (jsonwebtoken 8.5.1) avec cookies HttpOnly
 - **Email**: node-mailjet 3.3.6
+- **Upload**: multer (documents justificatifs)
+- **Logging**: Winston + winston-daily-rotate-file
 
 ### Infrastructure
-- **Conteneurisation**: Docker + Docker Compose
+- **Conteneurisation**: Docker + Docker Compose (9 services)
 - **Serveur Web**: Nginx (reverse proxy)
 - **SSL/TLS**: Let's Encrypt (Certbot)
 - **Monitoring**: Grafana 10.2.0 + Loki 2.9.0 + Promtail 2.9.0
@@ -32,581 +36,486 @@
 
 ---
 
-## 🏗️ Architecture du Projet
+## Architecture du Projet
 
 ```
-acdlp/
-├── src/www/acdlp/
-│   ├── client/acdlp-angular/            # Frontend Angular 18
+cantine/
+├── src/www/cantine/
+│   ├── client/acdlp-angular/              # Frontend Angular 18
 │   │   ├── src/app/
-│   │   │   ├── core/                    # Services core, guards, interceptors
-│   │   │   ├── modules/                 # Modules métier (lazy-loaded)
-│   │   │   │   ├── backoffice/          # Panel admin
-│   │   │   │   ├── backoffice-auth/     # Auth admin
-│   │   │   │   ├── benevolat/           # Gestion bénévoles
-│   │   │   │   ├── cantine/             # Distribution repas (public)
-│   │   │   │   ├── cantineAdmin/        # Admin repas (backoffice)
-│   │   │   │   ├── error/               # Pages erreur
-│   │   │   │   ├── layout/              # Layout app
+│   │   │   ├── core/                      # Guards, interceptors
+│   │   │   ├── modules/
+│   │   │   │   ├── backoffice/            # Panel association (infos, cantine)
+│   │   │   │   ├── backoffice-auth/       # Auth (sign-in, sign-up)
+│   │   │   │   ├── cantine/              # Interface commande repas
+│   │   │   │   ├── error/                # Pages erreur (404, 500)
+│   │   │   │   ├── layout/              # Sidebar, layout commun
 │   │   │   │   └── uikit/               # Librairie composants UI
-│   │   │   └── shared/                  # Composants, services, pipes partagés
-│   │   └── dist/                        # Build output
-│   └── server/node/                     # Backend Node.js/Express
-│       ├── server.js                    # Point d'entrée
-│       ├── config/                      # Configuration logger
-│       ├── middleware/                  # Middleware HTTP logging
-│       ├── routes/                      # Routes API (7 modules)
-│       ├── services/                    # Services métier (5 services)
-│       ├── credentials/                 # Credentials API (gitignored)
-│       ├── assets/                      # Assets statiques
-│       └── crons/                       # Tâches planifiées
-├── nginx/                               # Config Nginx
-├── mysql/                               # Scripts init DB
-├── grafana/                             # Dashboards Grafana
-├── loki/                                # Config Loki
-├── promtail/                            # Config Promtail
-├── docs/                                # Documentation
-├── docker-compose.yml                   # Setup production
-├── docker-compose.dev.yml               # Setup dev
-├── docker-compose.staging.yml           # Setup staging
-└── .env                                 # Variables environnement
+│   │   │   └── shared/                   # Composants, services, pipes partages
+│   │   └── dist/                          # Build output
+│   └── server/node/                       # Backend Node.js/Express
+│       ├── server.js                      # Point d'entree
+│       ├── config/                        # Configuration logger (Winston)
+│       ├── middleware/                    # Middleware HTTP logging
+│       ├── routes/                        # Routes API (5 fichiers)
+│       │   ├── auth.js                   # Auth (signup, signin, email verif, password reset)
+│       │   ├── backOffice.js             # Infos asso, gestion associations
+│       │   ├── cantine.js               # Commandes, quotas, menus
+│       │   ├── assos.js                  # Lookup association par URI
+│       │   └── database.js              # Health check DB
+│       ├── services/                      # Services metier (3 services)
+│       │   ├── bdd.js                    # Abstraction MySQL (dual pool)
+│       │   ├── mailService.js            # Emails transactionnels (Mailjet)
+│       │   └── inseeService.js           # Validation SIREN (API INSEE v3.11)
+│       ├── credentials/                   # Credentials API (gitignored)
+│       ├── pdf/                           # Documents uploades (justificatifs)
+│       └── assets/                        # Assets statiques
+├── nginx/                                 # Config Nginx
+├── mysql/                                 # Scripts init DB (init-db.sql)
+├── grafana/                               # Dashboards Grafana
+├── loki/                                  # Config Loki
+├── promtail/                              # Config Promtail
+├── docker-compose.yml                     # Setup production
+├── docker-compose.dev.yml                 # Setup dev
+├── docker-compose.staging.yml             # Setup staging
+└── .env                                   # Variables environnement
 ```
 
 ---
 
-## 🔐 Système d'Authentification Multi-Rôles
+## Systeme d'Authentification
 
-L'application gère **2 types d'utilisateurs distincts** avec des flux d'authentification séparés:
+**Un seul type d'utilisateur actif : les associations.**
 
-### 1. Associations (Admin)
-- **Table DB**: `users` (role='association') + `Assos`
-- **Rôle**: `'association'`
-- **Flux**: Signup avec validation SIREN → Upload documents → Vérification email → Login
+### Associations (Admin)
+- **Tables DB**: `users` (role='association') + `Assos` + `onboarding_backoffice`
+- **Flux**: Signup SIREN + upload document justificatif -> Verification email -> Validation manuelle admin (`doubleChecked`) -> Login
 - **Routes**: `/backoffice-auth/*`, `/backoffice/*`
-- **Validation**: API INSEE pour SIREN/SIRET
-- **Features**: Backoffice complet, gestion bénévoles, gestion cantine, suivi véhicule
+- **Validation**: API INSEE pour SIREN (raison sociale auto-completee)
 
-### 2. Bénévoles (Volunteers)
-- **Table DB**: `benevoles`
-- **Rôle**: `'volunteer'`
-- **Flux OTP**: Demande code OTP → Vérification email (6 chiffres) → Inscription complète → Login
-- **Routes**: `/benevolat/*`
-- **Statuts**: `restreint`, `confirmé`, `responsable`
-- **Features**: Inscription actions, calendrier, scan cartes repas (responsables)
+### Controles d'acces (multi-gate)
+1. `is_verified = 1` (email verifie)
+2. `doubleChecked = 1` (validation manuelle par admin ACDLP, via appli externe)
+3. `cantine = 1` (module cantine active)
+4. `statut = 'ok'` (pas d'amende impayee)
 
-### Sécurité
-- **JWT**: Stocké dans cookies HttpOnly (protection XSS)
-- **Cookies**: `httpOnly: true`, `secure: true`, `sameSite: 'strict'`
-- **Expiration Token**: 1 heure
-- **Hash Password**: bcrypt (10 salt rounds)
-- **Validation Password**: Min 6 caractères, pas de caractères de contrôle
+Si une association ne recupere pas sa commande, elle peut etre **bloquee avec amende**. Deblocage via preuve de paiement WhatsApp.
+
+### Securite
+- **JWT**: Cookie HttpOnly, secure, sameSite strict
+- **Expiration**: 1 heure
+- **Hash**: bcrypt (10 salt rounds)
+- **Password**: Min 6 caracteres
+- **Upload**: PDF/JPG/PNG uniquement, max 10MB
 
 ---
 
-## 📡 Architecture API
+## Architecture API
 
-### Routes Backend (6 Modules)
+### Routes Backend (5 Fichiers)
 
 | Fichier Route | Endpoints | Fonction |
 |--------------|-----------|----------|
-| `auth.js` | 8+ | Authentification admin et bénévoles (OTP) |
-| `assos.js` | 5 | CRUD associations |
-| `backOffice.js` | 8+ | Dashboard admin, infos asso, onboarding |
-| `benevoles.js` | 30+ | Gestion bénévoles, actions, QR codes |
-| `cantine.js` | 15+ | Distribution repas, commandes, quotas |
-| `database.js` | 2 | Utilitaires DB |
+| `auth.js` | ~15 | Signup/signin, email verif, password reset, SIREN lookup, upload document |
+| `backOffice.js` | ~7 | Infos asso, liste associations, statut/amende, validation |
+| `cantine.js` | ~15 | Commandes, quotas, menus, quantites, geocodage, rappel J-1 |
+| `assos.js` | 2 | Lookup association par URI |
+| `database.js` | 2 | Health check DB |
 
-**Préfixe**: Toutes les routes API sont préfixées par `/api`
+**Prefixe**: Toutes les routes API sont prefixees par `/api`
 
-### Endpoints Clés
+### Endpoints Cles
 
 **Authentification:**
-- `POST /api/backoffice/signin` - Login admin
-- `POST /api/backoffice/signup` - Inscription admin
-- `POST /api/benevolat/request-otp` - Demande code OTP bénévole
-- `POST /api/benevolat/verify-otp` - Vérification code OTP
-- `POST /api/benevolat/signin` - Login bénévole
-- `GET /api/backoffice/me` - Info admin courant
-- `POST /api/logout` - Déconnexion
+- `POST /api/backoffice/signin` - Login association
+- `POST /api/backoffice/signup` - Inscription (multipart: champs + document)
+- `POST /api/backoffice/upload-document-justificatif` - Upload document
+- `GET /api/verify-email/:token` - Verification email
+- `POST /api/request-password-reset` - Demande reset password
+- `POST /api/reset-password` - Reset password
+- `GET /api/backoffice/me` - Info user connecte
+- `POST /api/logout` - Deconnexion
+- `GET /api/sirene/:siren` - Lookup raison sociale INSEE
 
-**Bénévoles:**
-- `GET /api/benevolat/actions/:associationName` - Liste actions
-- `POST /api/benevolat/actions/:actionId/register` - Inscription action
-- `POST /api/benevolat/qrcode/generate` - Générer carte repas
-- `POST /api/benevolat/qrcode/scan` - Scanner carte repas
-- `GET /api/backoffice/benevoles` - Liste bénévoles (admin)
-- `POST /api/backoffice/actions` - Créer action (admin)
+**Commandes:**
+- `POST /api/addCommandeCantine` - Creer commande
+- `GET /api/getCommandesAssosCantine` - Mes commandes
+- `PUT /api/annulerCommande/:id` - Annuler commande
+- `PUT /api/modifierCommande/:id` - Modifier quantite
 
-**Cantine:**
-- `GET /api/cantine/menu/:asso` - Menu du jour
-- `POST /api/cantine/order` - Commander repas
-- `GET /api/backoffice/cantine/commandes` - Liste commandes (admin)
-- `POST /api/backoffice/cantine/quotas` - Définir quotas (admin)
-- `GET /api/backoffice/qrcode/list` - Liste cartes repas
-- `GET /api/backoffice/qrcode/pickups` - Historique distributions
+**Quotas (lecture seule):**
+- `GET /api/quotas` - Quotas par plage de dates
 
-**Backoffice:**
-- `GET /api/backoffice/canteInfosCompleted` - Vérif infos cantine
-- `GET /api/backoffice/getInfosAsso` - Infos association
-- `POST /api/backoffice/updateInfosAsso` - MAJ infos association
-- `GET /api/backoffice/onboarding/completed` - Statut onboarding
+**Menus (lecture seule):**
+- `GET /api/menus` - Liste menus
+- `GET /api/menuAsso` - Menu de la semaine (public)
 
----
+**Infos association:**
+- `GET /api/canteInfosCompleted` - Verif infos completes
+- `GET /api/getInfosAsso` - Infos association
+- `POST /api/updateInfosAsso` - MAJ infos
 
-## 🗄️ Schéma Base de Données
-
-### Tables Principales
-
-#### Users & Authentification
-- **`users`**: Comptes admin
-  - Champs: id, email, password, firstName, lastName, role, siren, is_verified, verification_token, created_at
-- **`Assos`**: Détails associations
-  - Champs: id, email, siren, nom, uri, logoUrl, signataire_nom, signataire_prenom, benevoles_resp_email, adresse, code_postal, ville, tel
-- **`benevoles`**: Comptes bénévoles
-  - Champs: id, email, password, nom, prenom, telephone, adresse, ville, code_postal, pays, age, date_naissance, genre, vehicule, statut, association_nom, is_verified, verification_code, completion_token, metiers_competences, source_connaissance, tracking_uuid
-
-#### Bénévoles & Actions
-- **`actions`**: Activités bénévoles
-  - Champs: id, association_nom, nom, description, rue, ville, pays, date_action, heure_debut, heure_fin, recurrence, responsable_email, nb_participants, genre, age, created_at
-- **`Benevoles_Actions`**: Inscriptions actions
-  - Champs: id, benevole_id, action_id, date_action, date_inscription, statut, presence, heure_arrivee, heure_depart
-- **`Actions_Masquees`**: Actions masquées (feature admin)
-  - Champs: id, action_id, association_nom, date_masquee, masquee_par
-
-#### Cantine (Distribution Repas)
-- **`Commandes`**: Commandes repas
-  - Champs: id, email, ajout, livraison, repas_quantite, colis_quantite, asso, statut, zone
-- **`Quotas2`**: Quotas journaliers repas
-  - Champs: id, date_jour, repas_quantite, asso
-- **`Menus`**: Menus hebdomadaires
-  - Champs: id, asso, lundi, mardi, mercredi, jeudi, vendredi
-- **`qrcode_cards`**: Cartes repas
-  - Champs: id, qrcode_id, nom, prenom, nb_beneficiaires, created_at, created_by, association_nom
-- **`meal_pickups`**: Distributions repas
-  - Champs: id, qrcode_id, pickup_date, pickup_time, benevole_id, nb_beneficiaires
-
-#### Administratif
-- **`onboarding_backoffice`**: Statut onboarding admin
-  - Champs: id, user_id, asso_id, cantine, suiviVehicule, benevolat, isOnboarded, tutorielDone, document_justificatif
+**Utilitaires:**
+- `GET /api/getQuantiteCantine` - Quantite disponible pour une date
+- `GET /api/geocode` - Proxy geocodage OpenStreetMap
+- `POST /api/rappelCantineJMoinsUn` - Envoyer rappels J-1 (cron)
 
 ---
 
-## 🔧 Services Backend (5 Services Core)
+## Schema Base de Donnees (7 tables actives)
 
-### 1. Database Service (`bdd.js`)
-- **Fonction**: Abstraction MySQL avec connection pooling
-- **Features**: Dual pool (local + remote), CRUD operations, protection SQL injection, masquage données sensibles dans logs
+### `users` - Comptes admin
+| Colonne | Type | Description |
+|---------|------|-------------|
+| id | INT PK | |
+| email | VARCHAR UNIQUE | |
+| password | VARCHAR | bcrypt hashed |
+| firstName, lastName | VARCHAR | |
+| role | VARCHAR | 'association' |
+| siren | VARCHAR(9) UNIQUE | |
+| is_verified | BOOLEAN | Email verifie |
+| verification_token | VARCHAR | Token email |
+| verification_token_expiry | TIMESTAMP | |
+| reset_token | VARCHAR | Token reset password |
+| token_expiry | TIMESTAMP | |
+| created_at | TIMESTAMP | |
 
-### 2. Mail Service (`mailService.js`)
-- **Provider**: Mailjet
-- **Features**: Templates emails, variables, pièces jointes (ICS)
-- **Templates**: Code OTP bénévole, welcome bénévole, rappels actions, confirmations inscriptions
+### `Assos` - Details associations
+| Colonne | Type | Description |
+|---------|------|-------------|
+| id | INT PK | |
+| email | VARCHAR | |
+| siren | VARCHAR(9) UNIQUE | |
+| nom | VARCHAR | Raison sociale (INSEE) |
+| surnom | VARCHAR | Nom d'usage |
+| uri | VARCHAR | Slug URL |
+| logoUrl | VARCHAR | |
+| codeCouleur | VARCHAR | Couleur de marque |
+| signataire_nom, signataire_prenom | VARCHAR | Signataire recus fiscaux |
+| adresse, code_postal, ville | VARCHAR | Adresse principale |
+| tel | VARCHAR | |
+| site | VARCHAR | Site web |
+| objet | VARCHAR | Objet associatif |
 
-### 3. Google Sheets Service (`googleSheetsService.js`)
-- **Fonction**: Sync données bénévoles avec Google Sheets
-- **Features**: MAJ automatique roster, sync statuts, export pour comptabilité
+### `onboarding_backoffice` - Statut onboarding et controle
+| Colonne | Type | Description |
+|---------|------|-------------|
+| id | INT PK | |
+| user_id | INT FK -> users | |
+| asso_id | INT FK -> Assos | |
+| cantine | BOOLEAN | Module cantine active |
+| statut | VARCHAR | 'ok', 'blocked' |
+| amende | DECIMAL | Montant amende |
+| doubleChecked | BOOLEAN | Validation manuelle admin |
+| isOnboarded | BOOLEAN | |
+| tutorielDone | BOOLEAN | |
+| document_justificatif | VARCHAR | Nom fichier document |
 
-### 4. ICS Service (`icsService.js`)
-- **Fonction**: Génération fichiers iCalendar pour actions bénévoles
-- **Features**: Création événements avec rappels, support actions récurrentes
+### `Commandes` - Commandes repas
+| Colonne | Type | Description |
+|---------|------|-------------|
+| id | INT PK | |
+| email | VARCHAR | Email association |
+| ajout | TIMESTAMP | Date creation |
+| livraison | DATE | Date livraison |
+| repas_quantite | INT | Nb repas |
+| colis_quantite | INT | Nb colis |
+| asso | VARCHAR | Nom association |
+| statut | VARCHAR | en_attente, a_preparer, a_deposer, annulee, blocked |
+| zone | VARCHAR | Zone de distribution |
 
-### 5. INSEE Service (`inseeService.js`)
-- **Fonction**: Validation numéros SIREN/SIRET
-- **API**: INSEE Sirene V3.11
-- **Features**: Lookup infos entreprise, validation adresse association
+### `Quotas2` - Quotas journaliers
+| Colonne | Type | Description |
+|---------|------|-------------|
+| id | INT PK | |
+| date_jour | DATE | |
+| jour | VARCHAR | Nom du jour |
+| day_of_week | INT | 1-7 |
+| repas_quantite | INT | Quota repas |
+| colis_quantite | INT | Quota colis |
+| creneau_debut, creneau_fin | TIME | Creneau horaire |
 
----
+### `Menus` - Menus hebdomadaires
+| Colonne | Type | Description |
+|---------|------|-------------|
+| id | INT PK | |
+| date_ajout | TIMESTAMP | |
+| menu_date | DATE | Date effective |
+| auteur_id | INT FK | |
+| titre | VARCHAR | |
+| allergenes | TEXT/JSON | |
 
-## 🎨 Architecture Frontend
+### `migration_backup` - Audit migrations
+| Colonne | Type | Description |
+|---------|------|-------------|
+| id | INT PK | |
+| table_name | VARCHAR | |
+| row_count | INT | |
+| backup_date | DATETIME | |
 
-### Modules Angular (7 Modules)
-
-#### 1. Backoffice Module (`/backoffice`)
-- **Fonction**: Panel administration ACDLP
-- **Composants**: BenevolatList, BenevolatActions, BenevolatCalendrier, CantineCommandes, CantineQuotas, BeneficiairesCartes, Vehicule, Infos
-- **Services**: `OnboardingService`, `BenevolatAdminService`
-
-#### 2. Backoffice Auth Module (`/backoffice-auth`)
-- **Fonction**: Authentification admin
-- **Pages**: sign-in, sign-up
-- **Service**: `BackofficeAuthService` (JWT avec cookies)
-
-#### 3. Benevolat Module (`/benevolat`)
-- **Fonction**: Interface bénévole
-- **Pages**: signin, form, dashboard, actions, profile, otp-verification, qrcode-generate/scan/list
-- **Service**: `ActionService`
-
-#### 4. Cantine Module (`/cantine`)
-- **Fonction**: Interface commande repas publique
-- **Features**: Affichage menu, commande, planification livraison
-
-#### 5. CantineAdmin Module (`/cantineAdmin`)
-- **Fonction**: Gestion distribution repas (backoffice)
-- **Features**: Gestion commandes, quotas, tracking pickups
-
-#### 6. Layout Module (`/layout`)
-- **Fonction**: Structure commune des pages (navbar, sidebar, footer)
-- **Composants**: Navbar, Sidebar avec navigation, Footer, Breadcrumb
-
-#### 7. Error Module (`/error`)
-- **Fonction**: Pages d'erreur personnalisées
-- **Pages**: 404, 500, 403
-
-### Ressources Partagées
-
-**Composants Shared:**
-- ButtonComponent
-- ConfirmationDialogComponent
-- SupportWidgetComponent
-- StepIndicatorComponent
-
-**Services Shared:**
-- ThemeService
-- SupportService
-
-**Pipes:** Formatage dates, troncature texte
-
-**Validators:** Email, SIREN, code postal
-
----
-
-## 🚀 Déploiement & Infrastructure
-
-### Docker Compose (9 Services)
-
-1. **MySQL**: Port 3306, volumes `dbdata` + `init-db.sql`
-2. **Nginx**: Ports 80/443, reverse proxy, SSL, static files
-3. **Node.js**: Port 4242, backend API
-4. **Angular**: Container build-only
-5. **phpMyAdmin**: Port 8080
-6. **Loki**: Port 3100, aggregation logs
-7. **Promtail**: Shipping logs vers Loki
-8. **Grafana**: Port 3001, dashboards, OAuth GitHub
-9. **Certbot**: Renouvellement SSL (toutes les 12h)
-
-### Configuration Nginx
-
-**Routes:**
-- `/app/*` → Angular SPA
-- `/api/*` → Node.js backend (port 4242)
-- `/assets/*` → Assets statiques
-- `/grafana/*` → Dashboard Grafana
-- `/phpmyadmin/*` → Admin DB
-
-**Features:**
-- Redirection HTTP → HTTPS
-- Cache statique long terme (1 an)
-- Proxying API
-- Routing SPA Angular
-- Gzip compression
-- Upload limit: 1000MB
-
-### Logging & Monitoring
-
-**Stack**: Grafana + Loki + Promtail + Winston
-
-**Winston:**
-- Niveaux: debug, info, warn, error
-- Rotation journalière, max 30 jours, 20MB/fichier
-- Format: JSON avec timestamp
-- Logs: `/var/log/acdlp/`
-
----
-
-## 🎯 Features Business Clés
-
-### 1. Gestion Bénévoles
-- Inscription OTP (6 chiffres envoyés par email)
-- Calendrier actions avec inscriptions
-- Tracking présence (QR codes pour responsables)
-- Statuts progressifs: Restreint → Confirmé → Responsable
-- Sync Google Sheets automatique
-- Génération attestations de bénévolat
-
-### 2. Distribution Repas (Cantine Solidaire)
-- Commande publique avec validation adresse
-- Panel admin (gestion commandes, quotas)
-- Cartes repas QR Code avec tracking
-- Système scan pour responsables
-- Statistiques et exports
-- Gestion menus hebdomadaires
-
-### 3. Backoffice
-- Dashboard temps réel (ApexCharts)
-- Admin bénévoles (liste, filtres, modification statuts)
-- Admin cantine (commandes, quotas, cartes repas)
-- Configuration association (SIREN, logo, infos contact)
-- Onboarding
-
----
-
-## 📝 Modèles de Données TypeScript
-
-```typescript
-// User (Admin)
-interface User {
-  id: number;
-  email: string;
-  password: string; // bcrypt hashed
-  firstName: string;
-  lastName: string;
-  role: 'association';
-  siren: string;
-  is_verified: boolean;
-  created_at: Date;
-}
-
-// Volunteer
-interface Volunteer {
-  id: number;
-  email: string;
-  password: string;
-  nom: string;
-  prenom: string;
-  telephone: string;
-  statut: 'restreint' | 'confirmé' | 'responsable';
-  association_nom: string;
-  is_verified: boolean;
-  tracking_uuid: string;
-}
-
-// Action
-interface Action {
-  id: number;
-  association_nom: string;
-  nom: string;
-  description: string;
-  ville: string;
-  date_action: Date;
-  heure_debut: Time;
-  heure_fin: Time;
-  recurrence: 'Aucune' | 'Quotidienne' | 'Hebdomadaire';
-  responsable_email: string;
-  nb_participants: number;
-}
-
-// QR Code Card
-interface QRCodeCard {
-  id: number;
-  qrcode_id: string; // UUID
-  nom: string;
-  prenom: string;
-  nb_beneficiaires: number;
-  created_at: Date;
-  created_by: number; // benevole_id
-  association_nom: string;
-}
-
-// Meal Pickup
-interface MealPickup {
-  id: number;
-  qrcode_id: string;
-  pickup_date: Date;
-  pickup_time: Time;
-  benevole_id: number;
-  nb_beneficiaires: number;
-}
+### Relations
+```
+users.siren -----> Assos.siren
+users.id -------> onboarding_backoffice.user_id
+Assos.id -------> onboarding_backoffice.asso_id
+Commandes.email -> users.email (implicite)
+Commandes.asso --> Assos.nom (implicite)
 ```
 
 ---
 
-## 🔒 Sécurité
+## Services Backend (3 Services)
 
-### Implémenté ✅
-- JWT HttpOnly cookies (protection XSS)
-- Hashing bcrypt passwords
-- CORS avec credentials
-- Protection SQL injection (requêtes paramétrées)
-- Validation inputs (email, SIREN, passwords)
-- Expiration tokens (1h JWT, 10min OTP)
-- HTTPS (Let's Encrypt)
-- Protection .env (gitignored)
-- Masquage données sensibles dans logs
-- Protection CSRF (sameSite cookies)
+### 1. Database Service (`bdd.js`)
+- Abstraction MySQL avec connection pooling (mysql2/promise)
+- Dual pool: local (Docker) + remote (production)
+- Methodes: `select()`, `insert()`, `update()`, `delete()`
+- Protection SQL injection (requetes parametrees)
+- Masquage donnees sensibles dans les logs
 
-### Améliorations Potentielles ⚠️
-- Rate limiting endpoints auth
-- Headers CSP
-- 2FA comptes admin
-- Audit logging
-- Rotation API keys
+### 2. Mail Service (`mailService.js`)
+- Provider: Mailjet
+- `sendTemplateEmail()` - Emails avec templates Mailjet
+- `sendEmail()` - Emails simples (notifications support)
+- **Templates utilises:**
+  - 7755507: Verification email
+  - 5536948: Reset password
+  - 7726824: Confirmation commande cantine
+  - 7755508: Annulation commande
+  - 7726731: Modification commande
+  - 7726748: Compte bloque
+  - 7726731: Rappel J-1
 
----
-
-## 📚 Documentation
-
-Documentation complète dans `/docs/`:
-1. NODE-BACKEND.md - Architecture backend
-2. ANGULAR.md - Architecture frontend
-3. BACKOFFICE.md - Documentation panel admin
-4. ESPACE-BENEVOLE.md - Documentation espace bénévole
-5. LOGGING-MONITORING.md - Setup logging & monitoring
+### 3. INSEE Service (`inseeService.js`)
+- `getLegalName(siren)` - Recupere la denomination legale via API INSEE Sirene v3.11
+- Utilise lors du signup pour auto-completer la raison sociale
 
 ---
 
-## 🎨 Patterns UI/UX
+## Architecture Frontend
 
-### Design System
-- **Framework**: Tailwind CSS (thème custom)
-- **Icons**: Lucide + FontAwesome
-- **Forms**: @tailwindcss/forms
-- **Responsive**: Mobile-first
-- **Dark Mode**: Supporté (ThemeService)
-- **Notifications**: Toast (ngx-sonner)
-- **Charts**: ApexCharts
-- **Onboarding**: Custom
+### Modules Angular (7 Modules, lazy-loaded)
 
-### Patterns Composants
-- Standalone components (Angular 18)
-- Reactive forms
-- Lazy loading modules
-- Smart/Dumb components
-- State RxJS (BehaviorSubjects)
-- Guards multi-niveaux
-- HTTP interceptors
+#### 1. Backoffice-Auth (`/backoffice-auth`)
+- **sign-in**: Login email/password
+- **sign-up**: Inscription multi-etapes (infos + SIREN + document)
+- Service: `BackofficeAuthService`
+
+#### 2. Backoffice (`/backoffice`)
+- **infos**: Edition profil association (SIREN, adresse Google Places, couleur)
+- **parametres**: Parametres
+- **cantine/**: Historique commandes (pagination, filtres date, annulation, modification)
+- **cantine/commande**: Nouvelle commande (date J+3 min, quantite, multi-adresses)
+- **cantine/menu**: Menu de la semaine
+#### 3. Cantine (`/cantine`)
+- Interface commande repas (reutilise les composants backoffice)
+- Routes: historique, commande, menu, infos, blocked
+
+#### 4. Layout (`/layout`)
+- Sidebar dynamique selon `moduleType` (backoffice/cantine)
+- Responsive mobile
+
+#### 5. Error (`/error`)
+- Pages 404, 500
+
+#### 6. UIKit (`/components`)
+- Showcase composants UI
+
+### Routing complet
+```
+/backoffice-auth/sign-in
+/backoffice-auth/sign-up
+/backoffice/infos
+/backoffice/parametres
+/backoffice/cantine                     # Historique commandes
+/backoffice/cantine/commande            # Nouvelle commande
+/backoffice/cantine/menu                # Menu semaine
+/cantine                                # Historique (autre entree)
+/cantine/commande
+/cantine/menu
+/cantine/infos
+/cantine/blocked
+/errors/404
+/errors/500
+```
 
 ---
 
-## 📦 Build & Déploiement
+## Services externes integres
 
-### Développement
+| Service | Usage |
+|---------|-------|
+| **Mailjet** | Emails transactionnels (templates) |
+| **API INSEE Sirene v3.11** | Validation SIREN, raison sociale |
+| **Google Places Autocomplete** | Autocompletion adresses (frontend) |
+| **OpenStreetMap Nominatim** | Geocodage adresses (proxy backend) |
+
+---
+
+## Logique metier cle
+
+### Cycle de vie d'une commande
+1. Association cree commande (date livraison min J+3)
+2. Verification quota disponible pour la date
+3. Statut `a_preparer`
+4. Possibilite de modifier quantite jusqu'a J-1
+5. Possibilite d'annuler avant la date de livraison
+6. Si non recuperee -> amende possible -> compte bloque
+
+### Systeme de quotas
+- Un quota global par jour (pas par association)
+- Disponibilite = `quota.repas_quantite` - SUM(`commandes.repas_quantite`) pour la date
+- Commande refusee si quota depasse
+
+### Onboarding association
+1. Signup avec SIREN + document justificatif
+2. Email de verification envoye (Mailjet template 7755507)
+3. Clic lien -> email verifie (`is_verified = 1`)
+4. Admin ACDLP valide manuellement (`doubleChecked = 1`) via appli externe
+5. Association peut commander
+
+### Statuts commande
+- `en_attente` - En attente
+- `a_preparer` - Programmee
+- `a_deposer` - A deposer
+- `a_recuperer` - A recuperer
+- `recupere` - Recuperee
+- `non_recupere` - Non recuperee
+- `livree` - Livree
+- `annulee` - Annulee
+- `confirmee` - Confirmee
+- `en_preparation` - En preparation
+- `blocked` - Bloquee
+
+---
+
+## Deploiement & Infrastructure
+
+### Docker Compose (9 Services)
+1. **MySQL**: Port 3306, volume `dbdata` + `init-db.sql`
+2. **Nginx**: Ports 80/443, reverse proxy, SSL
+3. **Node.js**: Port 4242, backend API
+4. **Angular**: Container build-only (output dans volume partage)
+5. **phpMyAdmin**: Port 8080
+6. **Loki**: Port 3100
+7. **Promtail**: Shipping logs
+8. **Grafana**: Port 3001, OAuth GitHub
+9. **Certbot**: Renouvellement SSL (12h)
+
+### Routes Nginx
+- `/app/*` -> Angular SPA
+- `/api/*` -> Node.js backend (port 4242)
+- `/assets/*` -> Assets statiques
+- `/grafana/*` -> Grafana
+- `/phpmyadmin/*` -> phpMyAdmin
+
+### Environnements
+- **Dev**: `environment.ts` -> `localhost:4242/api`
+- **Staging**: `environment.staging.ts`
+- **Prod**: `environment.prod.ts` -> `https://acdlp.com/api`
+
+---
+
+## Build & Developpement
+
 ```bash
 # Backend
-cd src/www/acdlp/server/node
+cd src/www/cantine/server/node
 npm install
 npm start  # Port 4242
 
 # Frontend
-cd src/www/acdlp/client/acdlp-angular
+cd src/www/cantine/client/acdlp-angular
 npm install
 npm start  # Port 4200
-```
 
-### Build Production
-```bash
-# Docker Compose
+# Docker (production)
 docker-compose -f docker-compose.yml up --build
-
-# Build Angular manuel
-cd src/www/acdlp/client/acdlp-angular
-npm run prod  # Output: dist/angular-tailwind/
 ```
-
-### Environnements
-- **Development**: `environment.ts` - API locale (localhost:4242)
-- **Staging**: `environment.staging.ts` - API staging
-- **Production**: `environment.prod.ts` - API prod
 
 ---
 
-## 🔧 Variables Environnement Critiques
+## Variables Environnement
 
 ```bash
-# URLs
-URL_ORIGIN=https://acdlp.fr
+URL_ORIGIN=https://acdlp.com
 
 # Database
-LOCAL_DB_HOST=acdlp-mysql
-LOCAL_DB_USER=rachid
-LOCAL_DB_PASSWORD=rachid
+LOCAL_DB_HOST=mysql
+LOCAL_DB_USER=***
+LOCAL_DB_PASSWORD=***
 LOCAL_DB_NAME=acdlp
 
 # JWT
-JWT_SECRET=Sourate76Verset9
+JWT_SECRET=***
 
 # Mailjet
 MAILJET_KEY_ACDLP=***
 MAILJET_SECRET_ACDLP=***
 
-# Google Sheets
-GOOGLE_SHEET_ID=***
-GOOGLE_CREDENTIALS_PATH=./credentials/metal-zodiac-290317-cddf3d3d5bbb.json
+# INSEE API
+SIRENE_API_KEY=***
 
-# GitHub OAuth (Grafana)
+# Grafana
 GITHUB_CLIENT_ID=***
 GITHUB_CLIENT_SECRET=***
 
-# INSEE API
-SIRENE_API_KEY=***
+# WhatsApp support
+BACKOFFICE_WHATSAPP_NUMBER=***
 ```
 
 ---
 
-## 📊 Statistiques Projet
+## Securite
 
-- **Modules Frontend**: 7 modules
-- **Routes Backend**: 6 fichiers routes
-- **Services Backend**: 5 services core
-- **Tables DB**: 15+ tables
-- **Endpoints API**: 80+ endpoints
-- **Services Docker**: 9 containers
-
----
-
-## 🎯 Cas d'Usage Business
-
-ACDLP est une application conçue pour l'association **Au Cœur de la Précarité** qui a besoin de:
-1. Recruter et coordonner des bénévoles
-2. Distribuer des repas aux bénéficiaires
-3. Suivre les distributions avec cartes QR Code
-4. Gérer le planning des actions de solidarité
-5. Suivre l'utilisation des véhicules
-6. Générer des statistiques et rapports
-
-**Utilisateurs Cibles**:
-- Banques alimentaires
-- Refuges pour sans-abri
-- Associations caritatives
-- Organisations communautaires
+### Implemente
+- JWT HttpOnly cookies (protection XSS)
+- bcrypt passwords (10 salt rounds)
+- CORS avec credentials
+- Requetes SQL parametrees (protection injection)
+- Validation inputs (email, SIREN, passwords)
+- Expiration tokens (1h JWT, 1h email verification)
+- HTTPS (Let's Encrypt)
+- sameSite strict cookies (protection CSRF)
+- .env gitignore
+- Masquage donnees sensibles dans logs
+- Validation type fichiers upload (PDF/JPG/PNG, 10MB max)
 
 ---
 
-## 🔑 Informations Importantes pour le Contexte
+## Conventions de Code
 
-### Conventions de Code
-- **Frontend**: Standalone components Angular 18, TypeScript strict mode
-- **Backend**: Express.js avec pattern service/route séparé
-- **DB**: Requêtes paramétrées (protection SQL injection)
-- **Nommage**: camelCase (JS/TS), snake_case (DB)
-
-### Patterns Récurrents
-- **Auth**: JWT dans cookies HttpOnly
-- **Validation**: Côté client (Angular validators) + côté serveur (Express)
-- **Erreurs**: Gestion centralisée via interceptors (frontend) et middleware (backend)
+- **Frontend**: Standalone components Angular 18, TypeScript strict
+- **Backend**: Express.js, pattern route/service separe
+- **DB**: Requetes parametrees, snake_case pour les colonnes
+- **JS/TS**: camelCase
+- **Etat frontend**: Services RxJS avec BehaviorSubjects
+- **Auth**: JWT dans cookies HttpOnly partout
+- **Validation**: Double (Angular validators + Express backend)
 - **Logs**: Winston avec rotation quotidienne
-- **État**: Services RxJS avec BehaviorSubjects
 
-### Fichiers Sensibles (gitignored)
-- `.env` (variables environnement)
-- `/credentials/*` (credentials API)
-
-### Branches Git
-- **Main branch**: `main`
-- **Branche feature**: `feature/transform-to-acdlp`
+### Fichiers sensibles (gitignored)
+- `.env`
+- `credentials/`
 
 ---
 
-## 💡 Notes pour Claude AI
+## Notes pour Claude AI
 
 ### Lors de modifications code:
-1. **Toujours lire le fichier d'abord** avant de proposer des changements
-2. **Respecter les patterns existants** (conventions, structure)
-3. **Tester la sécurité** (XSS, SQL injection, CSRF)
-4. **Éviter over-engineering** (seulement ce qui est demandé)
-5. **Pas de breaking changes** sans confirmation utilisateur
+1. Toujours lire le fichier d'abord avant de proposer des changements
+2. Respecter les patterns existants (conventions, structure)
+3. Verifier la securite (XSS, SQL injection, CSRF)
+4. Eviter l'over-engineering
+5. Pas de breaking changes sans confirmation
 
 ### Lors de debug:
-1. **Vérifier les logs** (`/var/log/acdlp/` ou Grafana)
-2. **Tester l'auth** (vérifier JWT, cookies, rôles)
-3. **Vérifier la DB** (tables, relations, données)
-4. **Tester les routes API** (endpoints, paramètres, réponses)
+1. Verifier les logs (`/var/log/cantine/` ou Grafana)
+2. Verifier l'auth (JWT, cookies, role, statut onboarding)
+3. Verifier la DB (tables, donnees)
+4. Tester les routes API
 
 ### Lors d'ajout features:
-1. **Analyser l'impact** (tables DB, routes API, composants Angular)
-2. **Ajouter validation** (frontend + backend)
-3. **Documenter** (mettre à jour docs/ si feature majeure)
-4. **Tester avec les 2 rôles** (admin, bénévole)
-
----
-
-**Ce fichier doit être chargé au début de chaque conversation pour contextualiser Claude AI sur le projet ACDLP.**
+1. Analyser l'impact (tables DB, routes API, composants Angular)
+2. Ajouter validation frontend + backend
+3. Tester le controle d'acces

@@ -33,28 +33,6 @@ const routes: Routes = [
         path: 'cantine/menu',
         loadComponent: () => import('../cantine/components/menu/menu.component').then(c => c.MenuComponent),
       },
-      // Cantine admin (spécifique pour certaines associations)
-      {
-        path: 'cantine-admin/quotas',
-        loadComponent: () => import('../cantineAdmin/components/quotas/quotas.component').then(c => c.QuotasComponent),
-      },
-      {
-        path: 'cantine-admin/zones',
-        loadComponent: () => import('../cantineAdmin/components/zoneCommande/zoneCommande.component').then(c => c.ZoneCommandeComponent)
-      },
-      {
-        path: 'cantine-admin/associations',
-        loadComponent: () => import('../cantineAdmin/components/associations/associations.component').then(c => c.AssociationsComponent)
-      },
-      {
-        path: 'cantine-admin/commandes',
-        loadComponent: () => import('../cantineAdmin/components/historiqueCommandeAdmin/historique_commandes_admin.component').then(c => c.HistoriqueCommandesAdminComponent)
-      },
-        {
-          path: 'cantine-admin/menus',
-          loadComponent: () => import('../cantineAdmin/components/menusAdmin/menusAdmin.component').then(c => c.MenusAdminComponent)
-        },
-
       { path: '**', redirectTo: '' }
     ]
   }
