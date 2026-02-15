@@ -173,7 +173,7 @@ router.post('/signin', async(req, res) => {
 
         res.cookie('auth_token', token, {
             httpOnly: true,
-            secure: process.env.URL_ORIGIN === 'https://acdlp.com/',
+            secure: process.env.URL_ORIGIN?.startsWith('https'),
             sameSite: 'strict',
             maxAge: 3600000,
         });
@@ -597,7 +597,7 @@ router.post('/backoffice/signin', async(req, res) => {
 
         res.cookie('auth_token', token, {
             httpOnly: true,
-            secure: process.env.URL_ORIGIN === 'https://acdlp.com/',
+            secure: process.env.URL_ORIGIN?.startsWith('https'),
             sameSite: 'strict',
             maxAge: 3600000,
         });

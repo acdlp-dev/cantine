@@ -315,7 +315,7 @@ router.post('/addCommandeCantine', authMiddleware, async (req, res) => {
         // Envoi de l'email de confirmation
         const nameAsso = req.user.nameAsso || asso; // Récupération du nom de l'association
         const templateId = 7726824; // ID du template Mailjet
-        const baseUrl = process.env.URL_ORIGIN || 'https://acdlp.com';
+        const baseUrl = process.env.URL_ORIGIN || 'https://cantine.acdlp.com';
         jourRecup = dateCommande;
         creneau = 'avant 20h00';
         nbRepas = String(quantitePlats);
