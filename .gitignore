@@ -1,25 +1,13 @@
 
-certbot/conf/accounts/acme-staging-v02.api.letsencrypt.org/directory/0412c77a1d3b32043e9ffb873ac88845/meta.json
-certbot/conf/accounts/acme-v02.api.letsencrypt.org/directory/0990a929ddd3a8514ddd8b0291c2bedd/meta.json
-certbot/conf/live/ms.aucoeurdelaprecarite.com/fullchain.pem
-certbot/conf/live/ms.aucoeurdelaprecarite.com/privkey.pem
 certbot/*
+ssl/
 
 .idea
 auth/.DS_Store
 auth/providers/.DS_Store
 
 src/www/acdlp-mensuel/server/php/log/*.log
-certbot/conf/live/www.acdlp.com/cert.pem
-certbot/conf/live/www.acdlp.com-0001/chain.pem
-certbot/conf/live/www.acdlp.com-0001/fullchain.pem
-certbot/conf/live/www.acdlp.com-0001/privkey.pem
 src/www/acdlp-mensuel/server/php/log/bdd_errors.log
-
-certbot/conf/live/www.dev.acdlp.com-0001/cert.pem
-certbot/conf/live/www.dev.acdlp.com-0001/chain.pem
-certbot/conf/live/www.dev.acdlp.com-0001/fullchain.pem
-certbot/conf/live/www.dev.acdlp.com-0001/privkey.pem
 
 .env
 .htpasswd
