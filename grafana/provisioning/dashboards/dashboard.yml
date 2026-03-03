@@ -1,7 +1,7 @@
 apiVersion: 1
 
 providers:
-  - name: 'MyAmana Dashboards'
+  - name: 'ACDLP'
     orgId: 1
     folder: ''
     type: file

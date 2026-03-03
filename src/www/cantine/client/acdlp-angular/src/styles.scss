@@ -38,12 +38,12 @@
     --border: 0 0% 14.9%;
   }
 
-  :root[data-theme='myamana'] {
+  :root[data-theme='acdlp'] {
     --primary: 14.3 100% 70%; /* Équivaut à #ff8264 en HSL */
-    --primary-foreground: 0 0% 100%; /* Texte blanc sur fond myamana */
+    --primary-foreground: 0 0% 100%; /* Texte blanc sur fond acdlp */
   }
 
-  .dark[data-theme='myamana'] {
+  .dark[data-theme='acdlp'] {
     --background: 0 0% 7%;
     --foreground: 0 0% 93%;
     --card: 0 0% 14%;

@@ -46,7 +46,7 @@ const sendTemplateEmail = async (to, templateId, variables, subject, replyTo, fr
         {
           From: {
             Email: from || 'dsi@aucoeurdelaprecarite.com', // Remplace uniquement l'email si "from" est fourni
-            Name: 'My Amana',
+            Name: 'ACDLP',
           },
           To: [
             {
