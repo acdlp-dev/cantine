@@ -100,7 +100,7 @@ router.get('/getQuantiteCantine', authMiddleware, async (req, res) => {
         const quotaRepas = quotaResults[0].repas_quantite || 0;
 
         // 2. Calculer les repas déjà commandés pour cette date
-        const commandesQuery = 'SELECT SUM(repas_quantite) as total_commandes FROM Commandes WHERE livraison = ? and statut != "blocked"';
+        const commandesQuery = 'SELECT SUM(repas_quantite) as total_commandes FROM Commandes WHERE livraison = ? AND statut NOT IN ("blocked", "annulee")';
         const commandesResults = await db.select(commandesQuery, [date], 'remote');
 
         const repasCommandes = commandesResults && commandesResults[0] ? (commandesResults[0].total_commandes || 0) : 0;
@@ -298,7 +298,7 @@ router.post('/addCommandeCantine', authMiddleware, async (req, res) => {
         }
 
         const result = await db.insert('Commandes', {
-            ajout: new Date().toISOString().split('T')[0],
+            ajout: new Date().toISOString().slice(0, 19).replace('T', ' '),
             asso: asso,
             livraison: dateCommande,
             email: email,

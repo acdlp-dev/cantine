@@ -5,6 +5,9 @@ const path = require('path');
 // Définir le niveau de log selon l'environnement
 const level = process.env.LOG_LEVEL || (process.env.NODE_ENV === 'production' ? 'info' : 'debug');
 
+// Répertoire de logs : /var/log/cantine en production, ./logs en local
+const logDir = process.env.NODE_ENV === 'production' ? '/var/log/cantine' : path.join(__dirname, '..', 'logs');
+
 // Format personnalisé pour les logs
 const customFormat = winston.format.combine(
   winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
@@ -28,7 +31,7 @@ const consoleFormat = winston.format.combine(
 
 // Configuration du transport pour les logs généraux avec rotation
 const fileRotateTransport = new DailyRotateFile({
-  filename: path.join('/var/log/cantine', 'application-%DATE%.log'),
+  filename: path.join(logDir, 'application-%DATE%.log'),
   datePattern: 'YYYY-MM-DD',
   maxSize: '20m',
   maxFiles: '30d',
@@ -38,7 +41,7 @@ const fileRotateTransport = new DailyRotateFile({
 
 // Configuration du transport pour les erreurs avec rotation
 const errorRotateTransport = new DailyRotateFile({
-  filename: path.join('/var/log/cantine', 'error-%DATE%.log'),
+  filename: path.join(logDir, 'error-%DATE%.log'),
   datePattern: 'YYYY-MM-DD',
   maxSize: '20m',
   maxFiles: '30d',
@@ -60,7 +63,7 @@ const logger = winston.createLogger({
   // Gestion des rejections et exceptions non capturées
   exceptionHandlers: [
     new DailyRotateFile({
-      filename: path.join('/var/log/cantine', 'exceptions-%DATE%.log'),
+      filename: path.join(logDir, 'exceptions-%DATE%.log'),
       datePattern: 'YYYY-MM-DD',
       maxSize: '20m',
       maxFiles: '30d',
@@ -69,7 +72,7 @@ const logger = winston.createLogger({
   ],
   rejectionHandlers: [
     new DailyRotateFile({
-      filename: path.join('/var/log/cantine', 'rejections-%DATE%.log'),
+      filename: path.join(logDir, 'rejections-%DATE%.log'),
       datePattern: 'YYYY-MM-DD',
       maxSize: '20m',
       maxFiles: '30d',

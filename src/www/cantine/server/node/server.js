@@ -1,6 +1,8 @@
 console.log('🚀 Starting Cantine Backend Server...');
 
-require('dotenv').config({ path: '/usr/src/app/.env' });
+const path = require('path');
+const envPath = process.env.NODE_ENV === 'production' ? '/usr/src/app/.env' : path.join(__dirname, '..', '..', '..', '..', '..', '.env');
+require('dotenv').config({ path: envPath });
 
 console.log('✅ Environment variables loaded');
 

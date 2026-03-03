@@ -78,11 +78,19 @@ export class HistoriqueCommandesComponent implements OnInit {
     this.router.navigate(['/backoffice/infos']);
   }
 
-  // Convertit jj/mm/aaaa -> yyyy-MM-dd
+  // Convertit jj/mm/aaaa ou ISO datetime -> yyyy-MM-dd
   private toIso(dateStr: string): string | null {
     if (!dateStr) return null;
     // If input already in yyyy-mm-dd (HTML date input), return as-is
     if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
+    // Handle ISO datetime strings like "2026-03-05T23:00:00.000Z" — convert to local date
+    if (dateStr.includes('T')) {
+      const d = new Date(dateStr);
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const dd = String(d.getDate()).padStart(2, '0');
+      return `${yyyy}-${mm}-${dd}`;
+    }
     // Accept dd/mm/yyyy as well
     const parts = dateStr.split('/');
     if (parts.length !== 3) return null;
@@ -244,6 +252,12 @@ export class HistoriqueCommandesComponent implements OnInit {
         return 'Non récupérée';
       case 'recupere':
         return 'Récupérée';
+      case 'en_attente':
+        return 'En attente';
+      case 'confirmee':
+        return 'Confirmée';
+      case 'en_preparation':
+        return 'En préparation';
       case 'blocked':
         return 'Bloquée';
       default:
@@ -267,9 +281,9 @@ export class HistoriqueCommandesComponent implements OnInit {
     // Call API to set statut = 'annulee'
     this.historiqueCommandesServices.annulerCommande(commande.id).subscribe({
       next: (res) => {
-        // Update UI: mark as annulee or remove from list
+        // Update UI: mark as annulee
         const idx = this.commandes.findIndex(c => c.id === commande.id);
-        if (idx > -1) this.commandes.splice(idx, 1);
+        if (idx > -1) this.commandes[idx].statut = 'annulee';
       },
       error: (err) => {
         console.error('Erreur annulation:', err);
@@ -308,7 +322,8 @@ export class HistoriqueCommandesComponent implements OnInit {
     // Appel service Angular pour disponibilités
     this.historiqueCommandesServices.getQuantiteCantine(iso).subscribe({
       next: (data: any) => {
-        this.editDisponibles = (data && typeof data.total === 'number') ? data.total : 0;
+        const disponiblesGlobal = (data && typeof data.total === 'number') ? data.total : 0;
+        this.editDisponibles = disponiblesGlobal;
       },
       error: (err) => {
         console.error('Erreur disponibilités', err);
