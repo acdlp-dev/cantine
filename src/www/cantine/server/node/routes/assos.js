@@ -10,7 +10,7 @@ router.get('/assos/:uri', async (req, res) => {
 
   try {
     const results = await db.select(
-      'SELECT id, nom, email, siren, uri, logoUrl AS logo_url, codeCouleur AS code_couleur, signataire_nom, signataire_prenom, benevoles_resp_email, adresse, code_postal, ville, tel FROM Assos WHERE uri = ?',
+      'SELECT id, nom, email, rna, uri, logoUrl AS logo_url, codeCouleur AS code_couleur, signataire_nom, signataire_prenom, benevoles_resp_email, adresse, code_postal, ville, tel FROM Assos WHERE uri = ?',
       [uri], 'remote'
     );
     if (results.length === 0) {

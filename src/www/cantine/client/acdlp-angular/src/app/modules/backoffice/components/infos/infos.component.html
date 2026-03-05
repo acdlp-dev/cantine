@@ -53,9 +53,9 @@
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
                 <div class="space-y-2">
-                    <label for="siren" class="block text-sm font-medium text-gray-700">SIREN *</label>
-                    <input type="text" id="siren" formControlName="siren" placeholder="123 456 789" class="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-[#ff7443] focus:border-[#ff7443]" [ngClass]="{'border-red-500': infoForm.get('siren')?.invalid && infoForm.get('siren')?.touched}">
-                    <p *ngIf="infoForm.get('siren')?.invalid && infoForm.get('siren')?.touched" class="mt-1 text-sm text-red-600">
+                    <label for="rna" class="block text-sm font-medium text-gray-700">RNA *</label>
+                    <input type="text" id="rna" formControlName="rna" placeholder="W751234567" class="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-[#ff7443] focus:border-[#ff7443]" [ngClass]="{'border-red-500': infoForm.get('rna')?.invalid && infoForm.get('rna')?.touched}">
+                    <p *ngIf="infoForm.get('rna')?.invalid && infoForm.get('rna')?.touched" class="mt-1 text-sm text-red-600">
                         Ce champ est requis
                     </p>
                 </div>

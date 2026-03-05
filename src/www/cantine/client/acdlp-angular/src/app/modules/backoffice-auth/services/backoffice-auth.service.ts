@@ -50,15 +50,15 @@ export class BackofficeAuthService {
    * SIGN UP
    * Envoie les champs + le document en multipart/form-data
    */
-  signUp(email: string, password: string, firstName: string, lastName: string, siren: string, documentFile: File)
+  signUp(email: string, password: string, firstName: string, lastName: string, rna: string, documentFile: File)
     : Observable<{ message: string }> {
-    console.log("backoffice signup " + email + " " + siren);
+    console.log("backoffice signup " + email + " " + rna);
     const formData = new FormData();
     formData.append('email', email);
     formData.append('password', password);
     formData.append('firstName', firstName);
     formData.append('lastName', lastName);
-    formData.append('siren', siren);
+    formData.append('rna', rna);
     formData.append('document', documentFile);
 
     return this.http.post<{ message: string }>(
@@ -124,11 +124,11 @@ export class BackofficeAuthService {
     this.http.post(`${this.apiUrl}/logout`, {}, { withCredentials: true })
       .subscribe({
         next: () => {
-          this.router.navigate(['/backoffice-auth/sign-in']);
+          this.router.navigate(['/signin']);
         },
         error: (error) => {
           console.error('Error during logout:', error);
-          this.router.navigate(['/backoffice-auth/sign-in']);
+          this.router.navigate(['/signin']);
         }
       });
   }
@@ -176,16 +176,16 @@ export class BackofficeAuthService {
   }
 
   /**
-   * Récupère la raison sociale d'une entreprise via son SIREN
-   * Appelle l'API INSEE pour obtenir la dénomination légale
+   * Récupère le nom d'une association via son numéro RNA
+   * Appelle l'API OpenDataSoft pour obtenir la dénomination
    */
-  getRaisonSocialeBySiren(siren: string): Observable<{ success: boolean; denomination?: string; error?: string }> {
-    return this.http.get<{ success: boolean; denomination?: string; error?: string }>(
-      `${this.apiUrl}/sirene/${siren}`,
+  getRaisonSocialeByRna(rna: string): Observable<{ success: boolean; denomination?: string; position?: string; error?: string }> {
+    return this.http.get<{ success: boolean; denomination?: string; position?: string; error?: string }>(
+      `${this.apiUrl}/rna/${rna}`,
       { withCredentials: true }
     ).pipe(
       catchError((error) => {
-        console.error('Error fetching raison sociale:', error);
+        console.error('Error fetching association name:', error);
         return throwError(() => error);
       })
     );

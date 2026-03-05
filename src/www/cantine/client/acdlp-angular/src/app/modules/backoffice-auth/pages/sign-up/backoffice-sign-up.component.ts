@@ -33,7 +33,7 @@ export class BackofficeSignUpComponent implements OnInit {
   passwordStrength = 0;
   raisonSociale = '';
   isLoadingRaisonSociale = false;
-  sirenError = '';
+  rnaError = '';
   step = 1; // Étape du formulaire (1 ou 2)
   
   // Variables pour l'upload de document
@@ -70,7 +70,7 @@ export class BackofficeSignUpComponent implements OnInit {
         acceptTerm: [false, Validators.requiredTrue],
         firstName: ['', Validators.required],
         lastName: ['', Validators.required],
-        siren: ['', [Validators.required, Validators.pattern(/^\d{9}$/)]], // SIREN must be 9 digits
+        rna: ['', [Validators.required, Validators.pattern(/^W\d{9}$/)]], // RNA must be W + 9 digits
       },
       {
         validator: this.passwordMatchValidator,
@@ -103,74 +103,78 @@ export class BackofficeSignUpComponent implements OnInit {
     this.passwordTextType = !this.passwordTextType;
   }
 
-  // Méthode de validation pour le SIREN
-  validateSiren(): void {
-    const sirenControl = this.form.get('siren');
-    if (sirenControl) {
-      const value = sirenControl.value;
-      
-      // Si la valeur n'est pas un nombre à 9 chiffres exactement
-      if (!value || !/^\d{9}$/.test(value)) {
-        sirenControl.setErrors({ 
-          invalidSiren: true,
-          message: value ? `Le SIREN doit contenir exactement 9 chiffres (actuellement: ${value.length})` : 'Le SIREN est requis'
+  // Méthode de validation pour le RNA
+  validateRna(): void {
+    const rnaControl = this.form.get('rna');
+    if (rnaControl) {
+      const value = rnaControl.value;
+
+      if (!value || !/^W\d{9}$/.test(value)) {
+        rnaControl.setErrors({
+          invalidRna: true,
+          message: value ? `Le RNA doit commencer par W suivi de 9 chiffres (actuellement: ${value.length} caractères)` : 'Le RNA est requis'
         });
       }
     }
   }
 
-  // Méthode pour filtrer les entrées non numériques et appeler l'API SIREN
-  formatSirenInput(event: Event): void {
+  // Méthode pour formater la saisie du RNA et appeler l'API
+  formatRnaInput(event: Event): void {
     const input = event.target as HTMLInputElement;
-    const value = input.value;
-    
-    // Ne garder que les chiffres
-    const filteredValue = value.replace(/\D/g, '');
-    
-    // Mettre à jour la valeur si elle a changé
-    if (filteredValue !== value) {
-      input.value = filteredValue;
-      this.form.get('siren')?.setValue(filteredValue);
-    }
-    
-    // Vérifier la longueur à chaque saisie
-    const sirenControl = this.form.get('siren');
-    if (sirenControl && filteredValue.length !== 9 && filteredValue.length > 0) {
-      sirenControl.setErrors({ 
-        pattern: true, 
-        message: `Le SIREN doit contenir exactement 9 chiffres (actuellement: ${filteredValue.length})` 
-      });
-      // Réinitialiser la raison sociale si le SIREN n'est pas complet
-      this.raisonSociale = '';
-      this.sirenError = '';
+    let value = input.value.toUpperCase();
+
+    // Autoriser W en premier caractère, puis uniquement des chiffres
+    if (value.length > 0) {
+      const first = value[0] === 'W' ? 'W' : '';
+      const rest = (value[0] === 'W' ? value.slice(1) : value).replace(/[^0-9]/g, '');
+      value = first + rest;
     }
 
-    // Si le SIREN a exactement 9 chiffres, appeler l'API INSEE
-    if (filteredValue.length === 9) {
-      this.fetchRaisonSociale(filteredValue);
+    // Limiter à 10 caractères (W + 9 chiffres)
+    value = value.substring(0, 10);
+
+    if (value !== input.value) {
+      input.value = value;
+      this.form.get('rna')?.setValue(value);
+    }
+
+    // Vérifier le format à chaque saisie
+    const rnaControl = this.form.get('rna');
+    if (rnaControl && !/^W\d{9}$/.test(value) && value.length > 0) {
+      rnaControl.setErrors({
+        pattern: true,
+        message: `Le RNA doit commencer par W suivi de 9 chiffres (actuellement: ${value.length} caractères)`
+      });
+      this.raisonSociale = '';
+      this.rnaError = '';
+    }
+
+    // Si le RNA est au bon format, appeler l'API
+    if (/^W\d{9}$/.test(value)) {
+      this.fetchRaisonSociale(value);
     }
   }
 
-  // Appeler l'API pour récupérer la raison sociale
-  fetchRaisonSociale(siren: string): void {
+  // Appeler l'API pour récupérer le nom de l'association
+  fetchRaisonSociale(rna: string): void {
     this.isLoadingRaisonSociale = true;
-    this.sirenError = '';
+    this.rnaError = '';
     this.raisonSociale = '';
 
-    this.backofficeAuthService.getRaisonSocialeBySiren(siren).subscribe({
+    this.backofficeAuthService.getRaisonSocialeByRna(rna).subscribe({
       next: (response) => {
         this.isLoadingRaisonSociale = false;
         if (response.success && response.denomination) {
           this.raisonSociale = response.denomination;
-          this.sirenError = '';
+          this.rnaError = '';
         } else {
-          this.sirenError = 'Impossible de récupérer la raison sociale';
+          this.rnaError = response.error || 'Impossible de récupérer le nom de l\'association';
         }
       },
       error: (err) => {
         this.isLoadingRaisonSociale = false;
-        this.sirenError = 'SIREN introuvable';
-        console.error('Erreur lors de la récupération de la raison sociale:', err);
+        this.rnaError = 'RNA introuvable';
+        console.error('Erreur lors de la récupération du nom de l\'association:', err);
       }
     });
   }
@@ -284,8 +288,8 @@ export class BackofficeSignUpComponent implements OnInit {
     console.log('>>> selectedFile:', this.selectedFile);
     this.submitted = true;
 
-    // Valider le SIREN explicitement avant la soumission
-    this.validateSiren();
+    // Valider le RNA explicitement avant la soumission
+    this.validateRna();
 
     // Vérifier que le document est bien sélectionné
     if (!this.selectedFile) {
@@ -308,9 +312,9 @@ export class BackofficeSignUpComponent implements OnInit {
       return;
     }
 
-    const { email, password, firstName, lastName, siren } = this.form.value;
+    const { email, password, firstName, lastName, rna } = this.form.value;
 
-    this.backofficeAuthService.signUp(email, password, firstName, lastName, siren, this.selectedFile).subscribe({
+    this.backofficeAuthService.signUp(email, password, firstName, lastName, rna, this.selectedFile).subscribe({
       next: () => {
         this.isMailSent = true;
       },

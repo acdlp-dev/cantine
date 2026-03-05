@@ -7,6 +7,7 @@ import { AppRoutingModule } from './app/app-routing.module';
 import { BrowserModule, bootstrapApplication } from '@angular/platform-browser';
 import { provideAnimations } from '@angular/platform-browser/animations';
 import { provideHttpClient } from '@angular/common/http';
+import { AngularSvgIconModule } from 'angular-svg-icon';
 import localeFr from '@angular/common/locales/fr';
 
 registerLocaleData(localeFr, 'fr');
@@ -20,7 +21,7 @@ if (environment.production) {
 }
 
 bootstrapApplication(AppComponent, {
-  providers: [importProvidersFrom(BrowserModule, AppRoutingModule), provideAnimations(), provideHttpClient()],
+  providers: [importProvidersFrom(BrowserModule, AppRoutingModule, AngularSvgIconModule.forRoot()), provideAnimations(), provideHttpClient()],
 }).catch((err) => console.error(err));
 
 function selfXSSWarning() {

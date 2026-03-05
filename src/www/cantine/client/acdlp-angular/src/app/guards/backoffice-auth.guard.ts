@@ -18,13 +18,13 @@ export class BackofficeAuthGuard implements CanActivate {
           return true;
         } else {
           console.warn("❌ Accès refusé : redirection vers la page de connexion");
-          return this.router.createUrlTree(['/backoffice-auth/sign-in']);
+          return this.router.createUrlTree(['/signin']);
         }
       }),
       catchError((err) => {
         console.error("Erreur lors de la vérification de l'authentification", err);
         // Renvoie un observable contenant le UrlTree
-        return of(this.router.createUrlTree(['/backoffice-auth/sign-in']));
+        return of(this.router.createUrlTree(['/signin']));
       })
     );
   }

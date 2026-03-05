@@ -1,7 +1,16 @@
 console.log('🚀 Starting Cantine Backend Server...');
 
 const path = require('path');
-const envPath = process.env.NODE_ENV === 'production' ? '/usr/src/app/.env' : path.join(__dirname, '..', '..', '..', '..', '..', '.env');
+const fs = require('fs');
+
+// Chercher le .env : d'abord dans le répertoire courant (Docker), sinon remonter à la racine du projet (dev local)
+const envCandidates = [
+    path.join(__dirname, '.env'),                                    // Docker: /usr/src/app/.env
+    path.join(__dirname, '..', '..', '..', '..', '..', '.env'),     // Dev local: racine du projet
+];
+const envPath = process.env.NODE_ENV === 'production'
+    ? '/usr/src/app/.env'
+    : envCandidates.find(p => fs.existsSync(p)) || envCandidates[0];
 require('dotenv').config({ path: envPath });
 
 console.log('✅ Environment variables loaded');

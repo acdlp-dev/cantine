@@ -32,7 +32,7 @@ import { BackofficeAuthService } from '../../services/backoffice-auth.service';
           </div>
           <h2 class="text-2xl font-semibold text-foreground">Email vérifié !</h2>
           <p class="text-muted-foreground">{{ message }}</p>
-          <a routerLink="/backoffice-auth/sign-in"
+          <a routerLink="/signin"
             class="inline-block rounded-lg bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90">
             Se connecter
           </a>
@@ -49,7 +49,7 @@ import { BackofficeAuthService } from '../../services/backoffice-auth.service';
           </div>
           <h2 class="text-2xl font-semibold text-foreground">Erreur de vérification</h2>
           <p class="text-muted-foreground">{{ errorMessage }}</p>
-          <a routerLink="/backoffice-auth/sign-up"
+          <a routerLink="/signup"
             class="inline-block rounded-lg bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90">
             Réessayer l'inscription
           </a>

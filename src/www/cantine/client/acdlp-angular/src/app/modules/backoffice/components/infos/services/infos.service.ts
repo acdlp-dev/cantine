@@ -10,7 +10,7 @@ export interface InfosResponse {
     stripe_publishable_key: any;
     stripe_secret_key: any;
     nom: any;
-    siren: string;
+    rna: string;
     surnom: any;
     isMosquee: string;
     qualite: any;

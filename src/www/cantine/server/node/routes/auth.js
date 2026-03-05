@@ -7,12 +7,12 @@ const path = require('path');
 const fs = require('fs');
 
 // ALTER TABLE users ADD COLUMN role VARCHAR(20) DEFAULT 'donator'; A ajouter un rôle par défaut pour les utilisateurs
-// ALTER TABLE users ADD COLUMN siren VARCHAR(9) DEFAULT '';
+// ALTER TABLE users ADD COLUMN rna VARCHAR(10) DEFAULT '';
 // Services et utilitaires
 const db = require('../services/bdd');
 const { sendTemplateEmail } = require('../services/mailService');
 const { stat } = require('fs');
-const inseeService = require('../services/inseeService');
+const rnaService = require('../services/rnaService');
 
 // Variables et instanciations
 const router = express.Router();
@@ -57,7 +57,7 @@ const validatePassword = (password) => {
     return { valid: true };
 };
 const generateResetToken = () => crypto.randomBytes(32).toString('hex');
-const validateSiren = (siren) => /^[0-9]{9}$/.test(siren);
+const validateRna = (rna) => /^W\d{9}$/.test(rna);
 
 function authMiddleware(req, res, next) {
     try {
@@ -79,7 +79,7 @@ function authMiddleware(req, res, next) {
 
 router.get('/backoffice/me', authMiddleware, (req, res) => {
     // Le middleware `authMiddleware` décode le JWT et place les données dans `req.user`
-    const { id, email, firstName, lastName, role, siren, nameAsso, uri } = req.user; // Récupère les informations du JWT
+    const { id, email, firstName, lastName, role, rna, nameAsso, uri } = req.user; // Récupère les informations du JWT
     console.log("Appel à l'api /me. Informations récupérées du JWT pour : " + email);
 
     // Renvoyer les informations directement depuis le JWT
@@ -89,7 +89,7 @@ router.get('/backoffice/me', authMiddleware, (req, res) => {
         prenom: firstName,
         nom: lastName,
         role: role,
-        siren: siren || null,
+        rna: rna || null,
         nameAsso: nameAsso || null,
         uri: uri || null
     });
@@ -345,7 +345,7 @@ router.post('/resend-verification-link', async(req, res) => {
         );
 
         // Envoyer l'email avec le nouveau lien
-        const confirmationUrl = `${urlOrigin}/app/backoffice-auth/verify-email/token/${verificationToken}`;
+        const confirmationUrl = `${urlOrigin}/app/verify-email/token/${verificationToken}`;
         const templateId = 7755507; // ID du template Mailjet pour confirmation
         const variables = { prenom: user.firstName, lien_finalisation: confirmationUrl };
 
@@ -398,7 +398,7 @@ router.post('/request-password-reset', async(req, res) => {
                 verification_token_expiry: verificationTokenExpiry
             }, 'email = ?', [email]);
 
-            const confirmationUrl = `${urlOrigin}/app/backoffice-auth/verify-email/token/${verificationToken}`;
+            const confirmationUrl = `${urlOrigin}/app/verify-email/token/${verificationToken}`;
 
             await sendTemplateEmail(email, 7755507, {
                 prenom: user.firstName,
@@ -532,14 +532,14 @@ router.post('/backoffice/signin', async(req, res) => {
             return res.status(403).json({ message: 'Please verify your email before signing in.' });
         }
 
-        // Récupérer l'association via le SIREN de l'utilisateur (au lieu de l'email)
-        if (!user.siren) {
-            return res.status(401).json({ message: 'SIREN manquant pour cet utilisateur.' });
+        // Récupérer l'association via le RNA de l'utilisateur (au lieu de l'email)
+        if (!user.rna) {
+            return res.status(401).json({ message: 'RNA manquant pour cet utilisateur.' });
         }
 
-        const assoCheck = await db.select('SELECT * FROM Assos WHERE siren = ?', [user.siren], 'remote');
+        const assoCheck = await db.select('SELECT * FROM Assos WHERE rna = ?', [user.rna], 'remote');
         if (assoCheck.length === 0) {
-            return res.status(401).json({ message: 'Association non trouvée pour ce SIREN.' });
+            return res.status(401).json({ message: 'Association non trouvée pour ce RNA.' });
         }
 
         const asso = assoCheck[0];
@@ -587,7 +587,7 @@ router.post('/backoffice/signin', async(req, res) => {
                 firstName: asso.firstName,
                 lastName: asso.lastName,
                 role: 'association',
-                siren: asso.siren,
+                rna: asso.rna,
                 uri: asso.uri,
                 nameAsso: asso.nom,
                 logoUrl: asso.logoUrl,
@@ -611,27 +611,34 @@ router.post('/backoffice/signin', async(req, res) => {
 
 
 /**
- * Route publique pour récupérer la raison sociale d'une entreprise via son SIREN
- * Utilisée lors du signup pour auto-compléter la raison sociale
+ * Route publique pour récupérer le nom d'une association via son numéro RNA
+ * Utilisée lors du signup pour auto-compléter le nom de l'association
  */
-router.get('/sirene/:siren', async (req, res) => {
-    const { siren } = req.params;
+router.get('/rna/:rna', async (req, res) => {
+    const { rna } = req.params;
 
     try {
-        // Validation basique du SIREN
-        if (!siren || siren.length !== 9 || !/^\d+$/.test(siren)) {
-            return res.status(400).json({ error: 'Le numéro SIREN doit contenir exactement 9 chiffres' });
+        if (!rna || !validateRna(rna)) {
+            return res.status(400).json({ error: 'Le numéro RNA doit être au format W suivi de 9 chiffres (ex: W751234567)' });
         }
 
-        // Utilisation du service INSEE pour récupérer la dénomination légale
-        const denomination = await inseeService.getLegalName(siren);
+        const info = await rnaService.getAssociationInfo(rna);
+
+        if (info.position === 'Dissoute') {
+            return res.status(400).json({
+                success: false,
+                error: 'Cette association est dissoute et ne peut pas être enregistrée'
+            });
+        }
+
         res.json({
             success: true,
-            denomination: denomination
+            denomination: info.title,
+            position: info.position
         });
     } catch (error) {
-        console.error(`[Sirene API Error] SIREN ${siren}:`, error.message);
-        res.status(500).json({ success: false, error: 'Impossible de récupérer la raison sociale' });
+        console.error(`[RNA API Error] RNA ${rna}:`, error.message);
+        res.status(500).json({ success: false, error: 'Impossible de récupérer le nom de l\'association' });
     }
 });
 
@@ -640,27 +647,27 @@ router.get('/sirene/:siren', async (req, res) => {
  */
 const storageDocumentJustificatif = multer.diskStorage({
     destination: (req, file, cb) => {
-        const siren = req.body.siren;
-        if (!siren || !validateSiren(siren)) {
-            return cb(new Error('SIREN invalide ou manquant'));
+        const rna = req.body.rna;
+        if (!rna || !validateRna(rna)) {
+            return cb(new Error('RNA invalide ou manquant'));
         }
-        
+
         // Créer le dossier pour cette association
-        const uploadDir = path.join(__dirname, '../pdf/backoffice/documentassociation', siren);
-        
+        const uploadDir = path.join(__dirname, '../pdf/backoffice/documentassociation', rna);
+
         // Créer le répertoire s'il n'existe pas
         if (!fs.existsSync(uploadDir)) {
             fs.mkdirSync(uploadDir, { recursive: true });
             console.log(`[Upload Document] Dossier créé: ${uploadDir}`);
         }
-        
+
         cb(null, uploadDir);
     },
     filename: (req, file, cb) => {
-        const siren = req.body.siren;
+        const rna = req.body.rna;
         const timestamp = Date.now();
         const extension = path.extname(file.originalname);
-        const filename = `${siren}_justificatif_${timestamp}${extension}`;
+        const filename = `${rna}_justificatif_${timestamp}${extension}`;
         cb(null, filename);
     }
 });
@@ -686,24 +693,24 @@ const uploadDocumentJustificatif = multer({
  */
 router.post('/backoffice/upload-document-justificatif', uploadDocumentJustificatif.single('document'), async (req, res) => {
     try {
-        const { siren } = req.body;
+        const { rna } = req.body;
 
-        if (!siren || !validateSiren(siren)) {
-            return res.status(400).json({ message: 'SIREN invalide ou manquant' });
+        if (!rna || !validateRna(rna)) {
+            return res.status(400).json({ message: 'RNA invalide ou manquant' });
         }
 
         if (!req.file) {
             return res.status(400).json({ message: 'Aucun fichier uploadé' });
         }
 
-        console.log(`[Upload Document] Fichier uploadé pour SIREN ${siren}: ${req.file.filename}`);
+        console.log(`[Upload Document] Fichier uploadé pour RNA ${rna}: ${req.file.filename}`);
 
         return res.status(200).json({
             success: true,
             message: 'Document justificatif uploadé avec succès',
             filename: req.file.filename,
             filepath: req.file.path,
-            siren: siren
+            rna: rna
         });
 
     } catch (err) {
@@ -730,11 +737,11 @@ const uploadSignup = multer({
 
 // Signup Backoffice (multipart: champs + document)
 router.post('/backoffice/signup', uploadSignup.single('document'), async(req, res) => {
-    const { email, password, firstName, lastName, siren } = req.body;
+    const { email, password, firstName, lastName, rna } = req.body;
     console.log("Demande de signup backoffice reçue de " + email);
-    
-    if (!email || !password || !siren) {
-        return res.status(400).json({ message: 'Email, password et SIREN sont requis.' });
+
+    if (!email || !password || !rna) {
+        return res.status(400).json({ message: 'Email, password et RNA sont requis.' });
     }
     if (!validateEmail(email)) {
         return res.status(400).json({ message: 'Invalid email format.' });
@@ -742,8 +749,8 @@ router.post('/backoffice/signup', uploadSignup.single('document'), async(req, re
     if (!validatePassword(password)) {
         return res.status(400).json({ message: 'Password must be at least 6 characters long.' });
     }
-    if (!validateSiren(siren)) {
-        return res.status(400).json({ message: 'SIREN invalide.' });
+    if (!validateRna(rna)) {
+        return res.status(400).json({ message: 'RNA invalide. Format attendu: W suivi de 9 chiffres.' });
     }
 
     // Vérifier la présence du fichier
@@ -754,7 +761,7 @@ router.post('/backoffice/signup', uploadSignup.single('document'), async(req, re
     // Déplacer le fichier du répertoire temporaire vers le répertoire de l'association
     let documentJustificatifFilename = '';
     try {
-        const finalDir = path.join(__dirname, '../pdf/backoffice/documentassociation', siren);
+        const finalDir = path.join(__dirname, '../pdf/backoffice/documentassociation', rna);
         if (!fs.existsSync(finalDir)) {
             fs.mkdirSync(finalDir, { recursive: true });
             console.log(`[Signup Upload] Dossier créé: ${finalDir}`);
@@ -762,7 +769,7 @@ router.post('/backoffice/signup', uploadSignup.single('document'), async(req, re
 
         const timestamp = Date.now();
         const extension = path.extname(req.file.originalname);
-        const finalName = `${siren}_justificatif_${timestamp}${extension}`;
+        const finalName = `${rna}_justificatif_${timestamp}${extension}`;
         const finalPath = path.join(finalDir, finalName);
 
         fs.renameSync(req.file.path, finalPath);
@@ -807,7 +814,7 @@ router.post('/backoffice/signup', uploadSignup.single('document'), async(req, re
                     'email = ?', [email]
                 );
 
-                const confirmationUrl = `${urlOrigin}/app/backoffice-auth/verify-email/token/${verificationToken}`;
+                const confirmationUrl = `${urlOrigin}/app/verify-email/token/${verificationToken}`;
                 const templateId = 7755507; // ID du template Mailjet pour confirmation
                 const variables = { prenom: firstName || existingUser[0].firstName, lien_finalisation: confirmationUrl };
 
@@ -828,27 +835,28 @@ router.post('/backoffice/signup', uploadSignup.single('document'), async(req, re
             verification_token: verificationToken,
             verification_token_expiry: verificationTokenExpiry,
             role: 'association',
-            siren: siren
+            rna: rna
         }, 'remote');
 
-        // Récupérer la raison sociale via l'API INSEE
+        // Récupérer le nom de l'association via l'API RNA
         let raisonSociale = '';
         try {
-            raisonSociale = await inseeService.getLegalName(siren);
-            console.log(`[Signup Backoffice] Raison sociale récupérée pour SIREN ${siren}: ${raisonSociale}`);
-        } catch (inseeError) {
-            console.warn(`[Signup Backoffice] Impossible de récupérer la raison sociale pour SIREN ${siren}:`, inseeError.message);
-            // On continue le signup même si la récupération de la raison sociale échoue
+            const rnaInfo = await rnaService.getAssociationInfo(rna);
+            raisonSociale = rnaInfo.title;
+            console.log(`[Signup Backoffice] Nom d'association récupéré pour RNA ${rna}: ${raisonSociale}`);
+        } catch (rnaError) {
+            console.warn(`[Signup Backoffice] Impossible de récupérer le nom pour RNA ${rna}:`, rnaError.message);
+            // On continue le signup même si la récupération du nom échoue
         }
 
         // Vérifier si l'asso existe déjà avant d'insérer
-        const existingAsso = await db.select('SELECT id FROM Assos WHERE email = ? OR siren = ?', [email, siren], 'remote');
-        
+        const existingAsso = await db.select('SELECT id FROM Assos WHERE email = ? OR rna = ?', [email, rna], 'remote');
+
         if (existingAsso.length === 0) {
             // L'asso n'existe pas, on l'insère
             await db.insert('Assos', {
                 email,
-                siren,
+                rna,
                 nom: raisonSociale,
                 signataire_nom: lastName,
                 signataire_prenom: firstName,
@@ -888,7 +896,7 @@ router.post('/backoffice/signup', uploadSignup.single('document'), async(req, re
             // On ignore l'erreur pour ne pas bloquer le signup
         }
 
-        const confirmationUrl = `${urlOrigin}/app/backoffice-auth/verify-email/token/${verificationToken}`;
+        const confirmationUrl = `${urlOrigin}/app/verify-email/token/${verificationToken}`;
         const templateId = 7755507; // ID du template Mailjet pour confirmation
         const variables = { prenom: firstName, lien_finalisation: confirmationUrl };
 

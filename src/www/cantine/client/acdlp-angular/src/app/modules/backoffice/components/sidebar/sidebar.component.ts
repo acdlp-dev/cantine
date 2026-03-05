@@ -99,7 +99,7 @@ export class SidebarComponent implements OnInit, OnDestroy {
   const accountItems: TabItem[] = [];
   accountItems.push({ key: 'infos', label: 'Mes infos', icon: 'id-card', route: '/backoffice/infos' });
   accountItems.push({ key: 'parametres', label: 'Paramètres', icon: 'settings', route: '/backoffice/parametres' });
-  accountItems.push({ key: 'logout', label: 'Déconnexion', icon: 'log-out', route: '/backoffice-auth/sign-in' });
+  accountItems.push({ key: 'logout', label: 'Déconnexion', icon: 'log-out', route: '/signin' });
   this.sections.push({ key: 'account', label: 'Compte', items: accountItems });
       return;
     }
@@ -116,7 +116,7 @@ export class SidebarComponent implements OnInit, OnDestroy {
     const accountItems: TabItem[] = [];
     accountItems.push({ key: 'infos', label: 'Mes infos', icon: 'id-card', route: '/backoffice/infos' });
     accountItems.push({ key: 'parametres', label: 'Paramètres', icon: 'settings', route: '/backoffice/parametres' });
-    accountItems.push({ key: 'logout', label: 'Déconnexion', icon: 'log-out', route: '/backoffice-auth/sign-in' });
+    accountItems.push({ key: 'logout', label: 'Déconnexion', icon: 'log-out', route: '/signin' });
     this.sections.push({ key: 'account', label: 'Compte', items: accountItems });
 
     // Initialiser l'état d'ouverture pour chaque section (par défaut ouvert)

@@ -3,7 +3,7 @@ export interface Association {
   nom: string;
   name_asso?: string;
   email: string;
-  siren?: string;
+  rna?: string;
   uri: string;
   logo_url?: string;
   code_couleur?: string;

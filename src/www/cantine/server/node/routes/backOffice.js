@@ -5,8 +5,8 @@ const db = require('../services/bdd');
 const { sendTemplateEmail } = require('../services/mailService');
 const logger = require('../config/logger');
 
-// Service pour l'API INSEE
-const inseeService = require('../services/inseeService');
+// Service pour l'API RNA
+const rnaService = require('../services/rnaService');
 
 const router = express.Router();
 
@@ -14,15 +14,15 @@ const router = express.Router();
 // Utilisé côté cantine pour bloquer l'accès tant que les champs requis ne sont pas remplis
 router.get('/canteInfosCompleted', authMiddleware, async (req, res) => {
   try {
-    const siren = req.user.siren;
-    if (!siren) {
-      return res.status(400).json({ isComplete: false, missingFields: ['SIREN manquant'], message: "Identifiant d'association manquant" });
+    const rna = req.user.rna || req.user.siren; // Fallback temporaire pour anciens JWT
+    if (!rna) {
+      return res.status(400).json({ isComplete: false, missingFields: ['RNA manquant'], message: "Identifiant d'association manquant" });
     }
 
     // Récupérer les champs requis depuis la table Assos
     const rows = await db.select(
-      'SELECT nom, adresse, code_postal, ville, email, tel FROM Assos WHERE siren = ? LIMIT 1',
-      [siren],
+      'SELECT nom, adresse, code_postal, ville, email, tel FROM Assos WHERE rna = ? LIMIT 1',
+      [rna],
       'remote'
     );
 
@@ -60,51 +60,25 @@ router.get('/canteInfosCompleted', authMiddleware, async (req, res) => {
 });
 
 
-/**
- * Route pour récupérer les informations d'une entreprise par son SIREN
- * Utilise la fonction getLegalName existante dans inseeService
- */
-router.get('/api/sirene/:siren', authMiddleware, async (req, res) => {
-  const { siren } = req.params;
-
-  try {
-    // Validation basique du SIREN
-    if (!siren || siren.length !== 9 || !/^\d+$/.test(siren)) {
-      return res.status(400).json({ error: 'Le numéro SIREN doit contenir exactement 9 chiffres' });
-    }
-
-    // Utilisation de la fonction getLegalName existante
-    const companyName = await inseeService.getLegalName(siren);
-    res.json({
-      success: true,
-      denomination: companyName
-    });
-  } catch (error) {
-    console.error(`Erreur lors de la récupération du nom légal pour ${siren}:`, error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-// Route pour créer un don hors ligne
+// Route pour récupérer les infos de l'association
 router.get('/getInfosAsso', authMiddleware, async (req, res) => {
   try {
-    // const { siren } = req.body;
-    const siren = req.user.siren; // Récupération du SIREN depuis la requête ou le token JWT
-    if (!siren) {
-      return res.status(400).json({ message: 'SIREN manquant.' });
+    const rna = req.user.rna || req.user.siren; // Fallback temporaire pour anciens JWT
+    if (!rna) {
+      return res.status(400).json({ message: 'RNA manquant.' });
     }
 
     // Requête SQL pour récupérer les informations de l'association
     const sql = `
-      SELECT 
+      SELECT
         *
-      FROM 
+      FROM
         Assos
-      WHERE 
-        siren = ?
+      WHERE
+        rna = ?
     `;
 
-    const results = await db.select(sql, [siren], 'remote');
+    const results = await db.select(sql, [rna], 'remote');
 
     if (results.length === 0) {
       return res.status(404).json({ message: 'Association non trouvée.' });
@@ -127,9 +101,9 @@ router.post('/updateInfosAsso', authMiddleware, async (req, res) => {
     const formData = req.body || {};
 
     // Identify association via JWT, do not rely on body for security
-    const siren = req.user?.siren || formData.siren;
-    if (!siren) {
-      return res.status(400).json({ message: 'SIREN manquant.' });
+    const rna = req.user?.rna || req.user?.siren || formData.rna; // Fallback temporaire pour anciens JWT
+    if (!rna) {
+      return res.status(400).json({ message: 'RNA manquant.' });
     }
 
     // Determine update source: 'infos' (identity/contact) vs 'configuration' (full settings)
@@ -184,8 +158,8 @@ router.post('/updateInfosAsso', authMiddleware, async (req, res) => {
     await db.update(
       'Assos',
       sanitizedPayload,
-      'siren = ?',
-      [siren],
+      'rna = ?',
+      [rna],
       'remote'
     );
 

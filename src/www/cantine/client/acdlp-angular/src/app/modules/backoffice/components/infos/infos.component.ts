@@ -37,7 +37,7 @@ export class InfosComponent implements OnInit, AfterViewInit {
     initForm(): void {
         // Infos: uniquement identité + coordonnées affichées dans le template
         this.infoForm = this.fb.group({
-            siren: ['', Validators.required],
+            rna: ['', Validators.required],
             association_name: ['', Validators.required],
             nickname: [''],
             type: ['', Validators.required],
@@ -72,7 +72,7 @@ export class InfosComponent implements OnInit, AfterViewInit {
                 const hasCheque = data.adresseCheque && data.adresseCheque.trim() !== '';
 
                 const formattedResponse = {
-                    siren: data.siren,
+                    rna: data.rna,
                     association_name: data.nom,
                     nickname: data.surnom,
                     type: data.type,
@@ -102,6 +102,11 @@ export class InfosComponent implements OnInit, AfterViewInit {
     saveInfosAsso(): void {
         if (!this.infoForm.valid) {
             this.submitted = true;
+            this.infoForm.markAllAsTouched();
+            const firstInvalid = document.querySelector('.ng-invalid[formControlName]');
+            if (firstInvalid) {
+                firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
             return;
         }
 
@@ -112,7 +117,7 @@ export class InfosComponent implements OnInit, AfterViewInit {
         const raw = this.infoForm.value;
         const formData: any = {
             source: 'infos',
-            siren: raw.siren,
+            rna: raw.rna,
             association_name: raw.association_name,
             nickname: raw.nickname,
             type: raw.type,
