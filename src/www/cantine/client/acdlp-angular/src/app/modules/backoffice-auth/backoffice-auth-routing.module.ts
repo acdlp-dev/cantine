@@ -11,10 +11,17 @@ const routes: Routes = [
     children: [
       { path: '', redirectTo: 'sign-in', pathMatch: 'full' },
       { path: 'sign-in', component: BackofficeSignInComponent, data: { returnUrl: window.location.pathname } },
-      { path: 'sign-up', component: BackofficeSignUpComponent },
       {
-        path: 'verify-email/token/:token',
-        loadComponent: () => import('./pages/verify-email/verify-email.component').then(c => c.VerifyEmailComponent)
+        path: 'sign-up',
+        loadComponent: () => import('./pages/email-step/email-step.component').then(m => m.EmailStepComponent),
+      },
+      {
+        path: 'otp-verification',
+        loadComponent: () => import('./pages/otp-verification/otp-verification.component').then(m => m.OtpVerificationComponent),
+      },
+      {
+        path: 'complete-signup',
+        component: BackofficeSignUpComponent,
       },
     ],
   },

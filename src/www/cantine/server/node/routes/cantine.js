@@ -384,7 +384,7 @@ router.put('/annulerCommande/:id', authMiddleware, async (req, res) => {
             // Récupérer l'amende éventuelle (compensationCantine)
             let compensationCantine = '0';
             try {
-                const amRows = await db.select('SELECT ob.amende FROM users u INNER JOIN onboarding_backoffice ob ON u.id = ob.user_id WHERE u.email = ? LIMIT 1', [email], 'remote');
+                const amRows = await db.select('SELECT amende FROM asso_users WHERE email = ? LIMIT 1', [email], 'remote');
                 if (amRows && amRows[0] && amRows[0].amende !== null && amRows[0].amende !== undefined) {
                     compensationCantine = String(amRows[0].amende);
                 }
@@ -488,7 +488,7 @@ router.put('/modifierCommande/:id', authMiddleware, async (req, res) => {
             // Récupérer amende (compensationCantine)
             let compensationCantine = '0';
             try {
-                const amRows = await db.select('SELECT ob.amende FROM users u INNER JOIN onboarding_backoffice ob ON u.id = ob.user_id WHERE u.email = ? LIMIT 1', [email], 'remote');
+                const amRows = await db.select('SELECT amende FROM asso_users WHERE email = ? LIMIT 1', [email], 'remote');
                 if (amRows && amRows[0] && amRows[0].amende !== null && amRows[0].amende !== undefined) {
                     compensationCantine = String(amRows[0].amende);
                 }
@@ -546,7 +546,7 @@ router.post('/rappelCantineJMoinsUn', authMiddleware, async (req, res) => {
                 // Amende éventuelle
                 let compensationCantine = '0';
                 try {
-                    const amRows = await db.select('SELECT ob.amende FROM users u INNER JOIN onboarding_backoffice ob ON u.id = ob.user_id WHERE u.email = ? LIMIT 1', [cmd.email], 'remote');
+                    const amRows = await db.select('SELECT amende FROM asso_users WHERE email = ? LIMIT 1', [cmd.email], 'remote');
                     if (amRows && amRows[0] && amRows[0].amende !== null && amRows[0].amende !== undefined) {
                         compensationCantine = String(amRows[0].amende);
                     }
@@ -559,7 +559,7 @@ router.post('/rappelCantineJMoinsUn', authMiddleware, async (req, res) => {
                     numeroCommande: String(cmd.id),
                     compensationCantine,
                 };
-                const templateId = 7726731;
+                const templateId = 7726738;
                 const subject = `Rappel cantine pour demain #${cmd.id}`;
                 await sendTemplateEmail(cmd.email, templateId, variables, subject);
                 sent++;

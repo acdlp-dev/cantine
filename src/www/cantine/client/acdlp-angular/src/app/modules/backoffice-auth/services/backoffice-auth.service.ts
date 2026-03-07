@@ -10,10 +10,8 @@ import { environment } from 'src/environments/environment';
 })
 export class BackofficeAuthService {
 
-  // L'URL de base de votre API (par exemple : http://localhost:4242/api)
   private apiUrl = environment.apiUrl;
 
-  // Flag qu'on peut utiliser pour stocker temporairement l'état «auth»
   private _isLoggedIn = false;
 
   constructor(
@@ -21,22 +19,15 @@ export class BackofficeAuthService {
     private router: Router,
   ) { }
 
-  /**
-   * SIGN IN
-   * Envoie l'email et le password au backend.
-   * Celui-ci renvoie un cookie HttpOnly (auth_token).
-   */
   signIn(email: string, password: string): Observable<any> {
     const body = { email, password };
     const headers = new HttpHeaders({ 'Content-Type': 'application/json' });
 
-    // withCredentials: true => inclure les cookies cross-site
     return this.http.post<any>(`${this.apiUrl}/backoffice/signin`, body, {
       headers,
       withCredentials: true
     }).pipe(
       tap(() => {
-        // Si on arrive ici, c'est que le backend n'a pas renvoyé d'erreur
         this._isLoggedIn = true;
       }),
       catchError((error) => {
@@ -46,38 +37,62 @@ export class BackofficeAuthService {
     );
   }
 
-  /**
-   * SIGN UP
-   * Envoie les champs + le document en multipart/form-data
-   */
-  signUp(email: string, password: string, firstName: string, lastName: string, rna: string, documentFile: File)
-    : Observable<{ message: string }> {
-    console.log("backoffice signup " + email + " " + rna);
+  requestOTP(email: string, confirmEmail: string): Observable<any> {
+    const body = { email, confirmEmail };
+    const headers = new HttpHeaders({ 'Content-Type': 'application/json' });
+
+    return this.http.post<any>(
+      `${this.apiUrl}/backoffice/request-otp`,
+      body,
+      { headers, withCredentials: true }
+    ).pipe(
+      catchError((error) => {
+        console.error('Error during OTP request:', error);
+        return throwError(() => error);
+      })
+    );
+  }
+
+  verifyOTP(email: string, code: string): Observable<{ message: string; token: string; email: string }> {
+    const body = { email, code };
+    const headers = new HttpHeaders({ 'Content-Type': 'application/json' });
+
+    return this.http.post<{ message: string; token: string; email: string }>(
+      `${this.apiUrl}/backoffice/verify-otp`,
+      body,
+      { headers, withCredentials: true }
+    ).pipe(
+      catchError((error) => {
+        console.error('Error during OTP verification:', error);
+        return throwError(() => error);
+      })
+    );
+  }
+
+  completeSignup(token: string, email: string, password: string, confirmPassword: string,
+    firstName: string, lastName: string, rna: string, documentFile: File): Observable<{ message: string }> {
     const formData = new FormData();
+    formData.append('token', token);
     formData.append('email', email);
     formData.append('password', password);
+    formData.append('confirmPassword', confirmPassword);
     formData.append('firstName', firstName);
     formData.append('lastName', lastName);
     formData.append('rna', rna);
     formData.append('document', documentFile);
 
     return this.http.post<{ message: string }>(
-      `${this.apiUrl}/backoffice/signup`,
+      `${this.apiUrl}/backoffice/complete-signup`,
       formData,
       { withCredentials: true }
     ).pipe(
       catchError((error) => {
-        console.error('Error during backoffice sign up:', error);
+        console.error('Error during complete signup:', error);
         return throwError(() => error);
       })
     );
   }
 
-  // Le document est désormais envoyé au moment du signup (pas d'endpoint séparé)
-
-  /**
-   * DEMANDE DE RÉINITIALISATION DE MOT DE PASSE
-   */
   requestPasswordReset(email: string): Observable<{ message: string }> {
     const body = { email };
     const headers = new HttpHeaders({ 'Content-Type': 'application/json' });
@@ -94,9 +109,6 @@ export class BackofficeAuthService {
     );
   }
 
-  /**
-   * RÉINITIALISER LE MOT DE PASSE AVEC UN TOKEN
-   */
   resetPasswordWithToken(token: string, newPassword: string, confirmPassword: string)
     : Observable<{ message: string }> {
     const body = { token, newPassword, confirmPassword };
@@ -114,10 +126,6 @@ export class BackofficeAuthService {
     );
   }
 
-  /**
-   * LOGOUT
-   * Appelle l'endpoint /logout côté serveur, qui supprime le cookie.
-   */
   logout(): void {
     this._isLoggedIn = false;
 
@@ -133,11 +141,6 @@ export class BackofficeAuthService {
       });
   }
 
-  /**
-   * Vérifie si l'utilisateur est authentifié
-   * -> Appel à une route protégée côté backend (par ex. /protected-route).
-   * -> Si 200 => on est authentifié, sinon 401 => pas authentifié.
-   */
   isAuthenticated(): Observable<boolean> {
     return this.http.get(`${this.apiUrl}/backoffice/protected-route`, { withCredentials: true })
       .pipe(
@@ -152,33 +155,14 @@ export class BackofficeAuthService {
       );
   }
 
-  /**
-   * Une fonction de confort pour accéder à l’état local sans ping le serveur
-   */
   isLoggedInLocally(): boolean {
     return this._isLoggedIn;
-  }
-
-  verifyEmail(token: string): Observable<{ message: string; nextStep: string }> {
-    return this.http.get<{ message: string; nextStep: string }>(
-      `${this.apiUrl}/verify-email/${token}`,
-      { withCredentials: true }
-    ).pipe(
-      catchError((error) => {
-        console.error('Error during email verification:', error);
-        return throwError(() => error);
-      })
-    );
   }
 
   getAssoData(): Observable<any> {
     return this.http.get<any>(`${this.apiUrl}/backoffice/me`, { withCredentials: true });
   }
 
-  /**
-   * Récupère le nom d'une association via son numéro RNA
-   * Appelle l'API OpenDataSoft pour obtenir la dénomination
-   */
   getRaisonSocialeByRna(rna: string): Observable<{ success: boolean; denomination?: string; position?: string; error?: string }> {
     return this.http.get<{ success: boolean; denomination?: string; position?: string; error?: string }>(
       `${this.apiUrl}/rna/${rna}`,

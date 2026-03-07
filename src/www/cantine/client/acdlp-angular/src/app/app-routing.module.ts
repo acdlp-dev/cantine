@@ -13,14 +13,21 @@ const routes: Routes = [
     path: 'signup',
     loadComponent: () => import('./modules/backoffice-auth/backoffice-auth.component').then(c => c.BackofficeAuthComponent),
     children: [
-      { path: '', loadComponent: () => import('./modules/backoffice-auth/pages/sign-up/backoffice-sign-up.component').then(c => c.BackofficeSignUpComponent) }
+      { path: '', loadComponent: () => import('./modules/backoffice-auth/pages/email-step/email-step.component').then(c => c.EmailStepComponent) }
     ]
   },
   {
-    path: 'verify-email/token/:token',
+    path: 'otp-verification',
     loadComponent: () => import('./modules/backoffice-auth/backoffice-auth.component').then(c => c.BackofficeAuthComponent),
     children: [
-      { path: '', loadComponent: () => import('./modules/backoffice-auth/pages/verify-email/verify-email.component').then(c => c.VerifyEmailComponent) }
+      { path: '', loadComponent: () => import('./modules/backoffice-auth/pages/otp-verification/otp-verification.component').then(c => c.OtpVerificationComponent) }
+    ]
+  },
+  {
+    path: 'complete-signup',
+    loadComponent: () => import('./modules/backoffice-auth/backoffice-auth.component').then(c => c.BackofficeAuthComponent),
+    children: [
+      { path: '', loadComponent: () => import('./modules/backoffice-auth/pages/sign-up/backoffice-sign-up.component').then(c => c.BackofficeSignUpComponent) }
     ]
   },
   {

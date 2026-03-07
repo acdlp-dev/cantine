@@ -1,10 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
-import { CommonModule, NgClass, NgIf } from '@angular/common';
-import { AngularSvgIconModule } from 'angular-svg-icon';
-import { ButtonComponent } from 'src/app/shared/components/button/button.component';
-import { ConfirmationComponent } from 'src/app/shared/components/confirmation/confirmation.component';
+import { CommonModule, NgClass, NgIf, NgFor } from '@angular/common';
 import { BackofficeAuthService } from '../../services/backoffice-auth.service';
 
 @Component({
@@ -17,11 +14,9 @@ import { BackofficeAuthService } from '../../services/backoffice-auth.service';
     FormsModule,
     ReactiveFormsModule,
     RouterLink,
-    AngularSvgIconModule,
     NgClass,
     NgIf,
-    ButtonComponent,
-    ConfirmationComponent,
+    NgFor,
   ],
 })
 
@@ -29,13 +24,18 @@ export class BackofficeSignUpComponent implements OnInit {
   submitted = false;
   form!: FormGroup;
   passwordTextType = false;
-  isMailSent = false;
+  isCompleted = false;
   passwordStrength = 0;
+  currentYear: number = new Date().getFullYear();
   raisonSociale = '';
   isLoadingRaisonSociale = false;
   rnaError = '';
-  step = 1; // Étape du formulaire (1 ou 2)
-  
+  step = 1;
+
+  // Token et email reçus depuis l'étape OTP
+  completionToken = '';
+  email = '';
+
   // Variables pour l'upload de document
   selectedFile: File | null = null;
   documentError = '';
@@ -45,20 +45,26 @@ export class BackofficeSignUpComponent implements OnInit {
     private readonly _formBuilder: FormBuilder,
     private readonly _router: Router,
     private backofficeAuthService: BackofficeAuthService
-  ) { }
+  ) {}
 
   ngOnInit(): void {
+    // Récupérer token et email depuis history.state (persistant après lazy-loading)
+    const state = history.state;
+    if (state?.token) {
+      this.completionToken = state.token;
+    }
+    if (state?.email) {
+      this.email = state.email;
+    }
+
+    if (!this.completionToken || !this.email) {
+      this._router.navigate(['/signup']);
+      return;
+    }
+
     this.form = this._formBuilder.group(
       {
-        email: [
-          '',
-          [
-            Validators.required,
-            Validators.pattern(
-              /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/
-            ),
-          ],
-        ], password: [
+        password: [
           '',
           [
             Validators.required,
@@ -70,7 +76,7 @@ export class BackofficeSignUpComponent implements OnInit {
         acceptTerm: [false, Validators.requiredTrue],
         firstName: ['', Validators.required],
         lastName: ['', Validators.required],
-        rna: ['', [Validators.required, Validators.pattern(/^W\d{9}$/)]], // RNA must be W + 9 digits
+        rna: ['', [Validators.required, Validators.pattern(/^W\d{9}$/)]],
       },
       {
         validator: this.passwordMatchValidator,
@@ -84,12 +90,10 @@ export class BackofficeSignUpComponent implements OnInit {
 
   updatePasswordStrength(password: string): void {
     let strength = 0;
-
     if (password.length >= 8) strength++;
     if (/[A-Za-z]/.test(password)) strength++;
     if (/\d/.test(password)) strength++;
     if (/[@$!%*?&_-]/.test(password)) strength++;
-
     this.passwordStrength = strength;
   }
 
@@ -103,12 +107,10 @@ export class BackofficeSignUpComponent implements OnInit {
     this.passwordTextType = !this.passwordTextType;
   }
 
-  // Méthode de validation pour le RNA
   validateRna(): void {
     const rnaControl = this.form.get('rna');
     if (rnaControl) {
       const value = rnaControl.value;
-
       if (!value || !/^W\d{9}$/.test(value)) {
         rnaControl.setErrors({
           invalidRna: true,
@@ -118,45 +120,42 @@ export class BackofficeSignUpComponent implements OnInit {
     }
   }
 
-  // Méthode pour formater la saisie du RNA et appeler l'API
   formatRnaInput(event: Event): void {
     const input = event.target as HTMLInputElement;
     let value = input.value.toUpperCase();
 
-    // Autoriser W en premier caractère, puis uniquement des chiffres
-    if (value.length > 0) {
-      const first = value[0] === 'W' ? 'W' : '';
-      const rest = (value[0] === 'W' ? value.slice(1) : value).replace(/[^0-9]/g, '');
-      value = first + rest;
+    let filtered = '';
+    for (let i = 0; i < value.length && filtered.length < 10; i++) {
+      if (i === 0 && value[i] === 'W') {
+        filtered += 'W';
+      } else if (filtered.length > 0 && filtered[0] === 'W' && /\d/.test(value[i])) {
+        filtered += value[i];
+      } else if (i === 0 && /\d/.test(value[i])) {
+        filtered = 'W' + value[i];
+      }
     }
 
-    // Limiter à 10 caractères (W + 9 chiffres)
-    value = value.substring(0, 10);
-
-    if (value !== input.value) {
-      input.value = value;
-      this.form.get('rna')?.setValue(value);
+    if (filtered !== input.value) {
+      input.value = filtered;
+      this.form.get('rna')?.setValue(filtered);
     }
 
-    // Vérifier le format à chaque saisie
     const rnaControl = this.form.get('rna');
-    if (rnaControl && !/^W\d{9}$/.test(value) && value.length > 0) {
+    if (rnaControl && filtered.length !== 10 && filtered.length > 0) {
       rnaControl.setErrors({
         pattern: true,
-        message: `Le RNA doit commencer par W suivi de 9 chiffres (actuellement: ${value.length} caractères)`
+        message: `Le RNA doit contenir W + 9 chiffres (actuellement: ${filtered.length} caractères)`
       });
       this.raisonSociale = '';
       this.rnaError = '';
     }
 
-    // Si le RNA est au bon format, appeler l'API
-    if (/^W\d{9}$/.test(value)) {
-      this.fetchRaisonSociale(value);
+    if (filtered.length === 10 && /^W\d{9}$/.test(filtered)) {
+      this.fetchAssociationName(filtered);
     }
   }
 
-  // Appeler l'API pour récupérer le nom de l'association
-  fetchRaisonSociale(rna: string): void {
+  fetchAssociationName(rna: string): void {
     this.isLoadingRaisonSociale = true;
     this.rnaError = '';
     this.raisonSociale = '';
@@ -173,40 +172,33 @@ export class BackofficeSignUpComponent implements OnInit {
       },
       error: (err) => {
         this.isLoadingRaisonSociale = false;
-        this.rnaError = 'RNA introuvable';
-        console.error('Erreur lors de la récupération du nom de l\'association:', err);
+        this.rnaError = 'RNA introuvable dans le répertoire';
+        console.error('Erreur lors de la récupération du nom:', err);
       }
     });
   }
 
-  // Gestion du fichier sélectionné
   onFileSelected(event: Event): void {
     const input = event.target as HTMLInputElement;
     if (input.files && input.files.length > 0) {
       const file = input.files[0];
-      
-      // Validation du type de fichier
       const allowedTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
       if (!allowedTypes.includes(file.type)) {
         this.documentError = 'Seuls les fichiers PDF, JPG et PNG sont acceptés';
         this.selectedFile = null;
         return;
       }
-
-      // Validation de la taille (10 MB max)
       const maxSize = 10 * 1024 * 1024;
       if (file.size > maxSize) {
         this.documentError = 'Le fichier ne doit pas dépasser 10 MB';
         this.selectedFile = null;
         return;
       }
-
       this.selectedFile = file;
       this.documentError = '';
     }
   }
 
-  // Drag & Drop handlers
   onDragOver(event: DragEvent): void {
     event.preventDefault();
     event.stopPropagation();
@@ -226,21 +218,18 @@ export class BackofficeSignUpComponent implements OnInit {
 
     if (event.dataTransfer && event.dataTransfer.files && event.dataTransfer.files.length > 0) {
       const file = event.dataTransfer.files[0];
-
       const allowedTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
       if (!allowedTypes.includes(file.type)) {
         this.documentError = 'Seuls les fichiers PDF, JPG et PNG sont acceptés';
         this.selectedFile = null;
         return;
       }
-
       const maxSize = 10 * 1024 * 1024;
       if (file.size > maxSize) {
         this.documentError = 'Le fichier ne doit pas dépasser 10 MB';
         this.selectedFile = null;
         return;
       }
-
       this.selectedFile = file;
       this.documentError = '';
     }
@@ -251,12 +240,10 @@ export class BackofficeSignUpComponent implements OnInit {
     this.documentError = '';
   }
 
-  // Navigation entre les étapes
   nextStep(): void {
-    // Valider les champs de l'étape 1 avant de passer à l'étape 2
-    const step1Controls = ['firstName', 'lastName', 'email', 'password', 'confirmPassword'];
+    const step1Controls = ['firstName', 'lastName', 'password', 'confirmPassword'];
     let step1Valid = true;
-    
+
     step1Controls.forEach(controlName => {
       const control = this.form.get(controlName);
       if (control) {
@@ -276,50 +263,36 @@ export class BackofficeSignUpComponent implements OnInit {
     this.step = 1;
   }
 
-  // L'upload se fera lors de la soumission du formulaire
-
-  debugClick(): void {
-    console.log('>>> BUTTON CLICK EVENT fired');
-  }
-
   onSubmit(): void {
-    console.log('>>> onSubmit() CALLED');
-    console.log('>>> form valid:', this.form.valid);
-    console.log('>>> selectedFile:', this.selectedFile);
     this.submitted = true;
 
-    // Valider le RNA explicitement avant la soumission
     this.validateRna();
 
-    // Vérifier que le document est bien sélectionné
     if (!this.selectedFile) {
       this.documentError = 'Veuillez sélectionner votre document justificatif avant de continuer';
       return;
     }
 
     if (this.form.invalid) {
-      console.log("Invalid Backoffice Signup Submission");
-
       Object.keys(this.form.controls).forEach((key) => {
         const control = this.form.get(key);
         if (control?.invalid) {
           console.error(`Field '${key}' is invalid. Errors:`, control.errors);
         }
       });
-
-      console.error('Form-level errors:', this.form.errors);
-      console.log('Form values:', this.form.value);
       return;
     }
 
-    const { email, password, firstName, lastName, rna } = this.form.value;
+    const { password, firstName, lastName, rna } = this.form.value;
 
-    this.backofficeAuthService.signUp(email, password, firstName, lastName, rna, this.selectedFile).subscribe({
+    this.backofficeAuthService.completeSignup(
+      this.completionToken, this.email, password, password, firstName, lastName, rna, this.selectedFile
+    ).subscribe({
       next: () => {
-        this.isMailSent = true;
+        this.isCompleted = true;
       },
       error: (err) => {
-        console.error('Backoffice Sign-up error:', err);
+        console.error('Complete signup error:', err);
       },
     });
   }

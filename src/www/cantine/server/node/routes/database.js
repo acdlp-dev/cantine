@@ -16,7 +16,7 @@ router.get("/check", async (req, res) => {
 router.post("/add-user", async (req, res) => {
     const { username, email } = req.body;
     try {
-        await insert("users", ["username", "email"], [username, email], 'remote');
+        await insert("asso_users", ["username", "email"], [username, email], 'remote');
         res.json({ message: `Utilisateur ${username} ajouté avec succès` });
     } catch (err) {
         res.status(500).json({ error: "Erreur d'insertion" });

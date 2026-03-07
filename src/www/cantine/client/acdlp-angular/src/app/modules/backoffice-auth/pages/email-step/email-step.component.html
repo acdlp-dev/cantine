@@ -4,28 +4,28 @@
     <div class="text-center mb-8">
       <img
         src="assets/images/au-coeur-de-la-precarite.png"
-        alt="Au Coeur De La Precarite"
+        alt="Au Coeur De La Précarité"
         class="mx-auto h-24 w-auto mb-6 drop-shadow-lg"
       />
       <h2 class="text-3xl font-bold text-gray-900">
-        L'espace <span class="text-red-600">Inter Asso</span>
+        Créer un <span class="text-red-600">compte</span>
       </h2>
       <p class="mt-2 text-sm text-gray-600">
-        Connectez-vous avec vos identifiants
+        Pour commencer, veuillez renseigner votre adresse email
       </p>
     </div>
 
     <!-- Card du formulaire -->
     <div class="bg-white rounded-2xl shadow-xl border border-red-100 p-8">
-      <form [formGroup]="loginForm" (ngSubmit)="onSubmit()" (keydown.enter)="onKeyDown($event)" class="space-y-5">
+      <form [formGroup]="emailForm" (ngSubmit)="onSubmit()" class="space-y-5">
 
-        @if (errorMessage) {
+        @if (submitError) {
           <div class="bg-red-50 border border-red-200 rounded-lg p-4">
             <div class="flex items-center">
-              <svg class="w-5 h-5 text-red-500 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg class="w-5 h-5 text-red-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
               </svg>
-              <span class="text-sm text-red-700">{{ errorMessage }}</span>
+              <span class="text-sm text-red-700">{{ submitErrorMessage }}</span>
             </div>
           </div>
         }
@@ -43,80 +43,65 @@
               type="email"
               id="email"
               formControlName="email"
-              [class.border-red-500]="submitted && f['email'].errors"
+              [class.border-red-500]="isFieldInvalid('email')"
               class="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-colors"
               placeholder="votre@email.com"
             />
           </div>
-          @if (submitted && f['email'].errors) {
-            <p class="mt-1 text-sm text-red-600">
-              @if (f['email'].errors['required']) { Champs obligatoire }
-              @else if (f['email'].errors['email']) { L'email doit avoir un format valide }
-            </p>
+          @if (isFieldInvalid('email')) {
+            <p class="mt-1 text-sm text-red-600">{{ getFieldError('email') }}</p>
           }
         </div>
 
-        <!-- Champ Mot de passe -->
+        <!-- Confirmation Email -->
         <div>
-          <label for="password" class="block text-sm font-medium text-gray-700 mb-1">Mot de passe</label>
+          <label for="confirmEmail" class="block text-sm font-medium text-gray-700 mb-1">Confirmer l'email</label>
           <div class="relative">
             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207"/>
               </svg>
             </div>
             <input
-              [type]="passwordTextType ? 'text' : 'password'"
-              id="password"
-              formControlName="password"
-              [class.border-red-500]="submitted && f['password'].errors"
-              class="block w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-colors"
-              placeholder="Votre mot de passe"
+              type="email"
+              id="confirmEmail"
+              formControlName="confirmEmail"
+              [class.border-red-500]="isFieldInvalid('confirmEmail') || (emailForm.errors?.['emailMismatch'] && emailForm.get('confirmEmail')?.touched)"
+              class="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-colors"
+              placeholder="confirmez votre email"
             />
-            <button type="button" (click)="togglePasswordTextType()" class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 transition-colors">
-              @if (!passwordTextType) {
-                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21"/>
-                </svg>
-              } @else {
-                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-                </svg>
-              }
-            </button>
           </div>
-          @if (submitted && f['password'].errors) {
-            <p class="mt-1 text-sm text-red-600">Champs obligatoire</p>
+          @if (isFieldInvalid('confirmEmail')) {
+            <p class="mt-1 text-sm text-red-600">{{ getFieldError('confirmEmail') }}</p>
+          }
+          @if (emailForm.errors?.['emailMismatch'] && emailForm.get('confirmEmail')?.touched) {
+            <p class="mt-1 text-sm text-red-600">Les adresses email ne correspondent pas</p>
           }
         </div>
 
-        <!-- Mot de passe oublie -->
-        <div class="flex justify-end">
-          <a routerLink="/auth/forgot-password" class="text-sm font-medium text-red-600 hover:text-red-500 transition-colors">
-            Mot de passe oublie ?
-          </a>
-        </div>
-
-        <!-- Submit Button -->
+        <!-- Submit button -->
         <button
           type="submit"
-          [disabled]="isLoading"
+          [disabled]="submitting"
           class="w-full flex justify-center items-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-base font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          @if (isLoading) {
+          @if (submitting) {
             <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
               <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
               <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
             </svg>
-            Connexion en cours...
+            Envoi en cours...
           } @else {
-            Se connecter
+            Continuer
           }
         </button>
+
+        <p class="text-sm text-gray-500 text-center">
+          Vous recevrez un code de vérification par email
+        </p>
       </form>
 
-      <!-- Separateur -->
+      <!-- Séparateur -->
       <div class="relative my-6">
         <div class="absolute inset-0 flex items-center">
           <div class="w-full border-t border-gray-200"></div>
@@ -126,12 +111,12 @@
         </div>
       </div>
 
-      <!-- Lien inscription -->
+      <!-- Lien de connexion -->
       <div class="text-center">
         <p class="text-sm text-gray-600">
-          Pas encore de compte ?
-          <a routerLink="/signup" class="font-medium text-red-600 hover:text-red-500 transition-colors">
-            Creer un compte
+          Déjà un compte ?
+          <a routerLink="/signin" class="font-medium text-red-600 hover:text-red-500 transition-colors">
+            Connectez-vous
           </a>
         </p>
       </div>
@@ -139,7 +124,7 @@
 
     <!-- Footer -->
     <p class="mt-8 text-center text-xs text-gray-500">
-      Au Coeur De La Precarite &copy; {{ currentYear }} - Tous droits reserves
+      Au Coeur De La Précarité &copy; {{ currentYear }} - Tous droits réservés
     </p>
   </div>
 </div>
