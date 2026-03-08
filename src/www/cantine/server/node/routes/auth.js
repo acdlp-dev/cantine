@@ -128,7 +128,7 @@ router.post('/backoffice/request-otp', async(req, res) => {
                     const resetToken = generateResetToken();
                     const tokenExpiry = Date.now() + 3600000;
                     await db.update('asso_users', { reset_token: resetToken, token_expiry: tokenExpiry }, 'email = ?', [email], 'remote');
-                    const resetUrl = `${urlOrigin}/app/auth/new-password/token/${resetToken}`;
+                    const resetUrl = `${urlOrigin}/app/new-password/token/${resetToken}`;
                     await sendTemplateEmail(email, 7796174, {
                         prenom: user.firstName || 'Utilisateur',
                         lien_reinit_password: resetUrl,
@@ -346,6 +346,19 @@ router.post('/backoffice/complete-signup', uploadSignup.single('document'), asyn
             }, 'id = ?', [userData.id], 'remote');
         }
 
+        // Envoyer l'email de bienvenue
+        try {
+            await sendTemplateEmail(
+                email,
+                7726868,
+                { logo_url: '', lien_signin: 'https://asso.acdlp.com/app/signin' },
+                'Cantine ACDLP : Bienvenue !'
+            );
+            console.log(`[Complete Signup Cantine] Email de bienvenue envoyé à: ${email}`);
+        } catch (emailErr) {
+            console.error(`[Complete Signup Cantine] Erreur envoi email bienvenue:`, emailErr);
+        }
+
         return res.status(201).json({
             message: 'Inscription complétée avec succès !',
             email: userData.email
@@ -397,7 +410,7 @@ router.post('/request-password-reset', async(req, res) => {
             token_expiry: tokenExpiry
         }, 'email = ?', [email], 'remote');
 
-        const resetUrl = `${urlOrigin}/app/auth/new-password/token/${resetToken}`;
+        const resetUrl = `${urlOrigin}/app/new-password/token/${resetToken}`;
 
         await sendTemplateEmail(email, 7755509, {
             prenom: user.firstName,
