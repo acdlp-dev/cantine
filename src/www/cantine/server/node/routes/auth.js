@@ -131,7 +131,8 @@ router.post('/backoffice/request-otp', async(req, res) => {
                     const resetUrl = `${urlOrigin}/app/auth/new-password/token/${resetToken}`;
                     await sendTemplateEmail(email, 7796174, {
                         prenom: user.firstName || 'Utilisateur',
-                        lien_reinit_password: resetUrl
+                        lien_reinit_password: resetUrl,
+                        lien_reinit: 'https://asso.acdlp.com/app/forgot-password'
                     }, 'Cantine ACDLP : Votre compte existe déjà');
                 } catch (emailErr) {
                     console.error('[CANTINE OTP] Erreur envoi email compte existant:', emailErr);

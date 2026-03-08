@@ -31,6 +31,14 @@ const routes: Routes = [
     ]
   },
   {
+    path: 'forgot-password',
+    loadComponent: () => import('./modules/backoffice-auth/pages/forgot-password/forgot-password.component').then(c => c.ForgotPasswordComponent)
+  },
+  {
+    path: 'new-password/token/:token',
+    loadComponent: () => import('./modules/backoffice-auth/pages/new-password/new-password.component').then(c => c.NewPasswordComponent)
+  },
+  {
     path: '',
     loadChildren: () => import('./modules/layout/layout.module').then((m) => m.LayoutModule),
   },
