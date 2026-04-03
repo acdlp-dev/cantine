@@ -385,7 +385,9 @@ router.post('/request-password-reset', async(req, res) => {
 
         if (results.length === 0) {
             // Protection énumération : envoyer un email générique
-            await sendTemplateEmail(email, 7726847, {}, 'Cantine ACDLP : Compte inconnu');
+            await sendTemplateEmail(email, 7726847, {
+                lien_creation: "https://asso.acdlp.com/app/signup"
+            }, 'Cantine ACDLP : Compte inconnu');
             return res.status(200).json({
                 message: 'Si cette adresse email est valide, un email a été envoyé.'
             });
