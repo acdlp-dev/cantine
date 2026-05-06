@@ -41,7 +41,7 @@ const validatePassword = (password) => {
     return { valid: true };
 };
 const generateResetToken = () => crypto.randomBytes(32).toString('hex');
-const validateRna = (rna) => /^W\d{9}$/.test(rna);
+const validateRna = (rna) => /^W[0-9A-Z]{9}$/.test(rna);
 
 function authMiddleware(req, res, next) {
     try {
@@ -59,7 +59,7 @@ function authMiddleware(req, res, next) {
 }
 
 router.get('/backoffice/me', authMiddleware, (req, res) => {
-    const { id, email, firstName, lastName, role, rna, nameAsso, uri } = req.user;
+    const { email, firstName, lastName, role, rna, nameAsso } = req.user;
     console.log("Appel à l'api /me. Informations récupérées du JWT pour : " + email);
     return res.status(200).json({
         email,
@@ -67,8 +67,7 @@ router.get('/backoffice/me', authMiddleware, (req, res) => {
         nom: lastName,
         role: role,
         rna: rna || null,
-        nameAsso: nameAsso || null,
-        uri: uri || null
+        nameAsso: nameAsso || null
     });
 });
 
@@ -259,7 +258,7 @@ router.post('/backoffice/complete-signup', uploadSignup.single('document'), asyn
         return res.status(400).json({ message: passwordValidation.message });
     }
     if (!validateRna(rna)) {
-        return res.status(400).json({ message: 'RNA invalide. Format attendu : W + 9 chiffres.' });
+        return res.status(400).json({ message: 'RNA invalide. Format attendu : W + 9 caractères.' });
     }
     if (!req.file) {
         return res.status(400).json({ message: 'Le document justificatif est obligatoire.' });
@@ -300,17 +299,6 @@ router.post('/backoffice/complete-signup', uploadSignup.single('document'), asyn
         // Hasher le mot de passe
         const hashedPassword = await bcrypt.hash(password, 10);
 
-        // Mettre à jour l'utilisateur
-        await db.update('asso_users', {
-            password: hashedPassword,
-            firstName,
-            lastName,
-            rna,
-            is_verified: 1,
-            verification_token: null,
-            verification_token_expiry: null
-        }, 'id = ?', [userData.id], 'remote');
-
         // Récupérer le nom de l'association via l'API RNA
         let raisonSociale = '';
         try {
@@ -321,30 +309,18 @@ router.post('/backoffice/complete-signup', uploadSignup.single('document'), asyn
             console.warn(`[Complete Signup Cantine] Impossible de récupérer le nom pour RNA ${rna}:`, rnaError.message);
         }
 
-        // Créer ou vérifier l'association
-        const existingAsso = await db.select('SELECT id FROM Assos WHERE email = ? OR rna = ?', [email, rna], 'remote');
-        let assoId = null;
-        if (existingAsso.length === 0) {
-            const assoInsert = await db.insert('Assos', {
-                email,
-                rna,
-                nom: raisonSociale,
-                signataire_nom: lastName,
-                signataire_prenom: firstName,
-            }, 'remote');
-            assoId = assoInsert.insertId;
-            console.log(`[Complete Signup Cantine] Nouvelle association créée pour ${email}`);
-        } else {
-            assoId = existingAsso[0].id;
-            console.log(`[Complete Signup Cantine] Association existante trouvée pour ${email}`);
-        }
-
-        // Sauvegarder le nom du document justificatif
-        if (documentJustificatifFilename) {
-            await db.update('asso_users', {
-                document_justificatif: documentJustificatifFilename
-            }, 'id = ?', [userData.id], 'remote');
-        }
+        // Mettre à jour l'utilisateur (incluant la raison sociale et le document)
+        await db.update('asso_users', {
+            password: hashedPassword,
+            firstName,
+            lastName,
+            rna,
+            nom: raisonSociale,
+            is_verified: 1,
+            verification_token: null,
+            verification_token_expiry: null,
+            document_justificatif: documentJustificatifFilename || null
+        }, 'id = ?', [userData.id], 'remote');
 
         // Envoyer l'email de bienvenue
         try {
@@ -493,13 +469,6 @@ router.post('/backoffice/signin', async(req, res) => {
             return res.status(401).json({ message: 'RNA manquant pour cet utilisateur.' });
         }
 
-        const assoCheck = await db.select('SELECT * FROM Assos WHERE rna = ?', [user.rna], 'remote');
-        if (assoCheck.length === 0) {
-            return res.status(401).json({ message: 'Association non trouvée pour ce RNA.' });
-        }
-
-        const asso = assoCheck[0];
-
         // Vérifier double_checked et statut directement sur asso_users
         if (!user.double_checked) {
             return res.status(403).json({
@@ -515,15 +484,13 @@ router.post('/backoffice/signin', async(req, res) => {
         }
 
         const token = jwt.sign({
-                id: asso.id,
-                email: asso.email,
-                firstName: asso.firstName,
-                lastName: asso.lastName,
+                id: user.id,
+                email: user.email,
+                firstName: user.firstName,
+                lastName: user.lastName,
                 role: 'association',
-                rna: asso.rna,
-                uri: asso.uri,
-                nameAsso: asso.nom,
-                logoUrl: asso.logoUrl,
+                rna: user.rna,
+                nameAsso: user.nom,
             },
             JWT_SECRET, { expiresIn: '1h' }
         );
@@ -552,7 +519,7 @@ router.get('/rna/:rna', async (req, res) => {
 
     try {
         if (!rna || !validateRna(rna)) {
-            return res.status(400).json({ error: 'Le numéro RNA doit être au format W suivi de 9 chiffres (ex: W751234567)' });
+            return res.status(400).json({ error: 'Le numéro RNA doit être au format W suivi de 9 caractères (ex: W751234567)' });
         }
 
         const info = await rnaService.getAssociationInfo(rna);

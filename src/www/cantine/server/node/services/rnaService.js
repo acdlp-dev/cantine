@@ -3,7 +3,7 @@ const axios = require('axios');
 /**
  * Recupere le nom d'une association via son numero RNA
  * en utilisant l'API OpenDataSoft (pas d'authentification requise)
- * @param {string} rna - Numero RNA (format: W + 9 chiffres)
+ * @param {string} rna - Numero RNA (format: W + 9 caracteres)
  * @returns {Promise<{title: string, position: string}>}
  */
 async function getAssociationInfo(rna) {

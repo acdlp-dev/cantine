@@ -73,8 +73,6 @@ const sendTemplateEmail = async (to, templateId, variables, subject, replyTo, fr
       console.log(`[Mailjet] ${attachments.length} pièce(s) jointe(s) ajoutée(s)`);
     }
 
-    console.log("[Mailjet Body]:", JSON.stringify(mailjetBody, null, 2));
-
     const request = client.post('send', { version: 'v3.1' }).request(mailjetBody);
 
     const response = await request;

@@ -6,32 +6,15 @@ import { catchError, map, throwError } from 'rxjs';
 
 
 export interface InfosResponse {
-    data: any;
-    stripe_publishable_key: any;
-    stripe_secret_key: any;
-    nom: any;
-    rna: string;
-    surnom: any;
-    isMosquee: string;
-    qualite: any;
-    type: any;
-    tel: any;
-    objet: any;
-    site: any;
-    codeCouleur: any;
-    adresse: any;
-    ville: any;
-    code_postal: any;
-    adresseCheque: any;
-    expediteur: any;
-    signataire_prenom: any;
-    signataire_nom: any;
-    signataire_role: any;
-    iban_general: any;
-    bic_general: any;
-    paypal_email: any;
-    iban_zakat: any;
-
+    data: {
+        rna: string;
+        nom: string | null;
+        adresse: string | null;
+        code_postal: string | null;
+        ville: string | null;
+        tel: string | null;
+        email: string | null;
+    };
 }
 
 @Injectable({

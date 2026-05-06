@@ -35,30 +35,14 @@ export class InfosComponent implements OnInit, AfterViewInit {
     }
 
     initForm(): void {
-        // Infos: uniquement identité + coordonnées affichées dans le template
         this.infoForm = this.fb.group({
             rna: ['', Validators.required],
             association_name: ['', Validators.required],
-            nickname: [''],
-            type: ['', Validators.required],
             address: ['', Validators.required],
             city: ['', Validators.required],
             postal_code: ['', Validators.required],
             phone: ['', Validators.required],
-            email: ['', [Validators.required, Validators.email]],
-            website: [''],
-            color: ['#ff7443'],
-            colorHex: ['#ff7443']
-        });
-
-        // Synchroniser color <-> colorHex
-        this.infoForm.get('color')?.valueChanges.subscribe(value => {
-            this.infoForm.get('colorHex')?.setValue(value, { emitEvent: false });
-        });
-        this.infoForm.get('colorHex')?.valueChanges.subscribe(value => {
-            if (/^#[0-9A-F]{6}$/i.test(value)) {
-                this.infoForm.get('color')?.setValue(value, { emitEvent: false });
-            }
+            email: ['', [Validators.required, Validators.email]]
         });
     }
 
@@ -69,25 +53,15 @@ export class InfosComponent implements OnInit, AfterViewInit {
         this.infosService.getInfosAsso().subscribe({
             next: (response: InfosResponse) => {
                 const data = response.data;
-                const hasCheque = data.adresseCheque && data.adresseCheque.trim() !== '';
-
-                const formattedResponse = {
+                this.infoForm.patchValue({
                     rna: data.rna,
                     association_name: data.nom,
-                    nickname: data.surnom,
-                    type: data.type,
-                    website: data.site,
-                    color: data.codeCouleur,
-                    colorHex: data.codeCouleur,
                     address: data.adresse,
                     city: data.ville,
                     postal_code: data.code_postal,
                     phone: data.tel,
-                    email: data.email,
-                    same_address: hasCheque ? 'yes' : 'no'
-                } as any;
-
-                this.infoForm.patchValue(formattedResponse);
+                    email: data.email
+                });
                 this.isLoading = false;
                 this.successMessage = currentSuccessMessage;
             },
@@ -116,19 +90,13 @@ export class InfosComponent implements OnInit, AfterViewInit {
 
         const raw = this.infoForm.value;
         const formData: any = {
-            source: 'infos',
             rna: raw.rna,
             association_name: raw.association_name,
-            nickname: raw.nickname,
-            type: raw.type,
             address: raw.address,
             city: raw.city,
             postal_code: raw.postal_code,
             phone: raw.phone,
-            email: raw.email,
-            website: raw.website,
-            color: raw.color,
-            colorHex: raw.colorHex
+            email: raw.email
         };
 
         this.infosService.saveInfosAsso(formData).subscribe({

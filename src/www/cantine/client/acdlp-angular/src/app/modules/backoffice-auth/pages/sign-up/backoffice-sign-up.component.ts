@@ -76,7 +76,7 @@ export class BackofficeSignUpComponent implements OnInit {
         acceptTerm: [false, Validators.requiredTrue],
         firstName: ['', Validators.required],
         lastName: ['', Validators.required],
-        rna: ['', [Validators.required, Validators.pattern(/^W\d{9}$/)]],
+        rna: ['', [Validators.required, Validators.pattern(/^W[0-9A-Z]{9}$/)]],
       },
       {
         validator: this.passwordMatchValidator,
@@ -111,10 +111,10 @@ export class BackofficeSignUpComponent implements OnInit {
     const rnaControl = this.form.get('rna');
     if (rnaControl) {
       const value = rnaControl.value;
-      if (!value || !/^W\d{9}$/.test(value)) {
+      if (!value || !/^W[0-9A-Z]{9}$/.test(value)) {
         rnaControl.setErrors({
           invalidRna: true,
-          message: value ? `Le RNA doit commencer par W suivi de 9 chiffres (actuellement: ${value.length} caractères)` : 'Le RNA est requis'
+          message: value ? `Le RNA doit commencer par W suivi de 9 caractères (actuellement: ${value.length} caractères)` : 'Le RNA est requis'
         });
       }
     }
@@ -128,9 +128,9 @@ export class BackofficeSignUpComponent implements OnInit {
     for (let i = 0; i < value.length && filtered.length < 10; i++) {
       if (i === 0 && value[i] === 'W') {
         filtered += 'W';
-      } else if (filtered.length > 0 && filtered[0] === 'W' && /\d/.test(value[i])) {
+      } else if (filtered.length > 0 && filtered[0] === 'W' && /[0-9A-Z]/.test(value[i])) {
         filtered += value[i];
-      } else if (i === 0 && /\d/.test(value[i])) {
+      } else if (i === 0 && /[0-9A-Z]/.test(value[i])) {
         filtered = 'W' + value[i];
       }
     }
@@ -144,13 +144,13 @@ export class BackofficeSignUpComponent implements OnInit {
     if (rnaControl && filtered.length !== 10 && filtered.length > 0) {
       rnaControl.setErrors({
         pattern: true,
-        message: `Le RNA doit contenir W + 9 chiffres (actuellement: ${filtered.length} caractères)`
+        message: `Le RNA doit contenir W + 9 caractères (actuellement: ${filtered.length} caractères)`
       });
       this.raisonSociale = '';
       this.rnaError = '';
     }
 
-    if (filtered.length === 10 && /^W\d{9}$/.test(filtered)) {
+    if (filtered.length === 10 && /^W[0-9A-Z]{9}$/.test(filtered)) {
       this.fetchAssociationName(filtered);
     }
   }

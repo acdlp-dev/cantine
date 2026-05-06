@@ -19,9 +19,9 @@ router.get('/canteInfosCompleted', authMiddleware, async (req, res) => {
       return res.status(400).json({ isComplete: false, missingFields: ['RNA manquant'], message: "Identifiant d'association manquant" });
     }
 
-    // Récupérer les champs requis depuis la table Assos
+    // Récupérer les champs requis depuis la table asso_users
     const rows = await db.select(
-      'SELECT nom, adresse, code_postal, ville, email, tel FROM Assos WHERE rna = ? LIMIT 1',
+      'SELECT nom, adresse, code_postal, ville, email, tel FROM asso_users WHERE rna = ? LIMIT 1',
       [rna],
       'remote'
     );
@@ -68,14 +68,12 @@ router.get('/getInfosAsso', authMiddleware, async (req, res) => {
       return res.status(400).json({ message: 'RNA manquant.' });
     }
 
-    // Requête SQL pour récupérer les informations de l'association
+    // Requête SQL pour récupérer les informations de l'association (cantine = sous-ensemble minimal)
     const sql = `
-      SELECT
-        *
-      FROM
-        Assos
-      WHERE
-        rna = ?
+      SELECT rna, nom, adresse, code_postal, ville, tel, email
+      FROM asso_users
+      WHERE rna = ?
+      LIMIT 1
     `;
 
     const results = await db.select(sql, [rna], 'remote');
@@ -101,51 +99,19 @@ router.post('/updateInfosAsso', authMiddleware, async (req, res) => {
     const formData = req.body || {};
 
     // Identify association via JWT, do not rely on body for security
-    const rna = req.user?.rna || req.user?.siren || formData.rna; // Fallback temporaire pour anciens JWT
+    const rna = req.user?.rna || formData.rna;
     if (!rna) {
       return res.status(400).json({ message: 'RNA manquant.' });
     }
 
-    // Determine update source: 'infos' (identity/contact) vs 'configuration' (full settings)
-    const source = formData.source || formData._source || (formData.cantineOk ? 'infos' : 'configuration');
-
-    // Build payload based on source
-    let updatePayload;
-    if (source === 'infos') {
-      // Only identity/contact fields from the Infos page
-      updatePayload = {
-        nom: formData.association_name ?? null,
-        surnom: formData.nickname ?? '',
-        type: formData.type ?? null,
-        adresse: formData.address ?? null,
-        ville: formData.city ?? null,
-        code_postal: formData.postal_code ?? null,
-        tel: formData.phone ?? null,
-        email: formData.email ?? null
-      };
-    } else {
-      // Full configuration update from the Configuration page
-
-      updatePayload = {
-        nom: formData.association_name,
-        surnom: formData.nickname,
-        type: formData.type,
-        isMosquee: formData.is_cultural === 'yes' ? 'oui' : (formData.is_cultural === 'no' ? 'non' : undefined),
-        qualite: formData.quality,
-        objet: formData.purpose,
-        site: formData.website,
-        codeCouleur: formData.color,
-        adresse: formData.address,
-        ville: formData.city,
-        code_postal: formData.postal_code,
-        tel: formData.phone,
-        email: formData.email,
-        signataire_prenom: formData.fiscal_receipt_first_name,
-        signataire_nom: formData.fiscal_receipt_last_name,
-        signataire_role: formData.fiscal_receipt_status,
-        benevoles_resp_email: formData.benevoles_resp_email
-      };
-    }
+    const updatePayload = {
+      nom: formData.association_name ?? null,
+      adresse: formData.address ?? null,
+      ville: formData.city ?? null,
+      code_postal: formData.postal_code ?? null,
+      tel: formData.phone ?? null,
+      email: formData.email ?? null
+    };
 
     // Sanitize: remove undefined to avoid MySQL bind errors; keep nulls if explicitly intended
     const sanitizedPayload = Object.keys(updatePayload).reduce((acc, key) => {
@@ -154,9 +120,8 @@ router.post('/updateInfosAsso', authMiddleware, async (req, res) => {
       return acc;
     }, {});
 
-    // Perform update
     await db.update(
-      'Assos',
+      'asso_users',
       sanitizedPayload,
       'rna = ?',
       [rna],
@@ -164,7 +129,7 @@ router.post('/updateInfosAsso', authMiddleware, async (req, res) => {
     );
 
     return res.status(200).json({
-      message: `Informations de l'association mises à jour avec succès (${source}).`,
+      message: 'Informations de l\'association mises à jour avec succès.',
       success: true
     });
 

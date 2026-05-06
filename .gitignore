@@ -14,9 +14,11 @@ src/www/acdlp-mensuel/server/php/log/bdd_errors.log
 
 mysql/bkp/*
 
-# Ignorer le contenu du répertoire des reçus fiscaux
+# Ignorer le contenu du répertoire des reçus fiscaux et documents justificatifs
 src/www/acdlp/server/node/pdf/**
 !src/www/acdlp/server/node/pdf/.gitkeep
+src/www/cantine/server/node/pdf/**
+!src/www/cantine/server/node/pdf/.gitkeep
 
 
 node_modules/
