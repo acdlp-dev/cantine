@@ -80,7 +80,9 @@ import {
   ExternalLink,
   MousePointerClick,
   Inbox,
-  Clock
+  Clock,
+  Archive,
+  Save
 } from 'lucide-angular';
 
 @NgModule({
@@ -165,7 +167,9 @@ import {
       ExternalLink,
       MousePointerClick,
       Inbox,
-      Clock
+      Clock,
+      Archive,
+      Save
     })
   ],
   exports: [

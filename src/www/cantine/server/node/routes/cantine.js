@@ -281,20 +281,52 @@ router.post('/addCommandeCantine', authMiddleware, async (req, res) => {
         const email = req.user.email;
         // Plus tard : const asso = req.user.asso;
 
-        const { dateCommande, quantitePlats, zoneDistribution } = req.body;
+        const { dateCommande, quantitePlats, zoneDistribution, zoneId } = req.body;
 
-        // Validation des champs requis
-        if (!dateCommande || !quantitePlats || !zoneDistribution) {
+        if (!dateCommande || !quantitePlats) {
             return res.status(400).json({
-                message: 'Date de livraison, quantité de plats et zone de distribution sont requis.'
+                message: 'Date de livraison et quantité de plats sont requis.'
+            });
+        }
+        if (!zoneId && !zoneDistribution) {
+            return res.status(400).json({
+                message: 'Sélectionne une zone ou saisis une adresse de distribution.'
             });
         }
 
-        // Validation de la quantité
         if (quantitePlats <= 0) {
             return res.status(400).json({
                 message: 'La quantité doit être supérieure à 0.'
             });
+        }
+
+        // Si zoneId fourni : on vérifie l'ownership puis on construit le snapshot string à partir des adresses de la zone
+        let zoneSnapshot = zoneDistribution;
+        let resolvedZoneId = null;
+        if (zoneId) {
+            const zoneIdInt = parseInt(zoneId, 10);
+            if (!zoneIdInt) return res.status(400).json({ message: 'zoneId invalide.' });
+
+            const userRows = await db.select('SELECT id FROM asso_users WHERE email = ? LIMIT 1', [email], 'remote');
+            const userId = userRows[0]?.id;
+            if (!userId) return res.status(404).json({ message: 'Utilisateur introuvable.' });
+
+            const zoneRows = await db.select(
+                'SELECT id FROM zones_distribution WHERE id = ? AND user_id = ? AND archived = 0 LIMIT 1',
+                [zoneIdInt, userId], 'remote'
+            );
+            if (!zoneRows[0]) return res.status(404).json({ message: 'Zone introuvable ou archivée.' });
+
+            const addresses = await db.select(
+                'SELECT line1, postal_code, city, country FROM zone_addresses WHERE zone_id = ? ORDER BY ordre ASC',
+                [zoneIdInt], 'remote'
+            );
+            if (addresses.length === 0) {
+                return res.status(400).json({ message: 'La zone sélectionnée n\'a aucune adresse.' });
+            }
+            const { buildZoneSnapshot } = require('./zones');
+            zoneSnapshot = buildZoneSnapshot(addresses);
+            resolvedZoneId = zoneIdInt;
         }
 
         const result = await db.insert('Commandes', {
@@ -309,7 +341,8 @@ router.post('/addCommandeCantine', authMiddleware, async (req, res) => {
             total_prix: 0,
             type: 'cantine',
             statut: 'confirmee',
-            zone: zoneDistribution,
+            zone: zoneSnapshot,
+            zone_id: resolvedZoneId,
         }, 'remote');
 
         // Envoi de l'email de confirmation
@@ -334,7 +367,8 @@ router.post('/addCommandeCantine', authMiddleware, async (req, res) => {
                 id: result.insertId,
                 livraison: dateCommande,
                 quantite: quantitePlats,
-                zone: zoneDistribution,
+                zone: zoneSnapshot,
+                zoneId: resolvedZoneId,
                 statut: 'confirmee'
             }
         });

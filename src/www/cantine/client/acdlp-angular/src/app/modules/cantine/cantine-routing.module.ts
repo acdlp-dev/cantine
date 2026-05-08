@@ -6,6 +6,7 @@ import { CommandeComponent } from './components/commande/commande.component';
 import { InfosComponent } from '../backoffice/components/infos/infos.component';
 import { CantineBlockedComponent } from './components/blocked/cantine-blocked.component';
 import { MenuComponent } from './components/menu/menu.component';
+import { MesZonesComponent } from './components/mes-zones/mes-zones.component';
 import { Info } from 'lucide-angular';
 
 const routes: Routes = [
@@ -19,6 +20,7 @@ const routes: Routes = [
       { path: 'infos', component: InfosComponent },
       { path: 'blocked', component: CantineBlockedComponent },
       { path: 'menu', component: MenuComponent },
+      { path: 'mes-zones', component: MesZonesComponent },
       { path: '**', redirectTo: '' }
     ]
   }

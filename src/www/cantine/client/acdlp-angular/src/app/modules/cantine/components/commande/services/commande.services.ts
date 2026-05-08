@@ -61,41 +61,40 @@ export class CommandeServices {
 
 
 
-    // désormais la zone est un objet d'adresse similaire à don-hors-ligne
-    addCommandeCantine(dateCommande: string, quantitePlats: number, address: { adresse: string, code_postal?: string, ville?: string, pays?: string } | string): Observable<CommandesResponse> {
-        // Vérifier que la date n'est pas vide
+    // address peut être null si zoneId est fourni (cas zone enregistrée)
+    addCommandeCantine(
+        dateCommande: string,
+        quantitePlats: number,
+        address: { adresse: string, code_postal?: string, ville?: string, pays?: string } | string | null,
+        zoneId?: number | null
+    ): Observable<CommandesResponse> {
         if (!dateCommande || dateCommande.trim() === '') {
             console.error('Date vide ou invalide:', dateCommande);
             return throwError(() => new Error('Date requise'));
         }
-
-        // Vérifier que la quantité est valide
         if (!quantitePlats || quantitePlats <= 0) {
             console.error('Quantité invalide:', quantitePlats);
             return throwError(() => new Error('Quantité requise'));
         }
-
-        // Vérifier que la zone/ligne d'adresse est valide
-        if (!address || (typeof address === 'string' && address.trim() === '') || (typeof address === 'object' && !(address as any).adresse)) {
-            console.error('Adresse invalide:', address);
-            return throwError(() => new Error('Adresse requise'));
+        if (!zoneId && (!address || (typeof address === 'string' && address.trim() === '') || (typeof address === 'object' && !(address as any).adresse))) {
+            console.error('Aucune zone sélectionnée et aucune adresse fournie:', address);
+            return throwError(() => new Error('Zone ou adresse requise'));
         }
 
-        // Construire le corps de la requête
         const body: any = {
             dateCommande: dateCommande,
             quantitePlats: quantitePlats
         };
 
-        // Si un string est fourni, conserver l'ancien champ zoneDistribution pour compatibilité
-        if (typeof address === 'string') {
+        if (zoneId) {
+            body.zoneId = zoneId;
+        } else if (typeof address === 'string') {
             body.zoneDistribution = address;
-        } else if (typeof address === 'object') {
+        } else if (typeof address === 'object' && address) {
             body.adresse = address.adresse;
             body.code_postal = address.code_postal || '';
             body.ville = address.ville || '';
             body.pays = address.pays || 'France';
-            // Compat: ajouter zoneDistribution attendu côté serveur
             body.zoneDistribution = address.adresse;
         }
 

@@ -39,6 +39,8 @@ console.log('  - Loading cantine...');
 const cantineRoute = require('./routes/cantine');
 console.log('  - Loading internal...');
 const internalRoute = require('./routes/internal');
+console.log('  - Loading zones...');
+const { router: zonesRoute } = require('./routes/zones');
 console.log('✅ Routes loaded');
 
 
@@ -68,6 +70,7 @@ app.use('/api', databaseRoute);
 app.use('/api', donsBackoffice);
 app.use('/api', cantineRoute);
 app.use('/api', internalRoute);
+app.use('/api', zonesRoute);
 
 
 

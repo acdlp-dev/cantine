@@ -27,3 +27,4 @@ node_modules/
 
 # Fichiers locaux perso
 WORKFLOW-LOCAL.md
+docker-compose.override.yml

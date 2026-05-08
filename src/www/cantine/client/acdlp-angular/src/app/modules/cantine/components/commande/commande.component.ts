@@ -1,16 +1,17 @@
 import { Component, OnInit, AfterViewInit, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { HttpClientModule, HttpClient } from '@angular/common/http';
 import { CommandesResponse, CommandeServices } from '../commande/services/commande.services';
 import { LucideIconsModule } from '../../../../shared/modules/lucide-icons.module';
 import { CantineService } from '../../services/cantine.service';
+import { ZonesService, Zone } from '../mes-zones/services/zones.service';
 
 @Component({
   selector: 'app-commande',
   standalone: true,
-  imports: [CommonModule, FormsModule, HttpClientModule, LucideIconsModule],
+  imports: [CommonModule, FormsModule, HttpClientModule, LucideIconsModule, RouterLink],
   templateUrl: './commande.component.html'
 })
 export class CommandeComponent implements OnInit {
@@ -20,7 +21,14 @@ export class CommandeComponent implements OnInit {
   dateCommande = '';
   quantitePlats: number | null = null;
 
-  // Multi-adresses: tableau d'adresses
+  // Zones enregistrées de l'asso (mode "Mes zones")
+  zones: Zone[] = [];
+  zonesLoading = true;
+  selectedZoneId: number | null = null;
+  // Bascule manuelle vers la saisie libre d'adresse (legacy + cas exceptionnel)
+  useFreeAddress = false;
+
+  // Multi-adresses: utilisé si useFreeAddress = true (ou si l'asso n'a aucune zone)
   addresses: Array<{
     line1: string;
     postal_code: string;
@@ -55,7 +63,8 @@ export class CommandeComponent implements OnInit {
     public router: Router,
     private commandeService: CommandeServices,
     private http: HttpClient,
-    private cantineService: CantineService
+    private cantineService: CantineService,
+    private zonesService: ZonesService
   ) { }
 
   ngAfterViewInit(): void {
@@ -155,6 +164,34 @@ export class CommandeComponent implements OnInit {
         this.missingCantineFields = [];
       }
     });
+
+    // Charger les zones enregistrées de l'asso
+    this.zonesService.list().subscribe({
+      next: (resp) => {
+        this.zones = resp.zones || [];
+        // Si aucune zone enregistrée, on tombe direct sur la saisie libre
+        if (this.zones.length === 0) {
+          this.useFreeAddress = true;
+        }
+        this.zonesLoading = false;
+      },
+      error: (err) => {
+        console.error('Erreur chargement zones', err);
+        this.zones = [];
+        this.useFreeAddress = true;
+        this.zonesLoading = false;
+      }
+    });
+  }
+
+  toggleAddressMode(): void {
+    this.useFreeAddress = !this.useFreeAddress;
+    if (!this.useFreeAddress) {
+      // Reset addresses si on repasse en mode zone
+      this.addresses = [{ line1: '', postal_code: '', city: '', country: 'France' }];
+    } else {
+      this.selectedZoneId = null;
+    }
   }
 
   goToInfos(): void {
@@ -202,15 +239,16 @@ export class CommandeComponent implements OnInit {
    * Validation du formulaire
    */
   private isFormValid(): boolean {
-    // Au moins une adresse doit avoir line1 rempli
-    const hasValidAddress = this.addresses.some(addr => addr.line1 && addr.line1.trim().length > 0);
-    
+    const hasZoneOrAddress = this.useFreeAddress
+      ? this.addresses.some(addr => addr.line1 && addr.line1.trim().length > 0)
+      : !!this.selectedZoneId;
+
     return !!(
       this.dateCommande &&
       this.quantitePlats &&
       this.quantitePlats > 0 &&
       this.quantitePlats <= (this.repasDisponibles || 0) &&
-      hasValidAddress &&
+      hasZoneOrAddress &&
       this.repasDisponibles !== 0
     );
   }
@@ -224,14 +262,18 @@ export class CommandeComponent implements OnInit {
       this.submitMessage = '';
       this.submitError = '';
 
-      // Concaténer toutes les adresses: "addr1, addr2, addr3"
-      // Format: "line1 postal_code city country"
-      const zoneDistribution = this.addresses
-        .filter(addr => addr.line1 && addr.line1.trim().length > 0)
-        .map(addr => [addr.line1, addr.postal_code, addr.city, addr.country].filter(Boolean).join(' '))
-        .join(', ');
+      let zoneDistribution: string | null = null;
+      let zoneId: number | null = null;
+      if (this.useFreeAddress) {
+        zoneDistribution = this.addresses
+          .filter(addr => addr.line1 && addr.line1.trim().length > 0)
+          .map(addr => [addr.line1, addr.postal_code, addr.city, addr.country].filter(Boolean).join(' '))
+          .join(', ');
+      } else {
+        zoneId = this.selectedZoneId;
+      }
 
-      this.commandeService.addCommandeCantine(this.dateCommande, this.quantitePlats!, zoneDistribution).subscribe({
+      this.commandeService.addCommandeCantine(this.dateCommande, this.quantitePlats!, zoneDistribution, zoneId).subscribe({
         next: (response: any) => {
           this.isSubmitting = false;
 

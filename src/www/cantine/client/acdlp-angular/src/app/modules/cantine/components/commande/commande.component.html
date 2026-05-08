@@ -102,8 +102,47 @@
         </p>
       </div>
 
-      <!-- Adresses de livraison (multi-adresses) -->
-      <div class="space-y-6">
+      <!-- Zone de distribution (sélecteur) -->
+      <div *ngIf="!zonesLoading && !useFreeAddress" class="space-y-3">
+        <label class="block text-sm font-medium text-gray-700">
+          Zone de distribution
+          <span class="text-red-500">*</span>
+        </label>
+        <ng-container *ngIf="zones.length > 0">
+          <select [(ngModel)]="selectedZoneId" name="zone_id"
+                  class="w-full px-4 py-3 text-sm border border-gray-300 rounded-md shadow-sm bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#ff7443] focus:border-[#ff7443]">
+            <option [ngValue]="null">— Sélectionner une zone —</option>
+            <option *ngFor="let z of zones" [ngValue]="z.id">
+              {{ z.nom }} ({{ z.addresses.length }} adresse{{ z.addresses.length > 1 ? 's' : '' }})
+            </option>
+          </select>
+          <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-600">
+            <a routerLink="/cantine/mes-zones" class="text-[#ff7443] hover:underline inline-flex items-center">
+              <i-lucide name="settings" class="w-3.5 h-3.5 mr-1"></i-lucide>
+              Gérer mes zones
+            </a>
+            <button type="button" (click)="toggleAddressMode()" class="text-gray-600 hover:underline">
+              Saisir une adresse manuelle à la place
+            </button>
+          </div>
+        </ng-container>
+        <div *ngIf="zones.length === 0" class="bg-amber-50 border border-amber-200 rounded-md p-3 text-sm text-amber-800">
+          Tu n'as pas encore enregistré de zone.
+          <a routerLink="/cantine/mes-zones" class="font-medium underline ml-1">Crée ta première zone</a>
+          pour gagner du temps sur tes prochaines commandes, ou
+          <button type="button" (click)="toggleAddressMode()" class="font-medium underline">saisis une adresse manuellement</button>.
+        </div>
+      </div>
+
+      <!-- Adresses de livraison (multi-adresses) — saisie libre -->
+      <div *ngIf="useFreeAddress" class="space-y-6">
+        <div class="flex justify-between items-center">
+          <h4 class="text-sm font-semibold text-gray-700">Saisie manuelle d'adresse</h4>
+          <button *ngIf="zones.length > 0" type="button" (click)="toggleAddressMode()"
+                  class="text-xs text-[#ff7443] hover:underline">
+            ← Revenir à la sélection de zone
+          </button>
+        </div>
         <div *ngFor="let addr of addresses; let i = index" class="relative border border-gray-200 rounded-lg p-4 bg-gray-50">
           <!-- En-tête avec numéro et bouton supprimer -->
           <div class="flex items-center justify-between mb-3">
