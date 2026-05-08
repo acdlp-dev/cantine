@@ -14,7 +14,10 @@ function internalApiKeyAuth(req, res, next) {
     next();
 }
 
-router.use(internalApiKeyAuth);
+// Scope l'API key auth aux routes /internal/* uniquement
+// (sans le path scope, ce middleware interceptait TOUTES les requêtes qui traversaient
+//  ce router — y compris /api/zones — et renvoyait 403 puisque le header n'était pas présent)
+router.use('/internal', internalApiKeyAuth);
 
 // Sert le document justificatif d'une asso (appelé par le bo)
 router.get('/internal/document/:id', async (req, res) => {
