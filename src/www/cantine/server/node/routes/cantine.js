@@ -100,7 +100,7 @@ router.get('/getQuantiteCantine', authMiddleware, async (req, res) => {
         const quotaRepas = quotaResults[0].repas_quantite || 0;
 
         // 2. Calculer les repas déjà commandés pour cette date
-        const commandesQuery = 'SELECT SUM(repas_quantite) as total_commandes FROM Commandes WHERE livraison = ? AND statut NOT IN ("blocked", "annulee")';
+        const commandesQuery = "SELECT SUM(repas_quantite) as total_commandes FROM Commandes WHERE livraison = ? AND statut IN ('confirmee','a_preparer','a_recuperer')";
         const commandesResults = await db.select(commandesQuery, [date], 'remote');
 
         const repasCommandes = commandesResults && commandesResults[0] ? (commandesResults[0].total_commandes || 0) : 0;
@@ -308,7 +308,7 @@ router.post('/addCommandeCantine', authMiddleware, async (req, res) => {
             moyen: 'web',
             total_prix: 0,
             type: 'cantine',
-            statut: 'en_attente',
+            statut: 'confirmee',
             zone: zoneDistribution,
         }, 'remote');
 
@@ -335,7 +335,7 @@ router.post('/addCommandeCantine', authMiddleware, async (req, res) => {
                 livraison: dateCommande,
                 quantite: quantitePlats,
                 zone: zoneDistribution,
-                statut: 'en_attente'
+                statut: 'confirmee'
             }
         });
 
@@ -362,8 +362,10 @@ router.put('/annulerCommande/:id', authMiddleware, async (req, res) => {
         const today = new Date();
         livraisonDate.setHours(0, 0, 0, 0);
         today.setHours(0, 0, 0, 0);
-        if (livraisonDate < today) {
-            return res.status(400).json({ message: 'Impossible d\'annuler : la date de livraison est déjà passée.' });
+        // Cutoff asso: annulation possible uniquement jusqu'à J-2 inclus (au moins 2 jours avant la livraison)
+        const diffDays = Math.round((livraisonDate.getTime() - today.getTime()) / (24 * 3600 * 1000));
+        if (diffDays < 2) {
+            return res.status(400).json({ message: 'Annulation impossible : possible seulement jusqu\'à 2 jours avant la livraison. Contactez l\'équipe ACDLP si besoin.' });
         }
 
         // Mettre à jour le statut
@@ -459,7 +461,7 @@ router.put('/modifierCommande/:id', authMiddleware, async (req, res) => {
         const quotaRepas = (quotaRows && quotaRows[0]) ? (quotaRows[0].repas_quantite || 0) : 0;
 
         // Somme des commandes actives ce jour (statuts consommant de la capacité)
-        const totalTakenRows = await db.select("SELECT COALESCE(SUM(repas_quantite),0) as total FROM Commandes WHERE livraison = ? AND statut IN ('a_preparer','en_attente','a_deposer')", [commande.livraison], 'remote');
+        const totalTakenRows = await db.select("SELECT COALESCE(SUM(repas_quantite),0) as total FROM Commandes WHERE livraison = ? AND statut IN ('confirmee','a_preparer','a_recuperer')", [commande.livraison], 'remote');
         const totalTaken = (totalTakenRows && totalTakenRows[0]) ? (totalTakenRows[0].total || 0) : 0;
 
         // Capacité disponible pour augmenter = quota - (totalTaken - quantité actuelle)
@@ -515,63 +517,13 @@ router.put('/modifierCommande/:id', authMiddleware, async (req, res) => {
 });
 
 // ----------------------------------
-// Rappel J-1 des commandes (à appeler via cron vers 10h00)
+// Rappel J-1 des commandes — DÉSACTIVÉ
+// Géré par le cron du BO (18h, Europe/Paris) cf. ACDLP_BO/.../crons/cantineCrons.js
 // ----------------------------------
 router.post('/rappelCantineJMoinsUn', authMiddleware, async (req, res) => {
-    try {
-        // Date cible: demain (J+1)
-        const today = new Date();
-        const target = new Date(today);
-        target.setDate(today.getDate() + 1);
-        const y = target.getFullYear();
-        const m = String(target.getMonth() + 1).padStart(2, '0');
-        const d = String(target.getDate()).padStart(2, '0');
-        const isoTarget = `${y}-${m}-${d}`; // yyyy-mm-dd
-        const formatDateFR = (iso) => {
-            if (!iso) return '';
-            const [yy, mm, dd] = iso.split('-');
-            return `${dd}/${mm}/${yy}`;
-        };
-        const jourRecup = formatDateFR(isoTarget);
-
-        // Récupérer commandes pour demain avec statuts sélectionnés
-        const commandes = await db.select("SELECT id, livraison, email, repas_quantite FROM Commandes WHERE livraison = ? AND statut IN ('en_attente','a_preparer','a_deposer')", [isoTarget], 'remote');
-        if (!commandes || commandes.length === 0) {
-            return res.status(200).json({ message: 'Aucune commande à rappeler', total: 0 });
-        }
-
-        let sent = 0;
-        for (const cmd of commandes) {
-            try {
-                // Amende éventuelle
-                let compensationCantine = '0';
-                try {
-                    const amRows = await db.select('SELECT amende FROM asso_users WHERE email = ? LIMIT 1', [cmd.email], 'remote');
-                    if (amRows && amRows[0] && amRows[0].amende !== null && amRows[0].amende !== undefined) {
-                        compensationCantine = String(amRows[0].amende);
-                    }
-                } catch (amErr) {
-                    console.error('[Cantine rappel J-1] Erreur récupération amende:', amErr);
-                }
-                const variables = {
-                    nbRepas: String(cmd.repas_quantite || 0),
-                    jourRecup,
-                    numeroCommande: String(cmd.id),
-                    compensationCantine,
-                };
-                const templateId = 7726738;
-                const subject = `Rappel cantine pour demain #${cmd.id}`;
-                await sendTemplateEmail(cmd.email, templateId, variables, subject);
-                sent++;
-            } catch (emailErr) {
-                console.error(`[Cantine rappel J-1] Erreur envoi email commande ${cmd.id}:`, emailErr);
-            }
-        }
-        return res.status(200).json({ message: 'Rappels envoyés', total: sent });
-    } catch (err) {
-        console.error('[Cantine rappel J-1 Error]:', err);
-        return res.status(500).json({ message: 'Erreur interne du serveur.' });
-    }
+    return res.status(410).json({
+        message: 'Endpoint désactivé. Le rappel J-1 est géré par le cron du BO.'
+    });
 });
 
 module.exports = router;

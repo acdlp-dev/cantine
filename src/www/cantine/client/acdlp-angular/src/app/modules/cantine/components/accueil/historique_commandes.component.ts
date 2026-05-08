@@ -202,28 +202,18 @@ export class HistoriqueCommandesComponent implements OnInit {
    */
   getStatutClass(statut: string): string {
     switch (statut) {
-      case 'a_recuperer':
-        return 'bg-indigo-100 text-indigo-800';
-      case 'en_cours':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'non_confirme':
-        return 'bg-amber-100 text-amber-800';
-      case 'livree':
-        return 'bg-green-100 text-green-800';
-      case 'annulee':
-        return 'bg-red-100 text-red-800';
-      case 'a_preparer':
-        return 'bg-purple-100 text-purple-800';
-      case 'non_recupere':
-        return 'bg-pink-100 text-pink-800';
-      case 'recupere':
-        return 'bg-teal-100 text-teal-800';
-      case 'en_attente':
-        return 'bg-gray-100 text-gray-800';
       case 'confirmee':
         return 'bg-blue-100 text-blue-800';
-      case 'en_preparation':
-        return 'bg-orange-100 text-orange-800';
+      case 'a_preparer':
+        return 'bg-purple-100 text-purple-800';
+      case 'a_recuperer':
+        return 'bg-indigo-100 text-indigo-800';
+      case 'recupere':
+        return 'bg-teal-100 text-teal-800';
+      case 'non_recupere':
+        return 'bg-pink-100 text-pink-800';
+      case 'annulee':
+        return 'bg-red-100 text-red-800';
       case 'blocked':
         return 'bg-gray-700 text-white';
       default:
@@ -236,32 +226,22 @@ export class HistoriqueCommandesComponent implements OnInit {
    */
   getStatutLabel(statut: string): string {
     switch (statut) {
-      case 'a_recuperer':
-        return 'À récupérer';
-      case 'en_cours':
-        return 'En cours';
-      case 'non_confirme':
-        return 'Non confirmée';
-      case 'livree':
-        return 'Livrée';
-      case 'annulee':
-        return 'Annulée';
-      case 'a_preparer':
-        return 'Programmée';
-      case 'non_recupere':
-        return 'Non récupérée';
-      case 'recupere':
-        return 'Récupérée';
-      case 'en_attente':
-        return 'En attente';
       case 'confirmee':
         return 'Confirmée';
-      case 'en_preparation':
-        return 'En préparation';
+      case 'a_preparer':
+        return 'À préparer';
+      case 'a_recuperer':
+        return 'À récupérer';
+      case 'recupere':
+        return 'Récupérée';
+      case 'non_recupere':
+        return 'Non récupérée';
+      case 'annulee':
+        return 'Annulée';
       case 'blocked':
         return 'Bloquée';
       default:
-        return 'Inconnu';
+        return statut || 'Inconnu';
     }
   }
 
@@ -269,9 +249,9 @@ export class HistoriqueCommandesComponent implements OnInit {
    * Annule une commande
    */
   annulerCommande(commande: HistoriqueCommandes): void {
-    // Prevent cancellation if delivery date already passed
-    if (this.isLivraisonPassed(commande)) {
-      alert('Impossible d\'annuler : la date de livraison est déjà passée.');
+    // Cutoff asso: annulation possible uniquement jusqu'à J-2 (au moins 2 jours avant la livraison)
+    if (!this.canCancel(commande)) {
+      alert('Annulation impossible : possible seulement jusqu\'à 2 jours avant la livraison. Contactez l\'équipe ACDLP si besoin.');
       return;
     }
     const qtyText = `${commande.repas_quantite || 0} repas${commande.colis_quantite ? ' + ' + commande.colis_quantite + ' colis' : ''}`;
@@ -287,9 +267,22 @@ export class HistoriqueCommandesComponent implements OnInit {
       },
       error: (err) => {
         console.error('Erreur annulation:', err);
-        alert('Erreur lors de l\'annulation. Veuillez réessayer.');
+        const msg = err?.error?.message || 'Erreur lors de l\'annulation. Veuillez réessayer.';
+        alert(msg);
       }
     });
+  }
+
+  /** Annulation autorisée uniquement à J-2 ou plus tôt (au moins 2 jours avant la livraison) */
+  canCancel(commande: HistoriqueCommandes): boolean {
+    if (!commande || !commande.livraison) return false;
+    if (commande.statut === 'annulee' || commande.statut === 'recupere' || commande.statut === 'non_recupere') return false;
+    const livraisonDate = new Date(commande.livraison);
+    const today = new Date();
+    livraisonDate.setHours(0, 0, 0, 0);
+    today.setHours(0, 0, 0, 0);
+    const diffDays = Math.round((livraisonDate.getTime() - today.getTime()) / (24 * 3600 * 1000));
+    return diffDays >= 2;
   }
 
   /** Retourne true si la date de livraison est antérieure à aujourd'hui (jour uniquement) */

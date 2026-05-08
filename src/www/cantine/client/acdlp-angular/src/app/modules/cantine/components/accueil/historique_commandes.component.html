@@ -98,14 +98,14 @@
                         <td class="px-6 py-4 whitespace-nowrap">
                             <div class="text-sm text-gray-900">{{ commande.livraison | date:'dd/MM/yyyy' }}</div>
                         </td>
-                        <td class="px-6 py-4 whitespace-nowrap"><span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full" [ngClass]="getStatutClass(commande.statut || 'en_attente')">{{ getStatutLabel(commande.statut || 'en_attente') }}</span></td>
+                        <td class="px-6 py-4 whitespace-nowrap"><span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full" [ngClass]="getStatutClass(commande.statut)">{{ getStatutLabel(commande.statut) }}</span></td>
                         <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                                         <div class="flex justify-end space-x-2">
                                                             <button (click)="openEditModal(commande)" class="inline-flex items-center px-2.5 py-1.5 border border-gray-200 text-xs font-medium rounded text-gray-700 bg-white hover:bg-gray-50 transition-colors">
                                                                 <i-lucide name="pencil" class="w-4 h-4 mr-1"></i-lucide>
                                                                 Modifier
                                                             </button>
-                                                            <button (click)="annulerCommande(commande)" class="inline-flex items-center px-2.5 py-1.5 border border-transparent text-xs font-medium rounded text-red-600 hover:bg-red-50 transition-colors">Annuler</button>
+                                                            <button (click)="annulerCommande(commande)" [disabled]="!canCancel(commande)" [title]="canCancel(commande) ? 'Annuler' : 'Annulation possible jusqu\\'à 2 jours avant la livraison'" class="inline-flex items-center px-2.5 py-1.5 border border-transparent text-xs font-medium rounded text-red-600 hover:bg-red-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">Annuler</button>
                                                         </div>
                         </td>
                     </tr>
@@ -117,13 +117,13 @@
                 <div *ngFor="let commande of commandes" class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 overflow-hidden">
                     <div class="flex justify-between items-center mb-2">
                         <div class="font-medium">Commande #{{ commande.id }}</div>
-                        <div><span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full" [ngClass]="getStatutClass(commande.statut || 'en_attente')">{{ getStatutLabel(commande.statut || 'en_attente') }}</span></div>
+                        <div><span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full" [ngClass]="getStatutClass(commande.statut)">{{ getStatutLabel(commande.statut) }}</span></div>
                     </div>
                     <div class="text-sm text-gray-700">Email: {{ commande.email }}</div>
                     <div class="text-sm text-gray-700">Repas: {{ commande.repas_quantite }} / Colis: {{ commande.colis_quantite }}</div>
                     <div class="text-sm text-gray-700">Ajout: {{ commande.ajout | date:'dd/MM/yyyy' }}</div>
                     <div class="text-sm text-gray-700">Livraison: {{ commande.livraison | date:'dd/MM/yyyy' }}</div>
-                    <div class="mt-3 flex space-x-2"><button (click)="annulerCommande(commande)" [disabled]="isLivraisonPassed(commande)" class="inline-flex items-center px-3 py-2 border border-gray-200 rounded-md text-sm font-medium text-red-600 hover:bg-red-50 transition-all">Annuler</button></div>
+                    <div class="mt-3 flex space-x-2"><button (click)="annulerCommande(commande)" [disabled]="!canCancel(commande)" class="inline-flex items-center px-3 py-2 border border-gray-200 rounded-md text-sm font-medium text-red-600 hover:bg-red-50 transition-all disabled:opacity-40 disabled:cursor-not-allowed">Annuler</button></div>
                     <div class="mt-2 flex space-x-2"><button (click)="openEditModal(commande)" [disabled]="isLivraisonPassed(commande)" class="inline-flex items-center px-3 py-2 border border-gray-200 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 transition-all"><i-lucide name="pencil" class="w-4 h-4 mr-1"></i-lucide>Modifier</button></div>
                 </div>
             </div>
