@@ -33,6 +33,10 @@ const routes: Routes = [
         path: 'cantine/menu',
         loadComponent: () => import('../cantine/components/menu/menu.component').then(c => c.MenuComponent),
       },
+      {
+        path: 'cantine/mes-zones',
+        loadComponent: () => import('../cantine/components/mes-zones/mes-zones.component').then(c => c.MesZonesComponent),
+      },
       { path: '**', redirectTo: '' }
     ]
   }

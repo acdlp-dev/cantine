@@ -117,7 +117,7 @@
             </option>
           </select>
           <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-600">
-            <a routerLink="/cantine/mes-zones" class="text-[#ff7443] hover:underline inline-flex items-center">
+            <a [routerLink]="['../mes-zones']" class="text-[#ff7443] hover:underline inline-flex items-center">
               <i-lucide name="settings" class="w-3.5 h-3.5 mr-1"></i-lucide>
               Gérer mes zones
             </a>
@@ -128,7 +128,7 @@
         </ng-container>
         <div *ngIf="zones.length === 0" class="bg-amber-50 border border-amber-200 rounded-md p-3 text-sm text-amber-800">
           Tu n'as pas encore enregistré de zone.
-          <a routerLink="/cantine/mes-zones" class="font-medium underline ml-1">Crée ta première zone</a>
+          <a [routerLink]="['../mes-zones']" class="font-medium underline ml-1">Crée ta première zone</a>
           pour gagner du temps sur tes prochaines commandes, ou
           <button type="button" (click)="toggleAddressMode()" class="font-medium underline">saisis une adresse manuellement</button>.
         </div>

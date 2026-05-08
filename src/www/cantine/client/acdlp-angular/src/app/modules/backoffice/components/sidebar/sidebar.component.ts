@@ -109,7 +109,8 @@ export class SidebarComponent implements OnInit, OnDestroy {
     const cantineItems: TabItem[] = [
       { key: 'cantine', label: 'Commandes Cantine', icon: 'shopping-cart', route: '/backoffice/cantine' },
       { key: 'cantine/commande', label: 'Nouvelle Commande', icon: 'plus-circle', route: '/backoffice/cantine/commande' },
-      { key: 'cantine/menu', label: 'Menu Cantine', icon: 'square-menu', route: '/backoffice/cantine/menu' }
+      { key: 'cantine/menu', label: 'Menu Cantine', icon: 'square-menu', route: '/backoffice/cantine/menu' },
+      { key: 'cantine/mes-zones', label: 'Mes zones', icon: 'map-pin', route: '/backoffice/cantine/mes-zones' }
     ];
     this.sections.push({ key: 'cantine', label: 'Cantine', items: cantineItems });
 
