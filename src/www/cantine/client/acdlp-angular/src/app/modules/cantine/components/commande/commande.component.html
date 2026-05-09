@@ -126,11 +126,27 @@
             </button>
           </div>
         </ng-container>
-        <div *ngIf="zones.length === 0" class="bg-amber-50 border border-amber-200 rounded-md p-3 text-sm text-amber-800">
-          Tu n'as pas encore enregistré de zone.
-          <a [routerLink]="['../mes-zones']" class="font-medium underline ml-1">Crée ta première zone</a>
-          pour gagner du temps sur tes prochaines commandes, ou
-          <button type="button" (click)="toggleAddressMode()" class="font-medium underline">saisis une adresse manuellement</button>.
+        <div *ngIf="zones.length === 0" class="bg-[#fff8f6] border border-[#ffd9c8] rounded-xl p-5 sm:p-6">
+          <div class="flex items-start gap-4">
+            <div class="flex-shrink-0 w-12 h-12 bg-[#ff7443]/10 rounded-full flex items-center justify-center">
+              <i-lucide name="map-pin" class="w-6 h-6 text-[#ff7443]"></i-lucide>
+            </div>
+            <div class="flex-1">
+              <h4 class="text-base font-semibold text-gray-900 mb-1">Crée ta première zone de distribution</h4>
+              <p class="text-sm text-gray-600 mb-4">
+                Enregistre tes points de distribution une fois pour toutes. Tu pourras ensuite les sélectionner d'un clic à chaque commande, sans ressaisir les adresses.
+              </p>
+              <a [routerLink]="['../mes-zones']"
+                 class="inline-flex items-center px-4 py-2.5 bg-[#ff7443] text-white rounded-lg text-sm font-medium hover:bg-[#ff6234] transition-colors">
+                <i-lucide name="plus" class="w-4 h-4 mr-2"></i-lucide>
+                Créer une zone
+              </a>
+            </div>
+          </div>
+          <div class="mt-4 pt-3 border-t border-[#ffd9c8] text-xs text-gray-500">
+            Tu préfères pour cette commande ?
+            <button type="button" (click)="toggleAddressMode()" class="ml-1 underline hover:text-gray-700">Saisir une adresse manuellement</button>
+          </div>
         </div>
       </div>
 

@@ -101,7 +101,7 @@
                         <td class="px-6 py-4 whitespace-nowrap"><span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full" [ngClass]="getStatutClass(commande.statut)">{{ getStatutLabel(commande.statut) }}</span></td>
                         <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                                         <div class="flex justify-end space-x-2">
-                                                            <button (click)="openEditModal(commande)" class="inline-flex items-center px-2.5 py-1.5 border border-gray-200 text-xs font-medium rounded text-gray-700 bg-white hover:bg-gray-50 transition-colors">
+                                                            <button (click)="openEditModal(commande)" [disabled]="!canModify(commande)" [title]="canModify(commande) ? 'Modifier' : 'Modification possible jusqu’à 2 jours avant la livraison'" class="inline-flex items-center px-2.5 py-1.5 border border-gray-200 text-xs font-medium rounded text-gray-700 bg-white hover:bg-gray-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
                                                                 <i-lucide name="pencil" class="w-4 h-4 mr-1"></i-lucide>
                                                                 Modifier
                                                             </button>
@@ -124,7 +124,7 @@
                     <div class="text-sm text-gray-700">Ajout: {{ commande.ajout | date:'dd/MM/yyyy' }}</div>
                     <div class="text-sm text-gray-700">Livraison: {{ commande.livraison | date:'dd/MM/yyyy' }}</div>
                     <div class="mt-3 flex space-x-2"><button (click)="annulerCommande(commande)" [disabled]="!canCancel(commande)" class="inline-flex items-center px-3 py-2 border border-gray-200 rounded-md text-sm font-medium text-red-600 hover:bg-red-50 transition-all disabled:opacity-40 disabled:cursor-not-allowed">Annuler</button></div>
-                    <div class="mt-2 flex space-x-2"><button (click)="openEditModal(commande)" [disabled]="isLivraisonPassed(commande)" class="inline-flex items-center px-3 py-2 border border-gray-200 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 transition-all"><i-lucide name="pencil" class="w-4 h-4 mr-1"></i-lucide>Modifier</button></div>
+                    <div class="mt-2 flex space-x-2"><button (click)="openEditModal(commande)" [disabled]="!canModify(commande)" class="inline-flex items-center px-3 py-2 border border-gray-200 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 transition-all disabled:opacity-40 disabled:cursor-not-allowed"><i-lucide name="pencil" class="w-4 h-4 mr-1"></i-lucide>Modifier</button></div>
                 </div>
             </div>
         </div>

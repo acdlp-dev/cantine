@@ -145,6 +145,65 @@ export class MesZonesComponent implements OnInit {
         return [a.line1, [a.postal_code, a.city].filter(Boolean).join(' '), a.country].filter(Boolean).join(', ');
     }
 
+    /**
+     * Initialise Google Places Autocomplete sur le champ rue d'une adresse donnée.
+     * À l'ajout, remplit automatiquement line1, code postal, ville et pays.
+     */
+    initGooglePlacesForInput(inputElement: EventTarget | null, index: number): void {
+        if (!inputElement || !(inputElement instanceof HTMLInputElement)) return;
+        const target = inputElement as HTMLInputElement & { _gpInited?: boolean };
+        if (target._gpInited) return;
+        try {
+            const googleAny: any = (window as any).google;
+            if (typeof googleAny === 'undefined' || !googleAny?.maps?.places) return;
+
+            const autocomplete = new googleAny.maps.places.Autocomplete(target, {
+                fields: ['address_components', 'formatted_address', 'name', 'types'],
+                componentRestrictions: { country: 'fr' }
+            });
+
+            autocomplete.addListener('place_changed', () => {
+                const place = autocomplete.getPlace();
+                if (!place || !place.address_components) return;
+
+                let streetNumber = '';
+                let street = '';
+                let city = '';
+                let postalCode = '';
+                let country = '';
+
+                for (const component of place.address_components) {
+                    const componentType = component.types[0];
+                    switch (componentType) {
+                        case 'street_number': streetNumber = component.long_name; break;
+                        case 'route': street = component.long_name; break;
+                        case 'locality': city = component.long_name; break;
+                        case 'postal_code': postalCode = component.long_name; break;
+                        case 'country': country = component.long_name; break;
+                    }
+                }
+
+                const streetAddr = streetNumber && street ? `${streetNumber} ${street}` : street;
+                const placeName = (place.name || '').trim();
+                const isPoi = placeName && placeName !== streetAddr.trim();
+                const line1 = isPoi
+                    ? (streetAddr ? `${placeName}, ${streetAddr}` : placeName)
+                    : streetAddr;
+
+                const addr = this.draftAddresses[index];
+                if (!addr) return;
+                addr.line1 = line1 || addr.line1;
+                addr.postal_code = postalCode || addr.postal_code;
+                addr.city = city || addr.city;
+                addr.country = country || addr.country || 'France';
+            });
+
+            target._gpInited = true;
+        } catch (err) {
+            console.error('Google Places API non disponible pour mes-zones', err);
+        }
+    }
+
     private emptyAddress(): DraftAddress {
         return { line1: '', postal_code: '', city: '', country: 'France' };
     }

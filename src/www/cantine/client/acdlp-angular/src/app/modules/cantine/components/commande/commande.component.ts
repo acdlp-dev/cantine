@@ -80,8 +80,8 @@ export class CommandeComponent implements OnInit {
         const autocomplete = new googleAny.maps.places.Autocomplete(
           inputElement,
           {
-            fields: ['address_components', 'formatted_address'],
-            types: ['address']
+            fields: ['address_components', 'formatted_address', 'name', 'types'],
+            componentRestrictions: { country: 'fr' }
           }
         );
 
@@ -116,7 +116,12 @@ export class CommandeComponent implements OnInit {
               }
             }
 
-            const addressLine1 = streetNumber && street ? `${streetNumber} ${street}` : street;
+            const streetAddr = streetNumber && street ? `${streetNumber} ${street}` : street;
+            const placeName = (place.name || '').trim();
+            const isPoi = placeName && placeName !== streetAddr.trim();
+            const addressLine1 = isPoi
+              ? (streetAddr ? `${placeName}, ${streetAddr}` : placeName)
+              : streetAddr;
 
             // Mettre à jour l'adresse à l'index donné
             this.addresses[index].line1 = addressLine1;
@@ -169,16 +174,11 @@ export class CommandeComponent implements OnInit {
     this.zonesService.list().subscribe({
       next: (resp) => {
         this.zones = resp.zones || [];
-        // Si aucune zone enregistrée, on tombe direct sur la saisie libre
-        if (this.zones.length === 0) {
-          this.useFreeAddress = true;
-        }
         this.zonesLoading = false;
       },
       error: (err) => {
         console.error('Erreur chargement zones', err);
         this.zones = [];
-        this.useFreeAddress = true;
         this.zonesLoading = false;
       }
     });
@@ -199,11 +199,12 @@ export class CommandeComponent implements OnInit {
   }
 
   /**
-   * Définit la date minimum pour les commandes (aujourd'hui + 3 jours)
+   * Définit la date minimum pour les commandes (aujourd'hui + 2 jours).
+   * On interdit la commande pour le jour J et J-1 → minimum J+2.
    */
   private setDateMinimum(): void {
     const today = new Date();
-    today.setDate(today.getDate() + 3); // Ajouter 3 jours
+    today.setDate(today.getDate() + 2);
     this.dateMinimum = today.toISOString().split('T')[0];
   }
 

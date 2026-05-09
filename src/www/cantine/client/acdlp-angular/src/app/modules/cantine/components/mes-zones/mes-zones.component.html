@@ -99,7 +99,9 @@
             </button>
           </div>
           <div class="grid grid-cols-1 sm:grid-cols-12 gap-2">
-            <input type="text" [(ngModel)]="a.line1" placeholder="N° + rue"
+            <input type="text" [(ngModel)]="a.line1" [name]="'line1_' + i" placeholder="N° + rue"
+                   (focus)="initGooglePlacesForInput($event.target, i)"
+                   autocomplete="off"
                    class="sm:col-span-12 px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-red-600/20 focus:border-red-600" />
             <input type="text" [(ngModel)]="a.postal_code" placeholder="Code postal"
                    class="sm:col-span-3 px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-red-600/20 focus:border-red-600" />

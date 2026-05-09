@@ -300,6 +300,18 @@ router.post('/addCommandeCantine', authMiddleware, async (req, res) => {
             });
         }
 
+        // Cutoff création : interdit pour le jour J et J-1 → livraison >= aujourd'hui + 2
+        const livraisonD = new Date(dateCommande);
+        const todayD = new Date();
+        livraisonD.setHours(0, 0, 0, 0);
+        todayD.setHours(0, 0, 0, 0);
+        const diffDaysCreate = Math.round((livraisonD.getTime() - todayD.getTime()) / (24 * 3600 * 1000));
+        if (diffDaysCreate < 2) {
+            return res.status(400).json({
+                message: 'Commande impossible : la livraison doit être au minimum dans 2 jours.'
+            });
+        }
+
         // Si zoneId fourni : on vérifie l'ownership puis on construit le snapshot string à partir des adresses de la zone
         let zoneSnapshot = zoneDistribution;
         let resolvedZoneId = null;
@@ -467,18 +479,14 @@ router.put('/modifierCommande/:id', authMiddleware, async (req, res) => {
         }
         const commande = rows[0];
 
-        // Délai: modification autorisée jusqu'à la veille
+        // Cutoff J-2 : modification interdite le jour J et J-1, comme la création et l'annulation
         const livraisonDate = new Date(commande.livraison);
         const today = new Date();
-        const cutoff = new Date(today);
-        // Comparaison jour: on autorise si aujourd'hui < livraison - 1 jour
-        const livraisonMinusOne = new Date(livraisonDate);
-        livraisonMinusOne.setDate(livraisonDate.getDate() - 1);
         livraisonDate.setHours(0, 0, 0, 0);
-        cutoff.setHours(0, 0, 0, 0);
-        livraisonMinusOne.setHours(0, 0, 0, 0);
-        if (!(cutoff < livraisonMinusOne)) {
-            return res.status(400).json({ message: 'Modification impossible : la veille de la livraison est passée.' });
+        today.setHours(0, 0, 0, 0);
+        const diffDays = Math.round((livraisonDate.getTime() - today.getTime()) / (24 * 3600 * 1000));
+        if (diffDays < 2) {
+            return res.status(400).json({ message: 'Modification impossible : possible seulement jusqu\'à 2 jours avant la livraison. Contactez l\'équipe ACDLP si besoin.' });
         }
 
         // Calcul du quota et de la capacité restante pour cette date (quota par jour)

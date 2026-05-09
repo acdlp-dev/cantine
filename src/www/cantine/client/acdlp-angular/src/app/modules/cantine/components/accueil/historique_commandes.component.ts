@@ -285,6 +285,11 @@ export class HistoriqueCommandesComponent implements OnInit {
     return diffDays >= 2;
   }
 
+  /** Modification autorisée selon les mêmes règles que l'annulation (cutoff J-2) */
+  canModify(commande: HistoriqueCommandes): boolean {
+    return this.canCancel(commande);
+  }
+
   /** Retourne true si la date de livraison est antérieure à aujourd'hui (jour uniquement) */
   isLivraisonPassed(commande: HistoriqueCommandes): boolean {
     if (!commande || !commande.livraison) return false;
@@ -301,9 +306,8 @@ export class HistoriqueCommandesComponent implements OnInit {
 
   // Édition
   openEditModal(commande: HistoriqueCommandes): void {
-    // cutoff: modification autorisée jusqu'à la veille
-    if (this.isLivraisonPassed(commande)) {
-      alert('Modification impossible : la veille de la livraison est passée.');
+    if (!this.canModify(commande)) {
+      alert('Modification impossible : possible seulement jusqu’à 2 jours avant la livraison. Contactez l’équipe ACDLP si besoin.');
       return;
     }
     this.editCommande = { ...commande };
